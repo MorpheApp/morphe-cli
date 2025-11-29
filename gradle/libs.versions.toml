@@ -3,7 +3,7 @@ shadow = "8.1.1"
 kotlin = "2.0.20"
 kotlinx = "1.8.1"
 picocli = "4.7.6"
-morphe-patcher = "1.0.0-dev.3"
+morphe-patcher = "1.0.0-dev.2"
 # TODO: Change to Morphe library
 revanced-library = "3.1.0"
 

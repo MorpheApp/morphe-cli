@@ -36,3 +36,12 @@ To build a Morphe CLI, you can follow the [documentation](/docs).
 ### 📃 Documentation
 
 You can find the documentation of Morphe CLI [here](/docs).
+
+## 📜 Licence
+
+Morphe Patches are licensed under the [GNU GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.html), with additional conditions under Section 7:
+
+- **Name Restriction (7c):** The name **"Morphe"** may not be used for derivative works.  
+  Derivatives must adopt a distinct identity unrelated to "Morphe."
+
+See the [LICENSE](./LICENSE) file for full terms.

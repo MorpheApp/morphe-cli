@@ -1,4 +1,4 @@
-package app.revanced.cli.command
+package app.morphe.cli.command
 
 import picocli.CommandLine
 import kotlin.text.iterator

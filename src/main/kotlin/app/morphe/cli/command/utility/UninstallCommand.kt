@@ -1,4 +1,4 @@
-package app.revanced.cli.command.utility
+package app.morphe.cli.command.utility
 
 import app.revanced.library.installation.installer.AdbInstaller
 import app.revanced.library.installation.installer.AdbInstallerResult

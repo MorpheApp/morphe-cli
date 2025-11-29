@@ -8,21 +8,26 @@ plugins {
     signing
 }
 
-group = "app.revanced"
+group = "app.morphe"
 
 application {
-    mainClass = "app.revanced.cli.command.MainCommandKt"
+    mainClass = "app.morphe.cli.command.MainCommandKt"
 }
 
 repositories {
     mavenLocal()
-    flatDir { // Use custom forked patcher libraries.
-        dirs("libs")
-    }
     mavenCentral()
     google()
     maven {
-        // FIXME: Change to Morphe repo.
+        // A repository must be specified for some reason. "registry" is a dummy.
+        url = uri("https://maven.pkg.github.com/MorpheApp/registry")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+    // Repos for non migrated dependencies.
+    maven {
         // A repository must be specified for some reason. "registry" is a dummy.
         url = uri("https://maven.pkg.github.com/revanced/registry")
         credentials {
