@@ -1,6 +1,6 @@
-package app.revanced.cli.command
+package app.morphe.cli.command
 
-import app.revanced.cli.command.utility.UtilityCommand
+import app.morphe.cli.command.utility.UtilityCommand
 import app.revanced.library.logging.Logger
 import picocli.CommandLine
 import picocli.CommandLine.Command

@@ -1,4 +1,4 @@
-package app.revanced.cli.command
+package app.morphe.cli.command
 
 import app.revanced.patcher.patch.Package
 import app.revanced.patcher.patch.Patch

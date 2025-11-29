@@ -1,4 +1,4 @@
-package app.revanced.cli.command
+package app.morphe.cli.command
 
 import app.revanced.library.ApkUtils
 import app.revanced.library.ApkUtils.applyTo
@@ -18,8 +18,6 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.logging.Logger
-import kotlin.collections.get
-import kotlin.text.get
 
 @CommandLine.Command(
     name = "patch",
