@@ -26,7 +26,7 @@ repositories {
             password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
         }
     }
-    // Repos for non migrated dependencies.
+    // FIXME: Repos for non migrated dependencies.
     maven {
         // A repository must be specified for some reason. "registry" is a dummy.
         url = uri("https://maven.pkg.github.com/revanced/registry")
@@ -39,7 +39,7 @@ repositories {
 
 dependencies {
     implementation(libs.morphe.patcher)
-    implementation(libs.revanced.library)
+    implementation(libs.morphe.library)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.picocli)
 
@@ -73,7 +73,6 @@ tasks {
         minimize {
             exclude(dependency("org.bouncycastle:.*"))
             exclude(dependency("app.morphe:morphe-patcher"))
-            exclude(dependency("app.revanced:revanced-patcher"))
         }
     }
 
