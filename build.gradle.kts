@@ -26,13 +26,12 @@ repositories {
             password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
         }
     }
-    // FIXME: Repos for non migrated dependencies.
+    // Obtain baksmali/smali from source builds - https://github.com/iBotPeaches/smali
+    // Remove when official smali releases come out again.
     maven {
-        // A repository must be specified for some reason. "registry" is a dummy.
-        url = uri("https://maven.pkg.github.com/revanced/registry")
-        credentials {
-            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        url = uri("https://jitpack.io")
+        content {
+            includeGroup("com.github.iBotPeaches.smali")
         }
     }
 }
@@ -69,7 +68,6 @@ tasks {
     }
 
     shadowJar {
-        exclude("/prebuilt/linux/aapt", "/prebuilt/windows/aapt.exe", "/prebuilt/*/aapt_*")
         minimize {
             exclude(dependency("org.bouncycastle:.*"))
             exclude(dependency("app.morphe:morphe-patcher"))
