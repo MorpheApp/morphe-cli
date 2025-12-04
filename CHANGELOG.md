@@ -1,8 +1,12 @@
-# 1.0.0 (2025-11-30)
+# 1.0.0 (2025-12-04)
 
 
 ### Bug Fixes
 
-* Migrate to new package, use maven patcher dependency ([e99008e](https://github.com/MorpheApp/morphe-cli/commit/e99008e28c51e17a24a14454d06e0129261ff74c))
-* Migrate to new package, use maven patcher dependency ([115c4e9](https://github.com/MorpheApp/morphe-cli/commit/115c4e91025fc3cfb42441ab4a85af3e0a383c61))
-* Use repo library release ([9dd9990](https://github.com/MorpheApp/morphe-cli/commit/9dd99905befacfc39ac201cbe5695de3e1c64173))
+* Migrate to new package, use maven patcher dependency ([0b50811](https://github.com/MorpheApp/morphe-cli/commit/0b50811a5a2a0a574538b2fbffe027c04613db6c))
+* Use repo library release ([0e4fae1](https://github.com/MorpheApp/morphe-cli/commit/0e4fae1b24bb21baa5004126df364b736d84270b))
+
+
+### Features
+
+* Initial release ([874ecbc](https://github.com/MorpheApp/morphe-cli/commit/874ecbce34d6499882f7a5cf648bd828c823935a))
