@@ -36,4 +36,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Morphe
-          path: build/libs/build/libs/*-all.jar
+          path: build/libs/*-all.jar
