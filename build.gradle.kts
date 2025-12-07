@@ -63,6 +63,7 @@ tasks {
     }
 
     shadowJar {
+        exclude("/prebuilt/linux/aapt", "/prebuilt/windows/aapt.exe", "/prebuilt/*/aapt_*")
         minimize {
             exclude(dependency("org.bouncycastle:.*"))
             exclude(dependency("app.morphe:morphe-patcher"))
