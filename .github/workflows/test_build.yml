@@ -30,7 +30,7 @@ jobs:
         env:
           GPR_USER: ${{ secrets.GPR_USER }}
           GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-        run: ./gradlew build clean -Pgpr.user=${{ env.GPR_USER }} -Pgpr.token=${{ env.GPR_TOKEN }}
+        run: ./gradlew build clean -Pgpr.user=${{ env.GPR_USER }} -Pgpr.key=${{ env.GPR_TOKEN }}
 
       - name: Upload Cli
         uses: actions/upload-artifact@v4
