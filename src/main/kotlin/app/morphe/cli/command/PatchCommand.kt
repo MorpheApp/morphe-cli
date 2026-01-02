@@ -228,6 +228,12 @@ internal object PatchCommand : Runnable {
         this.aaptBinaryPath = aaptBinaryPath
     }
 
+    @CommandLine.Option(
+        names = ["--unsigned"],
+        description = ["Disable signing of the final apk."],
+    )
+    private var unsigned: Boolean = false
+    
     override fun run() {
         // region Setup
 
@@ -332,7 +338,7 @@ internal object PatchCommand : Runnable {
         apk.copyTo(temporaryFilesPath.resolve(apk.name), overwrite = true).apply {
             patcherResult.applyTo(this)
         }.let { patchedApkFile ->
-            if (!mount) {
+            if (!mount && !unsigned) {
                 ApkUtils.signApk(
                     patchedApkFile,
                     outputFilePath,
