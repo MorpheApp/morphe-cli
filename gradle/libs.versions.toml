@@ -1,7 +1,7 @@
 [versions]
 shadow = "8.3.9"
-kotlin = "2.0.21"
-kotlinx = "1.8.1"
+kotlin = "2.3.0"
+kotlinx = "1.9.0"
 picocli = "4.7.7"
 morphe-patcher = "1.0.1"
 morphe-library = "1.0.1"
@@ -9,6 +9,7 @@ morphe-library = "1.0.1"
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx" }
 picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
 morphe-patcher = { module = "app.morphe:morphe-patcher", version.ref = "morphe-patcher" }
 morphe-library = { module = "app.morphe:morphe-library-jvm", version.ref = "morphe-library" }
@@ -16,3 +17,4 @@ morphe-library = { module = "app.morphe:morphe-library-jvm", version.ref = "morp
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

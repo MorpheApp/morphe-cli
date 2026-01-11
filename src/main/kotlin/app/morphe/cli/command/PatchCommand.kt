@@ -1,5 +1,8 @@
 package app.morphe.cli.command
 
+import app.morphe.cli.command.model.FailedPatch
+import app.morphe.cli.command.model.PatchingResult
+import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.library.ApkUtils
 import app.morphe.library.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
@@ -9,6 +12,9 @@ import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToStream
 import picocli.CommandLine
 import picocli.CommandLine.ArgGroup
 import picocli.CommandLine.Help.Visibility.ALWAYS
@@ -19,6 +25,7 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.logging.Logger
 
+@OptIn(ExperimentalSerializationApi::class)
 @CommandLine.Command(
     name = "patch",
     description = ["Patch an APK file."],
@@ -113,6 +120,17 @@ internal object PatchCommand : Runnable {
     @Suppress("unused")
     private fun setOutputFilePath(outputFilePath: File?) {
         this.outputFilePath = outputFilePath?.absoluteFile
+    }
+
+    private var patchingResultOutputFilePath: File? = null
+
+    @CommandLine.Option(
+        names = ["-r", "--result-file"],
+        description = ["Path to save the patching result file to"],
+    )
+    @Suppress("unused")
+    private fun setPatchingResultOutputFilePath(outputFilePath: File?) {
+        this.patchingResultOutputFilePath = outputFilePath?.absoluteFile
     }
 
     @CommandLine.Option(
@@ -233,7 +251,7 @@ internal object PatchCommand : Runnable {
         description = ["Disable signing of the final apk."],
     )
     private var unsigned: Boolean = false
-    
+
     override fun run() {
         // region Setup
 
@@ -316,18 +334,34 @@ internal object PatchCommand : Runnable {
 
             patcher += filteredPatches
 
+            val patchingResult = PatchingResult()
+
             // Execute patches.
             runBlocking {
                 patcher().collect { patchResult ->
-                    val exception = patchResult.exception
-                        ?: return@collect logger.info("\"${patchResult.patch}\" succeeded")
+                    patchResult.exception?.let { exception ->
+                        StringWriter().use { writer ->
+                            exception.printStackTrace(PrintWriter(writer))
 
-                    StringWriter().use { writer ->
-                        exception.printStackTrace(PrintWriter(writer))
+                            logger.severe("\"${patchResult.patch}\" failed:\n$writer")
 
-                        logger.severe("\"${patchResult.patch}\" failed:\n$writer")
+                            patchingResult.failedPatches.add(
+                                FailedPatch(
+                                    patchResult.patch.toSerializablePatch(),
+                                    writer.toString()
+                                )
+                            )
+                        }
+                    } ?: patchResult.patch.let {
+                        patchingResult.appliedPatches.add(patchResult.patch.toSerializablePatch())
+                        logger.info("\"${patchResult.patch}\" succeeded")
                     }
                 }
+            }
+
+            patchingResultOutputFilePath?.let { outputFile ->
+                Json.encodeToStream(patchingResult, outputFile.outputStream())
+                logger.info("Patching result saved to $outputFile")
             }
 
             patcher.context.packageMetadata.packageName to patcher.get()

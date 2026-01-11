@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.shadow)
     application
     `maven-publish`
@@ -35,6 +36,7 @@ dependencies {
     implementation(libs.morphe.patcher)
     implementation(libs.morphe.library)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.picocli)
 
     testImplementation(libs.kotlin.test)
