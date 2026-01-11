@@ -38,10 +38,23 @@ object PatchSerializer : KSerializer<SerializablePatch> {
         return when (value) {
             null -> JsonNull
             is JsonElement -> value
+            is Boolean -> JsonPrimitive(value)
+            is Number -> JsonPrimitive(value)
+            is String -> JsonPrimitive(value)
             is List<*> -> {
                 buildJsonArray {
                     value.forEach { item ->
                         add(serializeValue(item))
+                    }
+                }
+            }
+            is Map<*, *> -> {
+                buildJsonObject {
+                    value.forEach {
+                        require(it.key is String) {
+                            "Map keys must be of type String for serialization, but found: ${it.key?.let { k -> k::class }}"
+                        }
+                        put(it.key as String, serializeValue(it.value))
                     }
                 }
             }
