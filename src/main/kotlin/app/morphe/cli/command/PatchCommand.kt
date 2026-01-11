@@ -346,7 +346,6 @@ internal object PatchCommand : Runnable {
                 // Execute patches.
                 patchingResult.addStepResult(
                     PatchingStep.PATCHING,
-                    this,
                     {
                         runBlocking {
                             patcher().collect { patchResult ->
@@ -381,7 +380,6 @@ internal object PatchCommand : Runnable {
             apk.copyTo(temporaryFilesPath.resolve(apk.name), overwrite = true).apply {
                 patchingResult.addStepResult(
                     PatchingStep.REBUILDING,
-                    this,
                     {
                         patcherResult.applyTo(this)
                     }
@@ -390,7 +388,6 @@ internal object PatchCommand : Runnable {
                 if (!mount && !unsigned) {
                     patchingResult.addStepResult(
                         PatchingStep.SIGNING,
-                        this,
                         {
                             ApkUtils.signApk(
                                 patchedApkFile,
@@ -418,7 +415,6 @@ internal object PatchCommand : Runnable {
             deviceSerial?.let {
                 patchingResult.addStepResult(
                     PatchingStep.INSTALLING,
-                    this,
                     {
                         runBlocking {
                             when (val result = installer!!.install(Installer.Apk(outputFilePath, packageName))) {

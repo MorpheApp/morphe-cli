@@ -16,13 +16,12 @@ data class PatchingResult(
 )
 
 @ExperimentalSerializationApi
-fun <T, R> PatchingResult.addStepResult(
+fun <R> PatchingResult.addStepResult(
     step: PatchingStep,
-    context: T,
-    block: T.() -> R,
+    block: () -> R,
 ): R {
     try {
-        val result = block(context)
+        val result = block()
         this.patchingSteps.add(
             PatchingStepResult(
                 step = step,
