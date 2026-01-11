@@ -21,7 +21,7 @@ import kotlinx.serialization.json.buildJsonObject
 data class SerializablePatch(
     val name: String? = null,
     val index: Int? = null,
-    val options: Map<String, JsonElement> = mutableMapOf()
+    val options: Map<String, JsonElement> = emptyMap()
 )
 
 @ExperimentalSerializationApi
@@ -81,7 +81,7 @@ object PatchSerializer : KSerializer<SerializablePatch> {
                     value.options.forEach { (key, optionValue) ->
                         add(buildJsonObject {
                             put("key", JsonPrimitive(key))
-                            put("value", serializeValue(optionValue))
+                            put("value", optionValue)
                         })
                     }
                 })
@@ -93,7 +93,7 @@ object PatchSerializer : KSerializer<SerializablePatch> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Patch") {
         element<String?>("name")
         element<Int?>("index")
-        element<Map<String, String>>("options")
+        element<Map<String, JsonElement>>("options")
     }
 
     override fun deserialize(decoder: Decoder): SerializablePatch {

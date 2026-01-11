@@ -312,7 +312,7 @@ internal object PatchCommand : Runnable {
 
         val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
 
-        var patchingResult = PatchingResult()
+        val patchingResult = PatchingResult()
 
         try {
             val (packageName, patcherResult) = Patcher(
@@ -417,9 +417,16 @@ internal object PatchCommand : Runnable {
                     PatchingStep.INSTALLING,
                     {
                         runBlocking {
-                            when (val result = installer!!.install(Installer.Apk(outputFilePath, packageName))) {
-                                RootInstallerResult.FAILURE -> logger.severe("Failed to mount the patched APK file")
-                                is AdbInstallerResult.Failure -> logger.severe(result.exception.toString())
+                            val result = installer!!.install(Installer.Apk(outputFilePath, packageName))
+                            when (result) {
+                                RootInstallerResult.FAILURE -> {
+                                    logger.severe("Failed to mount the patched APK file")
+                                    throw IllegalStateException("Failed to mount the patched APK file")
+                                }
+                                is AdbInstallerResult.Failure -> {
+                                    logger.severe(result.exception.toString())
+                                    throw result.exception
+                                }
                                 else -> logger.info("Installed the patched APK file")
                             }
                         }
@@ -430,7 +437,9 @@ internal object PatchCommand : Runnable {
             // endregion
         } finally {
             patchingResultOutputFilePath?.let { outputFile ->
-                Json.encodeToStream(patchingResult, outputFile.outputStream())
+                outputFile.outputStream().use { outputStream ->
+                    Json.encodeToStream(patchingResult, outputStream)
+                }
                 logger.info("Patching result saved to $outputFile")
             }
         }

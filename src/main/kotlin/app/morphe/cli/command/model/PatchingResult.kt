@@ -35,7 +35,7 @@ fun <R> PatchingResult.addStepResult(
             PatchingStepResult(
                 step = step,
                 success = false,
-                message = e.message
+                message = e.toString()
             )
         )
         throw e
