@@ -30,7 +30,6 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.logging.Logger
 
-@OptIn(ExperimentalSerializationApi::class)
 @CommandLine.Command(
     name = "patch",
     description = ["Patch an APK file."],
@@ -125,17 +124,6 @@ internal object PatchCommand : Runnable {
     @Suppress("unused")
     private fun setOutputFilePath(outputFilePath: File?) {
         this.outputFilePath = outputFilePath?.absoluteFile
-    }
-
-    private var patchingResultOutputFilePath: File? = null
-
-    @CommandLine.Option(
-        names = ["-r", "--result-file"],
-        description = ["Path to save the patching result file to"],
-    )
-    @Suppress("unused")
-    private fun setPatchingResultOutputFilePath(outputFilePath: File?) {
-        this.patchingResultOutputFilePath = outputFilePath?.absoluteFile
     }
 
     @CommandLine.Option(
@@ -343,79 +331,53 @@ internal object PatchCommand : Runnable {
             apk
         }
 
-        val patchingResult = PatchingResult()
+        val (packageName, patcherResult) = Patcher(
+            PatcherConfig(
+                inputApk,
+                patcherTemporaryFilesPath,
+                aaptBinaryPath?.path,
+                patcherTemporaryFilesPath.absolutePath,
+            ),
+        ).use { patcher ->
+            val packageName = patcher.context.packageMetadata.packageName
+            val packageVersion = patcher.context.packageMetadata.packageVersion
 
-        try {
-            val (packageName, patcherResult) = Patcher(
-                PatcherConfig(
-                    inputApk,
-                    patcherTemporaryFilesPath,
-                    aaptBinaryPath?.path,
-                    patcherTemporaryFilesPath.absolutePath,
-                ),
-            ).use { patcher ->
-                val packageName = patcher.context.packageMetadata.packageName
-                val packageVersion = patcher.context.packageMetadata.packageVersion
+            val filteredPatches = patches.filterPatchSelection(packageName, packageVersion)
 
-                patchingResult.packageName = packageName
-                patchingResult.packageVersion = packageVersion
+            logger.info("Setting patch options")
 
-                val filteredPatches = patches.filterPatchSelection(packageName, packageVersion)
+            val patchesList = patches.toList()
+            selection.filter { it.enabled != null }.associate {
+                val enabledSelection = it.enabled!!
 
-                logger.info("Setting patch options")
+                (enabledSelection.selector.name ?: patchesList[enabledSelection.selector.index!!].name!!) to
+                    enabledSelection.options
+            }.let(filteredPatches::setOptions)
 
-                val patchesList = patches.toList()
-                selection.filter { it.enabled != null }.associate {
-                    val enabledSelection = it.enabled!!
+            patcher += filteredPatches
 
-                    (enabledSelection.selector.name ?: patchesList[enabledSelection.selector.index!!].name!!) to
-                            enabledSelection.options
-                }.let(filteredPatches::setOptions)
+            // Execute patches.
+            runBlocking {
+                patcher().collect { patchResult ->
+                    val exception = patchResult.exception
+                        ?: return@collect logger.info("\"${patchResult.patch}\" succeeded")
 
-                patcher += filteredPatches
+                    StringWriter().use { writer ->
+                        exception.printStackTrace(PrintWriter(writer))
 
-                // Execute patches.
-                patchingResult.addStepResult(
-                    PatchingStep.PATCHING,
-                    {
-                        runBlocking {
-                            patcher().collect { patchResult ->
-                                patchResult.exception?.let { exception ->
-                                    StringWriter().use { writer ->
-                                        exception.printStackTrace(PrintWriter(writer))
-
-                                        logger.severe("\"${patchResult.patch}\" failed:\n$writer")
-
-                                        patchingResult.failedPatches.add(
-                                            FailedPatch(
-                                                patchResult.patch.toSerializablePatch(),
-                                                writer.toString()
-                                            )
-                                        )
-                                        patchingResult.success = false
-                                    }
-                                } ?: patchResult.patch.let {
-                                    patchingResult.appliedPatches.add(patchResult.patch.toSerializablePatch())
-                                    logger.info("\"${patchResult.patch}\" succeeded")
-                                }
-                            }
-                        }
+                        logger.severe("\"${patchResult.patch}\" failed:\n$writer")
                     }
-                )
-
-                patcher.context.packageMetadata.packageName to patcher.get()
+                }
             }
 
-            // region Save.
+            patcher.context.packageMetadata.packageName to patcher.get()
+        }
 
-            inputApk.copyTo(temporaryFilesPath.resolve(inputApk.name), overwrite = true).apply {
-                patchingResult.addStepResult(
-                    PatchingStep.REBUILDING,
-                    {
-                        patcherResult.applyTo(this)
-                    }
-                )
-            }.also { rebuiltApk ->
+        // region Save.
+
+        inputApk.copyTo(temporaryFilesPath.resolve(inputApk.name), overwrite = true).apply {
+            patcherResult.applyTo(this)
+        }.also { rebuiltApk ->
                 if (striplibs.isNotEmpty()) {
                     patchingResult.addStepResult(
                         PatchingStep.STRIPPING_LIBS,
@@ -427,65 +389,40 @@ internal object PatchCommand : Runnable {
                     )
                 }
             }.let { patchedApkFile ->
-                if (!mount && !unsigned) {
-                    patchingResult.addStepResult(
-                        PatchingStep.SIGNING,
-                        {
-                            ApkUtils.signApk(
-                                patchedApkFile,
-                                outputFilePath,
-                                signer,
-                                ApkUtils.KeyStoreDetails(
-                                    keystoreFilePath,
-                                    keyStorePassword,
-                                    keyStoreEntryAlias,
-                                    keyStoreEntryPassword,
-                                ),
-                            )
-                        }
-                    )
-                } else {
-                    patchedApkFile.copyTo(outputFilePath, overwrite = true)
-                }
-            }
-
-            logger.info("Saved to $outputFilePath")
-
-            // endregion
-
-            // region Install.
-
-            deviceSerial?.let {
-                patchingResult.addStepResult(
-                    PatchingStep.INSTALLING,
-                    {
-                        runBlocking {
-                            val result = installer!!.install(Installer.Apk(outputFilePath, packageName))
-                            when (result) {
-                                RootInstallerResult.FAILURE -> {
-                                    logger.severe("Failed to mount the patched APK file")
-                                    throw IllegalStateException("Failed to mount the patched APK file")
-                                }
-                                is AdbInstallerResult.Failure -> {
-                                    logger.severe(result.exception.toString())
-                                    throw result.exception
-                                }
-                                else -> logger.info("Installed the patched APK file")
-                            }
-                        }
-                    }
+            if (!mount && !unsigned) {
+                ApkUtils.signApk(
+                    patchedApkFile,
+                    outputFilePath,
+                    signer,
+                    ApkUtils.KeyStoreDetails(
+                        keystoreFilePath,
+                        keyStorePassword,
+                        keyStoreEntryAlias,
+                        keyStoreEntryPassword,
+                    ),
                 )
-            }
-
-            // endregion
-        } finally {
-            patchingResultOutputFilePath?.let { outputFile ->
-                outputFile.outputStream().use { outputStream ->
-                    Json.encodeToStream(patchingResult, outputStream)
-                }
-                logger.info("Patching result saved to $outputFile")
+            } else {
+                patchedApkFile.copyTo(outputFilePath, overwrite = true)
             }
         }
+
+        logger.info("Saved to $outputFilePath")
+
+        // endregion
+
+        // region Install.
+
+        deviceSerial?.let {
+            runBlocking {
+                when (val result = installer!!.install(Installer.Apk(outputFilePath, packageName))) {
+                    RootInstallerResult.FAILURE -> logger.severe("Failed to mount the patched APK file")
+                    is AdbInstallerResult.Failure -> logger.severe(result.exception.toString())
+                    else -> logger.info("Installed the patched APK file")
+                }
+            }
+        }
+
+        // endregion
 
         if (purge) {
             logger.info("Purging temporary files")
