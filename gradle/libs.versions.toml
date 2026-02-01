@@ -1,7 +1,7 @@
 [versions]
 shadow = "8.3.9"
 kotlin = "2.3.0"
-kotlinx = "1.9.0"
+kotlinx = "1.10.0"
 picocli = "4.7.7"
 morphe-patcher = "1.0.1"
 morphe-library = "1.0.1"
