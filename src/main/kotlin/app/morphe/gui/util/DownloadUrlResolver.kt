@@ -42,7 +42,7 @@ object DownloadUrlResolver {
                 val location = connection.getHeaderField("Location")
 
                 if (location.isNullOrBlank()) {
-                    // Log.d("Location tag is blank: ${connection.responseMessage}")
+                    Logger.info("Location tag is blank: ${connection.responseMessage}")
                     return url
                 }
 
@@ -53,7 +53,6 @@ object DownloadUrlResolver {
                         val prefix = "${originalUrl.protocol}://${originalUrl.host}"
                         if (location.startsWith("/")) "$prefix$location" else "$prefix/$location"
                     }
-                //Log.d("Result: $resolved")
 
                 if (!resolved.startsWith(MORPHE_API_URL)) {
                     return resolved
@@ -64,9 +63,9 @@ object DownloadUrlResolver {
 
             //Log.d("Unexpected response code: $responseCode")
         } catch (ex: SocketTimeoutException) {
-            //Log.d("Timeout while resolving search redirect: $ex")
+            Logger.info("Timeout while resolving search redirect: $ex")
         } catch (ex: Exception) {
-            //Log.d("Exception while resolving search redirect: $ex")
+            Logger.info("Exception while resolving search redirect: $ex")
         }
 
         return url

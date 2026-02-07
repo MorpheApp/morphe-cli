@@ -755,7 +755,7 @@ private fun SupportedAppsRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Download original APK:",
+                text = "Download original APK",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

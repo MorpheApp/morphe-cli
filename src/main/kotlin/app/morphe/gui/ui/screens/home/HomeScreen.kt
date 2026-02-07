@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.platform.LocalUriHandler
 import app.morphe.morphe_cli.generated.resources.Res
 import app.morphe.morphe_cli.generated.resources.morphe_dark
 import app.morphe.morphe_cli.generated.resources.morphe_light
@@ -39,6 +40,7 @@ import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.ui.theme.MorpheColors
+import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -784,7 +786,7 @@ private fun SupportedAppCardDynamic(
 
     val cardPadding = if (isCompact) 12.dp else 16.dp
 
-    val apkMirrorUrl = supportedApp.apkDownloadUrl
+    val downloadUrl = supportedApp.apkDownloadUrl
 
     Card(
         modifier = modifier,
@@ -901,13 +903,12 @@ private fun SupportedAppCardDynamic(
             Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 12.dp))
 
             // Download from APKMirror button (only if URL is configured)
-            if (apkMirrorUrl != null) {
+            if (downloadUrl != null) {
+                val uriHandler = LocalUriHandler.current
                 OutlinedButton(
                     onClick = {
-                        try {
-                            java.awt.Desktop.getDesktop().browse(java.net.URI(apkMirrorUrl))
-                        } catch (e: Exception) {
-                            // Ignore errors
+                        openUrlAndFollowRedirects(downloadUrl) { urlResolved ->
+                            uriHandler.openUri(urlResolved)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -921,7 +922,7 @@ private fun SupportedAppCardDynamic(
                     )
                 ) {
                     Text(
-                        text = if (isCompact) "APKMirror" else "Get from APKMirror",
+                        text = "Download original APK",
                         fontSize = if (isCompact) 11.sp else 12.sp,
                         fontWeight = FontWeight.Medium
                     )

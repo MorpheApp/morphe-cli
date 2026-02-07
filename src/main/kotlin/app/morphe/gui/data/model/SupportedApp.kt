@@ -31,8 +31,7 @@ data class SupportedApp(
         }
 
         /**
-         * Get download URL for a package name and version.
-         * Returns a direct APKMirror search URL for the app + version.
+         * Get a web download URL for a package name and version.
          */
         fun getDownloadUrl(packageName: String, version: String?): String? {
             if (version == null) return null
