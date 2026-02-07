@@ -485,20 +485,17 @@ data class HomeUiState(
 enum class AppType(
     val displayName: String,
     val packageName: String,
-    val suggestedVersion: String,
-    val apkMirrorUrl: String
+    val suggestedVersion: String
 ) {
     YOUTUBE(
         displayName = app.morphe.gui.data.constants.AppConstants.YouTube.DISPLAY_NAME,
         packageName = app.morphe.gui.data.constants.AppConstants.YouTube.PACKAGE_NAME,
-        suggestedVersion = app.morphe.gui.data.constants.AppConstants.YouTube.SUGGESTED_VERSION,
-        apkMirrorUrl = app.morphe.gui.data.constants.AppConstants.YouTube.APK_MIRROR_URL
+        suggestedVersion = app.morphe.gui.data.constants.AppConstants.YouTube.SUGGESTED_VERSION
     ),
     YOUTUBE_MUSIC(
         displayName = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.DISPLAY_NAME,
         packageName = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.PACKAGE_NAME,
-        suggestedVersion = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.SUGGESTED_VERSION,
-        apkMirrorUrl = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.APK_MIRROR_URL
+        suggestedVersion = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.SUGGESTED_VERSION
     )
 }
 

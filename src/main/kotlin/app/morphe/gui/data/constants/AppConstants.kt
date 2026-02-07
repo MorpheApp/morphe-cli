@@ -10,12 +10,14 @@ object AppConstants {
     const val APP_NAME = "Morphe GUI"
     const val APP_VERSION = "1.4.0" // Keep in sync with the release version numbers
 
+    // ==================== API ====================
+    const val MORPHE_API_URL = "https://api.morphe.software"
+
     // ==================== YOUTUBE ====================
     object YouTube {
         const val DISPLAY_NAME = "YouTube"
         const val PACKAGE_NAME = "com.google.android.youtube"
         const val SUGGESTED_VERSION = "20.40.45"
-        const val APK_MIRROR_URL = "https://www.apkmirror.com/apk/google-inc/youtube/youtube-20-40-45-release/youtube-20-40-45-2-android-apk-download/"
 
         // SHA-256 checksum from APKMirror (leave null if not verified)
         // You can find this on the APKMirror download page under "File SHA-256"
@@ -27,7 +29,6 @@ object AppConstants {
         const val DISPLAY_NAME = "YouTube Music"
         const val PACKAGE_NAME = "com.google.android.apps.youtube.music"
         const val SUGGESTED_VERSION = "8.40.54"
-        const val APK_MIRROR_URL = "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-8-40-54-release/"
         val SHA256_CHECKSUMS: Map<String, String> = mapOf(
             "arm64-v8a" to "d5b44919a5cd5648b01e392115fe68b9569b1c7847f3cdf65b1ace1302d005d2",
             "armeabi-v7a" to "6f5181e8aaa2595af6c421b86ffffcc1c7a4e97968d7be89d04b46776392eaec",
@@ -40,8 +41,6 @@ object AppConstants {
     object Reddit {
         const val DISPLAY_NAME = "Reddit"
         const val PACKAGE_NAME = "com.reddit.frontpage"
-        // APKMirror URL - to be updated with specific version when known
-        const val APK_MIRROR_URL = "https://www.apkmirror.com/apk/redditinc/reddit/reddit-2026-03-0-release/"
     }
 
     /**

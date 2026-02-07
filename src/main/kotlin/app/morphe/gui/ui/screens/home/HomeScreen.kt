@@ -32,7 +32,6 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
@@ -785,13 +784,7 @@ private fun SupportedAppCardDynamic(
 
     val cardPadding = if (isCompact) 12.dp else 16.dp
 
-    // Get APKMirror URL from AppConstants (still hardcoded)
-    val apkMirrorUrl = when (supportedApp.packageName) {
-        AppConstants.YouTube.PACKAGE_NAME -> AppConstants.YouTube.APK_MIRROR_URL
-        AppConstants.YouTubeMusic.PACKAGE_NAME -> AppConstants.YouTubeMusic.APK_MIRROR_URL
-        AppConstants.Reddit.PACKAGE_NAME -> AppConstants.Reddit.APK_MIRROR_URL
-        else -> null
-    }
+    val apkMirrorUrl = supportedApp.apkMirrorUrl
 
     Card(
         modifier = modifier,
@@ -1030,32 +1023,35 @@ private fun SupportedAppCard(
             Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 12.dp))
 
             // Download from APKMirror button
-            OutlinedButton(
-                onClick = {
-                    try {
-                        java.awt.Desktop.getDesktop().browse(java.net.URI(appType.apkMirrorUrl))
-                    } catch (e: Exception) {
-                        // Ignore errors
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(if (isCompact) 6.dp else 8.dp),
-                contentPadding = PaddingValues(
-                    horizontal = if (isCompact) 8.dp else 12.dp,
-                    vertical = if (isCompact) 6.dp else 8.dp
-                ),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MorpheColors.Blue
-                )
-            ) {
-                Text(
-                    text = if (isCompact) "APKMirror" else "Get from APKMirror",
-                    fontSize = if (isCompact) 11.sp else 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            val downloadUrl = SupportedApp.getDownloadUrl(appType.packageName, appType.suggestedVersion)
+            if (downloadUrl != null) {
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            java.awt.Desktop.getDesktop().browse(java.net.URI(downloadUrl))
+                        } catch (e: Exception) {
+                            // Ignore errors
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(if (isCompact) 6.dp else 8.dp),
+                    contentPadding = PaddingValues(
+                        horizontal = if (isCompact) 8.dp else 12.dp,
+                        vertical = if (isCompact) 6.dp else 8.dp
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MorpheColors.Blue
+                    )
+                ) {
+                    Text(
+                        text = if (isCompact) "APKMirror" else "Get from APKMirror",
+                        fontSize = if (isCompact) 11.sp else 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 8.dp))
+                Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 8.dp))
+            }
 
             // Package name
             Text(

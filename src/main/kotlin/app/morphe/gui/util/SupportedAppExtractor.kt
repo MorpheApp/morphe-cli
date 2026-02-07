@@ -33,12 +33,13 @@ object SupportedAppExtractor {
         // Convert to SupportedApp list
         return packageVersionsMap.map { (packageName, versions) ->
             val versionList = versions.toList().sortedDescending()
+            val recommendedVersion = SupportedApp.getRecommendedVersion(versionList)
             SupportedApp(
                 packageName = packageName,
                 displayName = SupportedApp.getDisplayName(packageName),
                 supportedVersions = versionList,
-                recommendedVersion = SupportedApp.getRecommendedVersion(versionList),
-                apkMirrorUrl = SupportedApp.getApkMirrorUrl(packageName)
+                recommendedVersion = recommendedVersion,
+                apkMirrorUrl = SupportedApp.getDownloadUrl(packageName, recommendedVersion)
             )
         }.sortedBy { it.displayName }
     }

@@ -1,6 +1,6 @@
 package app.morphe.gui.data.model
 
-import app.morphe.gui.data.constants.AppConstants
+import app.morphe.gui.util.DownloadUrlResolver
 
 /**
  * Represents a supported app extracted dynamically from patch metadata.
@@ -31,16 +31,12 @@ data class SupportedApp(
         }
 
         /**
-         * Get APK Mirror URL for a package name.
-         * Uses the same version-specific URLs from AppConstants.
+         * Get download URL for a package name and version.
+         * Returns a direct APKMirror search URL for the app + version.
          */
-        fun getApkMirrorUrl(packageName: String): String? {
-            return when (packageName) {
-                AppConstants.YouTube.PACKAGE_NAME -> AppConstants.YouTube.APK_MIRROR_URL
-                AppConstants.YouTubeMusic.PACKAGE_NAME -> AppConstants.YouTubeMusic.APK_MIRROR_URL
-                AppConstants.Reddit.PACKAGE_NAME -> AppConstants.Reddit.APK_MIRROR_URL
-                else -> null
-            }
+        fun getDownloadUrl(packageName: String, version: String?): String? {
+            if (version == null) return null
+            return DownloadUrlResolver.buildUrl(packageName, version)
         }
 
         /**
