@@ -1,6 +1,7 @@
 package app.morphe.gui.util
 
 import java.io.File
+import java.util.logging.Logger
 import java.util.zip.ZipFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -10,6 +11,31 @@ import java.util.zip.ZipOutputStream
  */
 object ApkLibraryStripper {
 
+    private val VALID_ARCHITECTURES = setOf(
+        "armeabi-v7a",
+        "arm64-v8a",
+        "x86",
+        "x86_64",
+        // Old obsolete architectures. Only found in Android 6.0 and earlier.
+        "armeabi",
+        "mips",
+        "mips64",
+    )
+
+    /**
+     * Validates that all requested architectures are known.
+     * Throws IllegalArgumentException if any are invalid.
+     */
+    private fun validateArchitectures(architectures: List<String>) {
+        val invalid = architectures.filter { it !in VALID_ARCHITECTURES }
+        if (invalid.isNotEmpty()) {
+            Logger.getLogger(this::class.java.name).warning(
+                "Ignoring unrecognized keep library: '$invalid'. " +
+                        "Valid riplibs architectures are: $VALID_ARCHITECTURES"
+            )
+        }
+    }
+
     /**
      * Strips native libraries from an APK file, keeping only the specified architectures.
      *
@@ -18,6 +44,8 @@ object ApkLibraryStripper {
      * @param onProgress Optional callback for progress updates.
      */
     fun stripLibraries(apkFile: File, architecturesToKeep: List<String>, onProgress: (String) -> Unit = {}) {
+        validateArchitectures(architecturesToKeep)
+
         val keepSet = architecturesToKeep.toSet()
         val tempFile = File(apkFile.parentFile, "${apkFile.name}.tmp")
 
@@ -51,7 +79,7 @@ object ApkLibraryStripper {
             }
         }
 
-        onProgress("Stripped $strippedCount native library files")
+        onProgress("Kept $architecturesToKeep, stripped $strippedCount native library files")
 
         // Replace original with stripped version
         apkFile.delete()
