@@ -30,8 +30,8 @@ object ApkLibraryStripper {
         val invalid = architectures.filter { it !in VALID_ARCHITECTURES }
         if (invalid.isNotEmpty()) {
             Logger.getLogger(this::class.java.name).warning(
-                "Ignoring unrecognized keep library: '$invalid'. " +
-                        "Valid riplibs architectures are: $VALID_ARCHITECTURES"
+                "Ignoring unrecognized architecture: '$invalid'. " +
+                        "Valid architectures are: $VALID_ARCHITECTURES"
             )
         }
     }
