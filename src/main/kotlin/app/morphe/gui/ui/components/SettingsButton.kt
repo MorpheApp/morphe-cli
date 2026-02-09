@@ -73,9 +73,9 @@ fun SettingsButton(
                     configRepository.setAutoCleanupTempFiles(enabled)
                 }
             },
-            useSimplifiedMode = modeState.isSimplified,
-            onSimplifiedModeChange = { enabled ->
-                modeState.onChange(enabled)
+            useExpertMode = !modeState.isSimplified,
+            onExpertModeChange = { enabled ->
+                modeState.onChange(!enabled)
             },
             onDismiss = { showSettingsDialog = false },
             allowCacheClear = allowCacheClear

@@ -33,8 +33,8 @@ fun SettingsDialog(
     onThemeChange: (ThemePreference) -> Unit,
     autoCleanupTempFiles: Boolean,
     onAutoCleanupChange: (Boolean) -> Unit,
-    useSimplifiedMode: Boolean,
-    onSimplifiedModeChange: (Boolean) -> Unit,
+    useExpertMode: Boolean,
+    onExpertModeChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     allowCacheClear: Boolean = true
 ) {
@@ -97,7 +97,7 @@ fun SettingsDialog(
 
                 HorizontalDivider()
 
-                // Simplified mode setting
+                // Expert mode setting
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -105,20 +105,20 @@ fun SettingsDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Simplified mode",
+                            text = "Expert mode",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Quick one-click patching with default settings",
+                            text = "Full control over patch selection and configuration",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Switch(
-                        checked = useSimplifiedMode,
-                        onCheckedChange = onSimplifiedModeChange,
+                        checked = useExpertMode,
+                        onCheckedChange = onExpertModeChange,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MorpheColors.Blue,
                             checkedTrackColor = MorpheColors.Blue.copy(alpha = 0.5f)

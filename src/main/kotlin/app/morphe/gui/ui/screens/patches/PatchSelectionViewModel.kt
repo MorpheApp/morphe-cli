@@ -2,7 +2,6 @@ package app.morphe.gui.ui.screens.patches
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,11 +68,17 @@ class PatchSelectionViewModel(
 
                     Logger.info("Loaded ${deduplicatedPatches.size} patches for $packageName")
 
+                    // Only select patches that are enabled by default in the .mpp file
+                    val defaultSelected = deduplicatedPatches
+                        .filter { it.isEnabled }
+                        .map { it.uniqueId }
+                        .toSet()
+
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         allPatches = deduplicatedPatches,
                         filteredPatches = deduplicatedPatches,
-                        selectedPatches = deduplicatedPatches.map { it.uniqueId }.toSet()
+                        selectedPatches = defaultSelected
                     )
                 },
                 onFailure = { e ->
@@ -143,35 +148,10 @@ class PatchSelectionViewModel(
     }
 
     /**
-     * Get patches that match the commonly disabled list and are currently selected.
-     * Returns list of (patch, reason) pairs.
+     * Count of patches that are disabled by default (from .mpp metadata).
      */
-    fun getCommonlyDisabledPatches(): List<Pair<Patch, String>> {
-        val packageName = getPackageNameFromApk()
-        val commonlyDisabled = AppConstants.PatchRecommendations.getCommonlyDisabled(packageName)
-
-        return _uiState.value.allPatches
-            .filter { patch -> _uiState.value.selectedPatches.contains(patch.uniqueId) }
-            .mapNotNull { patch ->
-                // Find matching commonly disabled entry
-                val match = commonlyDisabled.find { (pattern, _) ->
-                    patch.name.contains(pattern, ignoreCase = true)
-                }
-                if (match != null) {
-                    patch to match.second
-                } else {
-                    null
-                }
-            }
-    }
-
-    /**
-     * Deselect all commonly disabled patches at once.
-     */
-    fun deselectCommonlyDisabled() {
-        val patchesToDeselect = getCommonlyDisabledPatches().map { it.first.uniqueId }.toSet()
-        val newSelection = _uiState.value.selectedPatches - patchesToDeselect
-        _uiState.value = _uiState.value.copy(selectedPatches = newSelection)
+    fun getDefaultDisabledCount(): Int {
+        return _uiState.value.allPatches.count { !it.isEnabled }
     }
 
     fun createPatchConfig(): PatchConfig {

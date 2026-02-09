@@ -195,7 +195,6 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                         QuickPatchPhase.DOWNLOADING, QuickPatchPhase.PATCHING -> {
                             PatchingContent(
                                 phase = phase,
-                                progress = uiState.progress,
                                 statusMessage = uiState.statusMessage,
                                 onCancel = { viewModel.cancelPatching() }
                             )
@@ -471,7 +470,6 @@ private fun ReadyContent(
 @Composable
 private fun PatchingContent(
     phase: QuickPatchPhase,
-    progress: Float,
     statusMessage: String,
     onCancel: () -> Unit
 ) {
@@ -480,22 +478,11 @@ private fun PatchingContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Progress indicator
-        Box(contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.size(100.dp),
-                strokeWidth = 6.dp,
-                color = MorpheColors.Teal,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-            Text(
-                text = "${(progress * 100).toInt()}%",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        CircularProgressIndicator(
+            modifier = Modifier.size(64.dp),
+            strokeWidth = 4.dp,
+            color = MorpheColors.Teal
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 

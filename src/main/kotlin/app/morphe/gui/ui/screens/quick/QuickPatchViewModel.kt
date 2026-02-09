@@ -324,29 +324,16 @@ class QuickPatchViewModel(
             val outputFileName = "$baseName-Morphe-${apkInfo.versionName}.apk"
             val outputPath = File(outputDir, outputFileName).absolutePath
 
-            // Auto-deselect commonly disabled patches for this app
-            val commonlyDisabled = AppConstants.PatchRecommendations.getCommonlyDisabled(apkInfo.packageName)
-            val disabledPatches = cachedPatches
-                .filter { patch ->
-                    commonlyDisabled.any { (pattern, _) ->
-                        patch.name.contains(pattern, ignoreCase = true)
-                    }
-                }
-                .map { it.name }
-
-            if (disabledPatches.isNotEmpty()) {
-                Logger.info("Quick mode: Auto-disabling patches: $disabledPatches")
-            }
-
             // Use PatchService for direct library patching (no CLI subprocess)
+            // exclusiveMode = false means the library's patch.use field determines defaults
             val patchResult = patchService.patch(
                 patchesFilePath = patchFile.absolutePath,
                 inputApkPath = apkFile.absolutePath,
                 outputApkPath = outputPath,
-                enabledPatches = emptyList(), // Empty = use defaults
-                disabledPatches = disabledPatches,
+                enabledPatches = emptyList(),
+                disabledPatches = emptyList(),
                 options = emptyMap(),
-                exclusiveMode = false, // Include all default patches
+                exclusiveMode = false,
                 onProgress = { message ->
                     // Update status with current operation
                     if (message.contains("patch", ignoreCase = true) ||

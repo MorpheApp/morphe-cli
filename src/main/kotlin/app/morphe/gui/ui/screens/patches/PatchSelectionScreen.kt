@@ -3,6 +3,7 @@ package app.morphe.gui.ui.screens.patches
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -20,8 +21,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,6 +51,7 @@ import java.awt.datatransfer.StringSelection
 /**
  * Screen for selecting which patches to apply.
  * This screen is the one that selects which patch options need to be applied. Eg: Custom Branding, Spoof App Version, etc.
+ * TODO: Maybe relocate the 'Suggested Deselected Patches' section to the TopBar?
  */
 data class PatchSelectionScreen(
     val apkPath: String,
@@ -102,6 +102,10 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
         )
     }
 
+    // State for command preview
+    var cleanMode by remember { mutableStateOf(false) }
+    var showCommandPreview by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -125,19 +129,51 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 },
                 actions = {
                     // Select all / Deselect all
-                    TextButton(onClick = {
+                    TextButton(
+                        onClick = {
                         if (uiState.selectedPatches.size == uiState.allPatches.size) {
                             viewModel.deselectAll()
                         } else {
                             viewModel.selectAll()
                         }
-                    }) {
+                    },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text(
                             if (uiState.selectedPatches.size == uiState.allPatches.size) "Deselect All" else "Select All",
                             color = MorpheColors.Blue
                         )
                     }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    // Command preview toggle
+                    if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
+                        val isActive = showCommandPreview
+                        Surface(
+                            onClick = { showCommandPreview = !showCommandPreview },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isActive) MorpheColors.Teal.copy(alpha = 0.15f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (isActive) MorpheColors.Teal.copy(alpha = 0.5f)
+                                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Terminal,
+                                contentDescription = "Command Preview",
+                                tint = if (isActive) MorpheColors.Teal else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(8.dp).size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
                     TopBarRow(allowCacheClear = false)
+
                     Spacer(Modifier.width(12.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -146,32 +182,32 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             )
         },
     ) { paddingValues ->
-        // State for command preview
-        var cleanMode by remember { mutableStateOf(false) }
-        var isCollapsed by remember { mutableStateOf(false) }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Command preview at the top - updates in real-time
+            // Command preview - collapsible via top bar button
             if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
                 val commandPreview = remember(uiState.selectedPatches, cleanMode) {
                     viewModel.getCommandPreview(cleanMode)
                 }
-                CommandPreview(
-                    command = commandPreview,
-                    cleanMode = cleanMode,
-                    isCollapsed = isCollapsed,
-                    onToggleMode = { cleanMode = !cleanMode },
-                    onToggleCollapse = { isCollapsed = !isCollapsed },
-                    onCopy = {
-                        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                        clipboard.setContents(StringSelection(commandPreview), null)
-                    },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                AnimatedVisibility(
+                    visible = showCommandPreview,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    CommandPreview(
+                        command = commandPreview,
+                        cleanMode = cleanMode,
+                        onToggleMode = { cleanMode = !cleanMode },
+                        onCopy = {
+                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+                            clipboard.setContents(StringSelection(commandPreview), null)
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
 
             // Search bar
@@ -183,21 +219,20 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // Commonly disabled patches suggestion
-            val commonlyDisabledPatches = remember(uiState.selectedPatches, uiState.allPatches) {
-                viewModel.getCommonlyDisabledPatches()
+            // Info card about default-disabled patches
+            val defaultDisabledCount = remember(uiState.allPatches) {
+                viewModel.getDefaultDisabledCount()
             }
-            var suggestionDismissed by remember { mutableStateOf(false) }
+            var infoDismissed by remember { mutableStateOf(false) }
 
             AnimatedVisibility(
-                visible = commonlyDisabledPatches.isNotEmpty() && !suggestionDismissed && !uiState.isLoading,
+                visible = defaultDisabledCount > 0 && !infoDismissed && !uiState.isLoading,
                 enter = expandVertically(),
                 exit = shrinkVertically()
             ) {
-                CommonlyDisabledSuggestion(
-                    patches = commonlyDisabledPatches,
-                    onDeselectAll = { viewModel.deselectCommonlyDisabled() },
-                    onDismiss = { suggestionDismissed = true },
+                DefaultDisabledInfoCard(
+                    count = defaultDisabledCount,
+                    onDismiss = { infoDismissed = true },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
@@ -459,111 +494,47 @@ private fun PatchListItem(
 }
 
 @Composable
-private fun CommonlyDisabledSuggestion(
-    patches: List<Pair<Patch, String>>,
-    onDeselectAll: () -> Unit,
+private fun DefaultDisabledInfoCard(
+    count: Int,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFF9800).copy(alpha = 0.1f)
+            containerColor = MorpheColors.Blue.copy(alpha = 0.08f)
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "Commonly disabled patches",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = Color(0xFFFF9800)
-                    )
-                }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "These ${patches.size} patch${if (patches.size > 1) "es are" else " is"} commonly disabled by users:",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = MorpheColors.Blue,
+                modifier = Modifier.size(18.dp)
             )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // List patch names
-            patches.take(4).forEach { (patch, _) ->
-                Text(
-                    text = "• ${patch.name}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (patches.size > 4) {
-                Text(
-                    text = "• +${patches.size - 4} more",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+            Text(
+                text = "$count patch${if (count > 1) "es are" else " is"} unselected by default as they may cause issues or are not recommended by the patches team.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(24.dp)
             ) {
-                TextButton(
-                    onClick = onDismiss,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text("Keep all", fontSize = 12.sp)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        onDeselectAll()
-                        onDismiss()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF9800)
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Deselect these", fontSize = 12.sp)
-                }
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }
@@ -576,18 +547,14 @@ private fun CommonlyDisabledSuggestion(
 private fun CommandPreview(
     command: String,
     cleanMode: Boolean,
-    isCollapsed: Boolean,
     onToggleMode: () -> Unit,
-    onToggleCollapse: () -> Unit,
     onCopy: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val terminalBackground = Color(0xFF1E1E1E)
-//    val terminalGreen = Color(0xFF4EC9B0)
     val terminalGreen = Color(0xFF6A9955)
     val terminalText = Color(0xFFD4D4D4)
     val terminalDim = Color(0xFF6A9955)
-//    val terminalDim = Color(0xFF4EC9B0)
 
     var showCopied by remember { mutableStateOf(false) }
 
@@ -607,20 +574,16 @@ private fun CommandPreview(
         Column(
             modifier = Modifier.padding(12.dp)
         ) {
-            // Header with terminal icon, controls, and collapse toggle
+            // Header with terminal icon and controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Left side - icon, title, and collapse toggle
+                // Left side - icon and title
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .clickable(onClick = onToggleCollapse)
-                        .padding(end = 8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Terminal,
@@ -633,12 +596,6 @@ private fun CommandPreview(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = terminalGreen
-                    )
-                    Icon(
-                        imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                        contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                        tint = terminalDim,
-                        modifier = Modifier.size(16.dp)
                     )
                 }
 
@@ -676,50 +633,39 @@ private fun CommandPreview(
                         }
                     }
 
-                    // Mode toggle (only show when not collapsed)
-                    if (!isCollapsed) {
-                        Surface(
-                            onClick = onToggleMode,
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = if (cleanMode) "Compact" else "Expand",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = terminalDim,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
+                    // Mode toggle
+                    Surface(
+                        onClick = onToggleMode,
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = if (cleanMode) "Compact" else "Expand",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = terminalDim,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
                     }
                 }
             }
 
-            // Command text - collapsible, vertically scrollable
-            AnimatedVisibility(
-                visible = !isCollapsed,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                Column {
-                    Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                    // Vertically scrollable command text with max height
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 120.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Text(
-                            text = command,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = terminalText,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
+            // Vertically scrollable command text with max height
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 120.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = command,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = terminalText,
+                    lineHeight = 16.sp
+                )
             }
         }
     }
