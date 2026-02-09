@@ -27,10 +27,17 @@ object ApkLibraryStripper {
      * Throws IllegalArgumentException if any are invalid.
      */
     private fun validateArchitectures(architectures: List<String>) {
+        // Error on no recognizable architectures.
+        require(architectures.isNotEmpty() && architectures.any { it in VALID_ARCHITECTURES }) {
+            "No valid architectures specified with --striplibs: $architectures " +
+                    "Valid architectures are: $VALID_ARCHITECTURES"
+        }
+
+        // Warn on unrecognizable.
         val invalid = architectures.filter { it !in VALID_ARCHITECTURES }
         if (invalid.isNotEmpty()) {
             Logger.getLogger(this::class.java.name).warning(
-                "Ignoring unrecognized architecture: '$invalid'. " +
+                "Ignoring unrecognized --striplibs architecture: '$invalid' " +
                         "Valid architectures are: $VALID_ARCHITECTURES"
             )
         }
