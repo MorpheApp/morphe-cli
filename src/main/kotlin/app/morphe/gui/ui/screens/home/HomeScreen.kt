@@ -112,7 +112,8 @@ fun HomeScreenContent(
                             navigator.push(PatchSelectionScreen(
                                 apkPath = uiState.apkInfo!!.filePath,
                                 apkName = uiState.apkInfo!!.appName,
-                                patchesFilePath = patchesFile.absolutePath
+                                patchesFilePath = patchesFile.absolutePath,
+                                apkArchitectures = uiState.apkInfo!!.architectures
                             ))
                         }
                     },
@@ -204,7 +205,8 @@ fun HomeScreenContent(
                                         navigator.push(PatchSelectionScreen(
                                             apkPath = info.filePath,
                                             apkName = info.appName,
-                                            patchesFilePath = patchesFile.absolutePath
+                                            patchesFilePath = patchesFile.absolutePath,
+                                            apkArchitectures = info.architectures
                                         ))
                                     }
                                 }

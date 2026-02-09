@@ -45,24 +45,25 @@ import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.screens.patching.PatchingScreen
 import app.morphe.gui.ui.theme.MorpheColors
+import app.morphe.gui.util.DeviceMonitor
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
 /**
  * Screen for selecting which patches to apply.
  * This screen is the one that selects which patch options need to be applied. Eg: Custom Branding, Spoof App Version, etc.
- * TODO: Maybe relocate the 'Suggested Deselected Patches' section to the TopBar?
  */
 data class PatchSelectionScreen(
     val apkPath: String,
     val apkName: String,
-    val patchesFilePath: String
+    val patchesFilePath: String,
+    val apkArchitectures: List<String> = emptyList()
 ) : Screen {
 
     @Composable
     override fun Content() {
         val viewModel = koinScreenModel<PatchSelectionViewModel> {
-            parametersOf(apkPath, apkName, patchesFilePath)
+            parametersOf(apkPath, apkName, patchesFilePath, apkArchitectures)
         }
         PatchSelectionScreenContent(viewModel = viewModel)
     }
@@ -189,7 +190,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
         ) {
             // Command preview - collapsible via top bar button
             if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
-                val commandPreview = remember(uiState.selectedPatches, cleanMode) {
+                val commandPreview = remember(uiState.selectedPatches, uiState.selectedArchitectures, cleanMode) {
                     viewModel.getCommandPreview(cleanMode)
                 }
                 AnimatedVisibility(
@@ -278,6 +279,22 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Architecture selector at the top of the list
+                        // Disabled for .apkm files until properly tested with merged APKs
+                        val isApkm = viewModel.getApkPath().endsWith(".apkm", ignoreCase = true)
+                        val showArchSelector = !isApkm &&
+                                uiState.apkArchitectures.size > 1 &&
+                                !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
+                        if (showArchSelector) {
+                            item(key = "arch_selector") {
+                                ArchitectureSelectorCard(
+                                    architectures = uiState.apkArchitectures,
+                                    selectedArchitectures = uiState.selectedArchitectures,
+                                    onToggleArchitecture = { viewModel.toggleArchitecture(it) }
+                                )
+                            }
+                        }
+
                         items(
                             items = uiState.filteredPatches,
                             key = { it.uniqueId }
@@ -666,6 +683,104 @@ private fun CommandPreview(
                     color = terminalText,
                     lineHeight = 16.sp
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArchitectureSelectorCard(
+    architectures: List<String>,
+    selectedArchitectures: Set<String>,
+    onToggleArchitecture: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Get connected device architecture for hint
+    val deviceState by DeviceMonitor.state.collectAsState()
+    val deviceArch = deviceState.selectedDevice?.architecture
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MorpheColors.Teal.copy(alpha = 0.08f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MorpheColors.Teal,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "Strip native libraries",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Uncheck architectures to remove from the output APK and reduce file size.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (deviceArch != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Your device: $deviceArch",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MorpheColors.Teal
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                architectures.forEach { arch ->
+                    val isSelected = selectedArchitectures.contains(arch)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggleArchitecture(arch) },
+                        label = {
+                            Text(
+                                text = arch,
+                                fontSize = 12.sp
+                            )
+                        },
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MorpheColors.Teal.copy(alpha = 0.2f),
+                            selectedLabelColor = MorpheColors.Teal
+                        )
+                    )
+                }
             }
         }
     }

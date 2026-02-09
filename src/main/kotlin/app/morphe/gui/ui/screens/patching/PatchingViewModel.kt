@@ -56,6 +56,7 @@ class PatchingViewModel(
                 disabledPatches = config.disabledPatches,
                 options = config.patchOptions,
                 exclusiveMode = config.useExclusiveMode,
+                riplibs = config.riplibs,
                 onProgress = { message ->
                     parseAndAddLog(message)
                 }

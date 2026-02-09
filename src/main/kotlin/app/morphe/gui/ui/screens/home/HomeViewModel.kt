@@ -331,8 +331,9 @@ class HomeViewModel(
                     VersionStatus.UNKNOWN
                 }
 
-                // Get supported architectures from native libraries in the APK
-                val architectures = extractArchitectures(apkToParse)
+                // Get supported architectures from native libraries
+                // For .apkm files, scan the original bundle (splits contain the native libs, not base.apk)
+                val architectures = extractArchitectures(if (isApkm) file else apkToParse)
 
                 // Verify checksum (still uses AppConstants for now)
                 val checksumStatus = verifyChecksum(file, packageName, versionName, architectures, suggestedVersion)
@@ -370,18 +371,34 @@ class HomeViewModel(
     private fun extractArchitectures(file: File): List<String> {
         return try {
             java.util.zip.ZipFile(file).use { zip ->
-                val archDirs = zip.entries().asSequence()
+                val archDirs = mutableSetOf<String>()
+
+                // Scan for lib/<arch>/ entries directly (regular APK or merged APK)
+                zip.entries().asSequence()
                     .map { it.name }
                     .filter { it.startsWith("lib/") }
                     .mapNotNull { path ->
                         val parts = path.split("/")
                         if (parts.size >= 2) parts[1] else null
                     }
-                    .distinct()
-                    .toList()
+                    .forEach { archDirs.add(it) }
 
-                archDirs.ifEmpty {
-                    // No native libs - likely a universal APK
+                // For .apkm bundles: also detect arch from split APK names
+                // e.g. split_config.arm64_v8a.apk -> arm64-v8a
+                if (archDirs.isEmpty()) {
+                    val knownArchs = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    zip.entries().asSequence()
+                        .map { it.name }
+                        .filter { it.endsWith(".apk") }
+                        .forEach { name ->
+                            // Convert split_config.arm64_v8a.apk format to arm64-v8a
+                            val normalized = name.replace("_", "-")
+                            knownArchs.filter { arch -> normalized.contains(arch) }
+                                .forEach { archDirs.add(it) }
+                        }
+                }
+
+                archDirs.toList().ifEmpty {
                     listOf("universal")
                 }
             }

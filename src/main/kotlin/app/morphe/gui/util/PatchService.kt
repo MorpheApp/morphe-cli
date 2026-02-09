@@ -76,6 +76,7 @@ class PatchService {
         disabledPatches: List<String> = emptyList(),
         options: Map<String, String> = emptyMap(),
         exclusiveMode: Boolean = false,
+        riplibs: List<String> = emptyList(),
         onProgress: (String) -> Unit = {}
     ): Result<PatchResult> = withContext(Dispatchers.IO) {
         val tempDir = FileUtils.createPatchingTempDir()
@@ -208,6 +209,11 @@ class PatchService {
                 val rebuiltApk = File(tempDir, "rebuilt.apk")
                 actualInputApk.copyTo(rebuiltApk, overwrite = true)
                 patcherResult.applyTo(rebuiltApk)
+
+                if (riplibs.isNotEmpty()) {
+                    onProgress("Stripping native libraries...")
+                    ApkLibraryStripper.stripLibraries(rebuiltApk, riplibs) { onProgress(it) }
+                }
 
                 onProgress("Signing APK...")
                 val keystorePath = File(tempDir, "morphe.keystore")

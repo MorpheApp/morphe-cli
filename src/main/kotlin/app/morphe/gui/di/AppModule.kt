@@ -58,6 +58,6 @@ val appModule = module {
     // ViewModels (ScreenModels)
     factory { HomeViewModel(get(), get(), get()) }
     factory { params -> PatchesViewModel(params.get(), params.get(), get(), get()) }
-    factory { params -> PatchSelectionViewModel(params.get(), params.get(), params.get(), get(), get()) }
+    factory { params -> PatchSelectionViewModel(params.get(), params.get(), params.get(), params.get(), get(), get()) }
     factory { params -> PatchingViewModel(params.get(), get(), get()) }
 }

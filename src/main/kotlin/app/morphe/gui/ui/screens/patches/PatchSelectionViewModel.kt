@@ -17,6 +17,7 @@ class PatchSelectionViewModel(
     private val apkPath: String,
     private val apkName: String,
     private val patchesFilePath: String,
+    private val apkArchitectures: List<String>,
     private val patchService: PatchService,
     private val patchRepository: PatchRepository
 ) : ScreenModel {
@@ -24,7 +25,10 @@ class PatchSelectionViewModel(
     // Actual path to use - may differ from patchesFilePath if we had to re-download
     private var actualPatchesFilePath: String = patchesFilePath
 
-    private val _uiState = MutableStateFlow(PatchSelectionUiState())
+    private val _uiState = MutableStateFlow(PatchSelectionUiState(
+        apkArchitectures = apkArchitectures,
+        selectedArchitectures = apkArchitectures.toSet()
+    ))
     val uiState: StateFlow<PatchSelectionUiState> = _uiState.asStateFlow()
 
     init {
@@ -147,6 +151,18 @@ class PatchSelectionViewModel(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    fun toggleArchitecture(arch: String) {
+        val current = _uiState.value.selectedArchitectures
+        // Don't allow deselecting all architectures
+        if (current.contains(arch) && current.size <= 1) return
+        val newSelection = if (current.contains(arch)) {
+            current - arch
+        } else {
+            current + arch
+        }
+        _uiState.value = _uiState.value.copy(selectedArchitectures = newSelection)
+    }
+
     /**
      * Count of patches that are disabled by default (from .mpp metadata).
      */
@@ -175,13 +191,21 @@ class PatchSelectionViewModel(
             .filter { !_uiState.value.selectedPatches.contains(it.uniqueId) }
             .map { it.name }
 
+        // Only set riplibs if user deselected any architecture (keeps = selected ones)
+        val riplibs = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
+            _uiState.value.selectedArchitectures.toList()
+        } else {
+            emptyList()
+        }
+
         return PatchConfig(
             inputApkPath = apkPath,
             outputApkPath = outputPath,
             patchesFilePath = actualPatchesFilePath,
             enabledPatches = selectedPatchNames,
             disabledPatches = disabledPatchNames,
-            useExclusiveMode = true
+            useExclusiveMode = true,
+            riplibs = riplibs
         )
     }
 
@@ -212,12 +236,23 @@ class PatchSelectionViewModel(
             .filter { _uiState.value.selectedPatches.contains(it.uniqueId) }
             .map { it.name }
 
+        // riplibs flag: only when user deselected at least one architecture
+        val riplibsArg = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
+            _uiState.value.selectedArchitectures.joinToString(",")
+        } else {
+            null
+        }
+
         return if (cleanMode) {
             val sb = StringBuilder()
             sb.append("java -jar morphe-cli.jar patch \\\n")
             sb.append("  -p ${patchesFile.name} \\\n")
             sb.append("  -o ${outputFileName} \\\n")
             sb.append("  --exclusive \\\n")
+
+            if (riplibsArg != null) {
+                sb.append("  --riplibs $riplibsArg \\\n")
+            }
 
             selectedPatchNames.forEachIndexed { index, patch ->
                 val isLast = index == selectedPatchNames.lastIndex
@@ -233,7 +268,8 @@ class PatchSelectionViewModel(
         } else {
             // Compact mode - single line that wraps naturally
             val patches = selectedPatchNames.joinToString(" ") { "-e \"$it\"" }
-            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --exclusive $patches ${inputFile.name}"
+            val riplibsPart = if (riplibsArg != null) " --riplibs $riplibsArg" else ""
+            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --exclusive$riplibsPart $patches ${inputFile.name}"
         }
     }
 
@@ -298,7 +334,9 @@ data class PatchSelectionUiState(
     val selectedPatches: Set<String> = emptySet(),
     val searchQuery: String = "",
     val showOnlySelected: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val apkArchitectures: List<String> = emptyList(),
+    val selectedArchitectures: Set<String> = emptySet()
 ) {
     val selectedCount: Int get() = selectedPatches.size
     val totalCount: Int get() = allPatches.size

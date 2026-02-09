@@ -79,5 +79,6 @@ data class PatchConfig(
     val enabledPatches: List<String> = emptyList(),
     val disabledPatches: List<String> = emptyList(),
     val patchOptions: Map<String, String> = emptyMap(),
-    val useExclusiveMode: Boolean = false
+    val useExclusiveMode: Boolean = false,
+    val riplibs: List<String> = emptyList()
 )
