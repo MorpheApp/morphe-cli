@@ -1,3 +1,10 @@
+# [1.4.0-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.1...v1.4.0-dev.2) (2026-02-10)
+
+
+### Features
+
+* Add `--striplibs` argument to strip unwanted architectures ([#46](https://github.com/MorpheApp/morphe-cli/issues/46)) ([7442d94](https://github.com/MorpheApp/morphe-cli/commit/7442d942d392b3e1e9ce959c30db8460bffee8d6))
+
 # [1.4.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.3.0...v1.4.0-dev.1) (2026-02-07)
 
 
