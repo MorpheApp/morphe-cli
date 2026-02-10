@@ -3,9 +3,9 @@ package app.morphe.cli.command
 import app.morphe.cli.command.model.FailedPatch
 import app.morphe.cli.command.model.PatchingResult
 import app.morphe.cli.command.model.PatchingStep
-import app.morphe.cli.command.model.PatchingStepResult
 import app.morphe.cli.command.model.addStepResult
 import app.morphe.cli.command.model.toSerializablePatch
+import app.morphe.gui.util.ApkLibraryStripper
 import app.morphe.library.ApkUtils
 import app.morphe.library.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
@@ -257,6 +257,13 @@ internal object PatchCommand : Runnable {
     )
     private var unsigned: Boolean = false
 
+    @CommandLine.Option(
+        names = ["--striplibs"],
+        description = ["Architectures to keep, comma-separated (e.g. arm64-v8a,x86). Strips all other native architectures."],
+        split = ",",
+    )
+    private var striplibs: List<String> = emptyList()
+
     override fun run() {
         // region Setup
 
@@ -408,6 +415,17 @@ internal object PatchCommand : Runnable {
                         patcherResult.applyTo(this)
                     }
                 )
+            }.also { rebuiltApk ->
+                if (striplibs.isNotEmpty()) {
+                    patchingResult.addStepResult(
+                        PatchingStep.STRIPPING_LIBS,
+                        {
+                            ApkLibraryStripper.stripLibraries(rebuiltApk, striplibs) { msg ->
+                                logger.info(msg)
+                            }
+                        }
+                    )
+                }
             }.let { patchedApkFile ->
                 if (!mount && !unsigned) {
                     patchingResult.addStepResult(
