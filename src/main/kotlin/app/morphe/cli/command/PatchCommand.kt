@@ -264,6 +264,13 @@ internal object PatchCommand : Runnable {
     )
     private var striplibs: List<String> = emptyList()
 
+    @CommandLine.Option(
+        names = ["--continue-on-error"],
+        description = ["Continue patching even if a patch fails. By default, patching stops on the first error."],
+        showDefaultValue = ALWAYS,
+    )
+    private var continueOnError: Boolean = false
+
     override fun run() {
         // region Setup
 
@@ -393,6 +400,13 @@ internal object PatchCommand : Runnable {
                                             )
                                         )
                                         patchingResult.success = false
+
+                                        if (!continueOnError) {
+                                            throw PatchFailedException(
+                                                "\"${patchResult.patch}\" failed",
+                                                exception
+                                            )
+                                        }
                                     }
                                 } ?: patchResult.patch.let {
                                     patchingResult.appliedPatches.add(patchResult.patch.toSerializablePatch())
@@ -478,6 +492,11 @@ internal object PatchCommand : Runnable {
             }
 
             // endregion
+        } catch (e: PatchFailedException) {
+            logger.severe("Patching aborted: ${e.message}")
+            logger.info(
+                "Use --continue-on-error to skip failed patches and continue patching"
+            )
         } finally {
             patchingResultOutputFilePath?.let { outputFile ->
                 outputFile.outputStream().use { outputStream ->
@@ -578,3 +597,5 @@ internal object PatchCommand : Runnable {
         logger.info(result)
     }
 }
+
+private class PatchFailedException(message: String, cause: Throwable) : Exception(message, cause)
