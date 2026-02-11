@@ -8,6 +8,14 @@ outside this repository, and do not change the terms of the GPLv3 license.
 For the full license text, see the LICENSE file or:
 https://www.gnu.org/licenses/gpl-3.0.html
 
+7b. Attribution Requirement
+---------------------------
+
+Any distributed source code that incorporates Morphe CLI,
+including modified versions and derivative works, must retain this NOTICE file.
+
+https://morphe.software
+
 7c. Project Name Restriction
 ----------------------------
 
