@@ -313,16 +313,8 @@ class HomeViewModel(
                 val appName = dynamicSupportedApp?.displayName
                     ?: SupportedApp.getDisplayName(packageName)
 
-                // Get recommended version - prefer dynamic, fallback to hardcoded
+                // Get recommended version from dynamic patches data (no hardcoded fallback)
                 val suggestedVersion = dynamicSupportedApp?.recommendedVersion
-                    ?: app.morphe.gui.data.constants.AppConstants.getSuggestedVersion(packageName)
-
-                // Determine AppType for backward compatibility (still used in some places)
-                val appType = when (packageName) {
-                    app.morphe.gui.data.constants.AppConstants.YouTube.PACKAGE_NAME -> AppType.YOUTUBE
-                    app.morphe.gui.data.constants.AppConstants.YouTubeMusic.PACKAGE_NAME -> AppType.YOUTUBE_MUSIC
-                    else -> null
-                }
 
                 // Compare versions if we have a suggested version
                 val versionStatus = if (suggestedVersion != null) {
@@ -335,8 +327,8 @@ class HomeViewModel(
                 // For .apkm files, scan the original bundle (splits contain the native libs, not base.apk)
                 val architectures = extractArchitectures(if (isApkm) file else apkToParse)
 
-                // Verify checksum (still uses AppConstants for now)
-                val checksumStatus = verifyChecksum(file, packageName, versionName, architectures, suggestedVersion)
+                // TODO: Re-enable when checksums are provided via .mpp files
+                val checksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured
 
                 Logger.info("Parsed APK: $packageName v$versionName (recommended=$suggestedVersion, minSdk=$minSdk, archs=$architectures)")
 
@@ -346,7 +338,6 @@ class HomeViewModel(
                     fileSize = file.length(),
                     formattedSize = formatFileSize(file.length()),
                     appName = appName,
-                    appType = appType,
                     packageName = packageName,
                     versionName = versionName,
                     architectures = architectures,
@@ -408,42 +399,11 @@ class HomeViewModel(
         }
     }
 
-    /**
-     * Verify the APK checksum against expected values.
-     */
-    private fun verifyChecksum(
-        file: File,
-        packageName: String,
-        version: String,
-        architectures: List<String>,
-        recommendedVersion: String?
-    ): app.morphe.gui.util.ChecksumStatus {
-        // Check if this is a non-recommended version (use dynamic recommended version)
-        if (recommendedVersion != null && version != recommendedVersion) {
-            return app.morphe.gui.util.ChecksumStatus.NonRecommendedVersion
-        }
-
-        // Get expected checksum (still from AppConstants - checksums are manually maintained)
-        val expectedChecksum = app.morphe.gui.data.constants.AppConstants.getChecksum(packageName, version, architectures)
-        if (expectedChecksum == null) {
-            return app.morphe.gui.util.ChecksumStatus.NotConfigured
-        }
-
-        // Calculate actual checksum
-        return try {
-            val actualChecksum = app.morphe.gui.util.ChecksumUtils.calculateSha256(file)
-            Logger.info("Checksum verification - Expected: $expectedChecksum, Actual: $actualChecksum")
-
-            if (actualChecksum.equals(expectedChecksum, ignoreCase = true)) {
-                app.morphe.gui.util.ChecksumStatus.Verified
-            } else {
-                app.morphe.gui.util.ChecksumStatus.Mismatch(expectedChecksum, actualChecksum)
-            }
-        } catch (e: Exception) {
-            Logger.error("Checksum calculation failed", e)
-            app.morphe.gui.util.ChecksumStatus.Error(e.message ?: "Unknown error")
-        }
-    }
+    // TODO: Re-enable checksum verification when checksums are provided via .mpp files
+    // private fun verifyChecksum(
+    //     file: File, packageName: String, version: String,
+    //     architectures: List<String>, recommendedVersion: String?
+    // ): app.morphe.gui.util.ChecksumStatus { ... }
 
     private fun formatFileSize(bytes: Long): String {
         return when {
@@ -499,30 +459,12 @@ data class HomeUiState(
         get() = patchesVersion != null && patchesVersion == latestPatchesVersion
 }
 
-enum class AppType(
-    val displayName: String,
-    val packageName: String,
-    val suggestedVersion: String
-) {
-    YOUTUBE(
-        displayName = app.morphe.gui.data.constants.AppConstants.YouTube.DISPLAY_NAME,
-        packageName = app.morphe.gui.data.constants.AppConstants.YouTube.PACKAGE_NAME,
-        suggestedVersion = app.morphe.gui.data.constants.AppConstants.YouTube.SUGGESTED_VERSION
-    ),
-    YOUTUBE_MUSIC(
-        displayName = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.DISPLAY_NAME,
-        packageName = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.PACKAGE_NAME,
-        suggestedVersion = app.morphe.gui.data.constants.AppConstants.YouTubeMusic.SUGGESTED_VERSION
-    )
-}
-
 data class ApkInfo(
     val fileName: String,
     val filePath: String,
     val fileSize: Long,
     val formattedSize: String,
     val appName: String,
-    val appType: AppType?, // Nullable for dynamically supported apps not in the enum
     val packageName: String,
     val versionName: String,
     val architectures: List<String> = emptyList(),

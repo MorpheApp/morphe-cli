@@ -111,12 +111,15 @@ private fun AppContent(initialSimplifiedMode: Boolean) {
         ) {
             Surface(modifier = Modifier.fillMaxSize()) {
                 if (!isLoading) {
+                    // Create QuickPatchViewModel outside Crossfade so it persists across mode switches.
+                    // Otherwise every expert→simplified switch creates a new VM that re-fetches from GitHub.
+                    val quickViewModel = remember {
+                        QuickPatchViewModel(patchRepository, patchService, configRepository)
+                    }
+
                     Crossfade(targetState = isSimplifiedMode) { simplified ->
                         if (simplified) {
                             // Quick/Simplified mode
-                            val quickViewModel = remember {
-                                QuickPatchViewModel(patchRepository, patchService, configRepository)
-                            }
                             QuickPatchContent(quickViewModel)
                         } else {
                             // Full mode

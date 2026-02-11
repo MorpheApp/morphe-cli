@@ -52,8 +52,8 @@ import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 import java.awt.Desktop
 import java.awt.datatransfer.DataFlavor
 import java.io.File
-import javax.swing.JFileChooser
-import javax.swing.filechooser.FileNameExtensionFilter
+import java.awt.FileDialog
+import java.awt.Frame
 
 /**
  * Quick Patch Mode - Single screen simplified patching.
@@ -996,14 +996,17 @@ private fun VerificationStatusBanner(
  * Open native file picker.
  */
 private fun openFilePicker(): File? {
-    val chooser = JFileChooser().apply {
-        dialogTitle = "Select APK"
-        fileFilter = FileNameExtensionFilter("APK Files (*.apk, *.apkm)", "apk", "apkm")
-        isAcceptAllFileFilterUsed = false
+    val fileDialog = FileDialog(null as Frame?, "Select APK", FileDialog.LOAD).apply {
+        isMultipleMode = false
+        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") } }
+        isVisible = true
     }
 
-    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-        chooser.selectedFile
+    val directory = fileDialog.directory
+    val file = fileDialog.file
+
+    return if (directory != null && file != null) {
+        File(directory, file)
     } else null
 }
 

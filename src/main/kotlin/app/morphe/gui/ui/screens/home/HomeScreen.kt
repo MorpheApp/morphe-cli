@@ -113,6 +113,7 @@ fun HomeScreenContent(
                                 apkPath = uiState.apkInfo!!.filePath,
                                 apkName = uiState.apkInfo!!.appName,
                                 patchesFilePath = patchesFile.absolutePath,
+                                packageName = uiState.apkInfo!!.packageName,
                                 apkArchitectures = uiState.apkInfo!!.architectures
                             ))
                         }
@@ -206,6 +207,7 @@ fun HomeScreenContent(
                                             apkPath = info.filePath,
                                             apkName = info.appName,
                                             patchesFilePath = patchesFile.absolutePath,
+                                            packageName = info.packageName,
                                             apkArchitectures = info.architectures
                                         ))
                                     }
@@ -643,7 +645,7 @@ private fun SupportedAppsSection(
 
         // Important notice about APK handling
         Text(
-            text = "Download the exact version from APKMirror and drop it here directly. Do not rename or modify the file.",
+            text = "Download the exact version from APKMirror and drop it here directly.",
             fontSize = if (isCompact) 10.sp else 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
@@ -975,129 +977,6 @@ private fun SupportedAppCardDynamic(
             // Package name
             Text(
                 text = supportedApp.packageName,
-                fontSize = if (isCompact) 9.sp else 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-private fun SupportedAppCard(
-    appType: AppType,
-    iconRes: org.jetbrains.compose.resources.DrawableResource,
-    isCompact: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    val cardPadding = if (isCompact) 12.dp else 16.dp
-    val iconSize = if (isCompact) 48.dp else 56.dp
-    val iconInnerSize = if (isCompact) 32.dp else 40.dp
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        shape = RoundedCornerShape(if (isCompact) 12.dp else 16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(cardPadding),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // App icon
-            Box(
-                modifier = Modifier
-                    .size(iconSize)
-                    .clip(RoundedCornerShape(if (isCompact) 10.dp else 12.dp))
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(iconRes),
-                    contentDescription = "${appType.displayName} icon",
-                    modifier = Modifier.size(iconInnerSize)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 12.dp))
-
-            // App name
-            Text(
-                text = appType.displayName,
-                fontSize = if (isCompact) 14.sp else 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 8.dp))
-
-            // Suggested version badge
-            Surface(
-                color = MorpheColors.Teal.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(if (isCompact) 6.dp else 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(
-                        horizontal = if (isCompact) 10.dp else 12.dp,
-                        vertical = if (isCompact) 6.dp else 8.dp
-                    ),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Recommended",
-                        fontSize = if (isCompact) 9.sp else 10.sp,
-                        color = MorpheColors.Teal.copy(alpha = 0.8f),
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = "v${appType.suggestedVersion}",
-                        fontSize = if (isCompact) 12.sp else 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MorpheColors.Teal
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 12.dp))
-
-            // Download from APKMirror button
-            val downloadUrl = SupportedApp.getDownloadUrl(appType.packageName, appType.suggestedVersion)
-            if (downloadUrl != null) {
-                OutlinedButton(
-                    onClick = {
-                        try {
-                            java.awt.Desktop.getDesktop().browse(java.net.URI(downloadUrl))
-                        } catch (e: Exception) {
-                            // Ignore errors
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(if (isCompact) 6.dp else 8.dp),
-                    contentPadding = PaddingValues(
-                        horizontal = if (isCompact) 8.dp else 12.dp,
-                        vertical = if (isCompact) 6.dp else 8.dp
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MorpheColors.Blue
-                    )
-                ) {
-                    Text(
-                        text = if (isCompact) "APKMirror" else "Get from APKMirror",
-                        fontSize = if (isCompact) 11.sp else 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 8.dp))
-            }
-
-            // Package name
-            Text(
-                text = appType.packageName,
                 fontSize = if (isCompact) 9.sp else 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,

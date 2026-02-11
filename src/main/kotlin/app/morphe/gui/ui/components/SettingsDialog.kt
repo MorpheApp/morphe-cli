@@ -251,7 +251,7 @@ fun SettingsDialog(
                 // Cache info
                 val cacheSize = calculateCacheSize()
                 Text(
-                    text = "Cache: $cacheSize (CLI + Patches)",
+                    text = "Cache: $cacheSize (Patches + Logs)",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -286,7 +286,7 @@ fun SettingsDialog(
             shape = RoundedCornerShape(16.dp),
             title = { Text("Clear Cache?") },
             text = {
-                Text("This will delete downloaded CLI and patch files. They will be re-downloaded when needed.")
+                Text("This will delete downloaded patch files and log files. Patches will be re-downloaded when needed.")
             },
             confirmButton = {
                 Button(
@@ -322,17 +322,21 @@ private fun ThemePreference.toDisplayName(): String {
 
 private fun calculateCacheSize(): String {
     val patchesSize = FileUtils.getPatchesDir().walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    val logsSize = FileUtils.getLogsDir().walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    val totalSize = patchesSize + logsSize
 
     return when {
-        patchesSize < 1024 -> "$patchesSize B"
-        patchesSize < 1024 * 1024 -> "%.1f KB".format(patchesSize / 1024.0)
-        else -> "%.1f MB".format(patchesSize / (1024.0 * 1024.0))
+        totalSize < 1024 -> "$totalSize B"
+        totalSize < 1024 * 1024 -> "%.1f KB".format(totalSize / 1024.0)
+        else -> "%.1f MB".format(totalSize / (1024.0 * 1024.0))
     }
 }
 
 private fun clearAllCache(): Boolean {
     return try {
         var failedCount = 0
+
+        // Delete patch files
         FileUtils.getPatchesDir().listFiles()?.forEach { file ->
             try {
                 java.nio.file.Files.delete(file.toPath())
@@ -341,6 +345,17 @@ private fun clearAllCache(): Boolean {
                 Logger.error("Failed to delete ${file.name}: ${e.message}")
             }
         }
+
+        // Delete log files
+        FileUtils.getLogsDir().listFiles()?.forEach { file ->
+            try {
+                java.nio.file.Files.delete(file.toPath())
+            } catch (e: Exception) {
+                failedCount++
+                Logger.error("Failed to delete log ${file.name}: ${e.message}")
+            }
+        }
+
         FileUtils.cleanupAllTempDirs()
         if (failedCount > 0) {
             Logger.error("Cache clear incomplete: $failedCount file(s) could not be deleted (may be locked)")

@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.dongliu.apk.parser.ApkFile
 import app.morphe.gui.util.ChecksumStatus
-import app.morphe.gui.util.ChecksumUtils
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
@@ -203,7 +202,6 @@ class QuickPatchViewModel(
                     ?: SupportedApp.getDisplayName(packageName)
 
                 val recommendedVersion = dynamicAppInfo?.recommendedVersion
-                    ?: AppConstants.getSuggestedVersion(packageName)
 
                 // Version check
                 val isRecommendedVersion = recommendedVersion != null && versionName == recommendedVersion
@@ -211,8 +209,8 @@ class QuickPatchViewModel(
                     "Version $versionName may have compatibility issues. Recommended: $recommendedVersion"
                 } else null
 
-                // Checksum verification (still uses AppConstants - checksums are manually maintained)
-                val checksumStatus = verifyChecksum(file, packageName, versionName, recommendedVersion)
+                // TODO: Re-enable when checksums are provided via .mpp files
+                val checksumStatus = ChecksumStatus.NotConfigured
 
                 Logger.info("Quick mode: Analyzed $displayName v$versionName (recommended: $recommendedVersion)")
 
@@ -237,29 +235,10 @@ class QuickPatchViewModel(
         }
     }
 
-    /**
-     * Verify checksum against known values.
-     */
-    private fun verifyChecksum(file: File, packageName: String, version: String, recommendedVersion: String?): ChecksumStatus {
-        // Check if this is a non-recommended version (use dynamic recommended version)
-        if (recommendedVersion != null && version != recommendedVersion) {
-            return ChecksumStatus.NonRecommendedVersion
-        }
-
-        val expectedChecksum = AppConstants.getChecksum(packageName, version, emptyList())
-            ?: return ChecksumStatus.NotConfigured
-
-        return try {
-            val actualChecksum = ChecksumUtils.calculateSha256(file)
-            if (actualChecksum.equals(expectedChecksum, ignoreCase = true)) {
-                ChecksumStatus.Verified
-            } else {
-                ChecksumStatus.Mismatch(expectedChecksum, actualChecksum)
-            }
-        } catch (e: Exception) {
-            ChecksumStatus.Error(e.message ?: "Unknown error")
-        }
-    }
+    // TODO: Re-enable checksum verification when checksums are provided via .mpp files
+    // private fun verifyChecksum(
+    //     file: File, packageName: String, version: String, recommendedVersion: String?
+    // ): ChecksumStatus { ... }
 
     /**
      * Start the patching process with defaults.
@@ -321,7 +300,10 @@ class QuickPatchViewModel(
             // Generate output path
             val outputDir = apkFile.parentFile ?: File(System.getProperty("user.home"))
             val baseName = apkInfo.displayName.replace(" ", "-")
-            val outputFileName = "$baseName-Morphe-${apkInfo.versionName}.apk"
+            val patchesVersion = Regex("""(\d+\.\d+\.\d+(?:-dev\.\d+)?)""")
+                .find(patchFile.name)?.groupValues?.get(1)
+            val patchesSuffix = if (patchesVersion != null) "-patches-$patchesVersion" else ""
+            val outputFileName = "$baseName-Morphe-${apkInfo.versionName}${patchesSuffix}.apk"
             val outputPath = File(outputDir, outputFileName).absolutePath
 
             // Use PatchService for direct library patching (no CLI subprocess)

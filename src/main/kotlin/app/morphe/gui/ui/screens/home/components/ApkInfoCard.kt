@@ -1,6 +1,5 @@
 package app.morphe.gui.ui.screens.home.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -18,11 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.morphe.morphe_cli.generated.resources.Res
-import org.jetbrains.compose.resources.painterResource
-import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.ui.screens.home.ApkInfo
-import app.morphe.gui.ui.screens.home.AppType
 import app.morphe.gui.ui.screens.home.VersionStatus
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.ChecksumStatus
@@ -54,16 +49,6 @@ fun ApkInfoCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // App icon - determine from appType or packageName
-                    val iconRes = when {
-                        apkInfo.appType == AppType.YOUTUBE -> null
-                        apkInfo.appType == AppType.YOUTUBE_MUSIC -> null
-                        apkInfo.packageName == AppConstants.YouTube.PACKAGE_NAME -> null
-                        apkInfo.packageName == AppConstants.YouTubeMusic.PACKAGE_NAME -> null
-                        apkInfo.packageName == AppConstants.Reddit.PACKAGE_NAME -> null
-                        else -> null
-                    }
-
                     Box(
                         modifier = Modifier
                             .size(64.dp)
@@ -71,21 +56,12 @@ fun ApkInfoCard(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (iconRes != null) {
-                            Image(
-                                painter = painterResource(iconRes),
-                                contentDescription = "${apkInfo.appName} icon",
-                                modifier = Modifier.size(48.dp)
-                            )
-                        } else {
-                            // Fallback: show first letter of app name
-                            Text(
-                                text = apkInfo.appName.first().toString(),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MorpheColors.Blue
-                            )
-                        }
+                        Text(
+                            text = apkInfo.appName.first().toString(),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MorpheColors.Blue
+                        )
                     }
 
                     Column {

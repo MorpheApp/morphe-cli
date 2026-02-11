@@ -57,13 +57,14 @@ data class PatchSelectionScreen(
     val apkPath: String,
     val apkName: String,
     val patchesFilePath: String,
+    val packageName: String,
     val apkArchitectures: List<String> = emptyList()
 ) : Screen {
 
     @Composable
     override fun Content() {
         val viewModel = koinScreenModel<PatchSelectionViewModel> {
-            parametersOf(apkPath, apkName, patchesFilePath, apkArchitectures)
+            parametersOf(apkPath, apkName, patchesFilePath, packageName, apkArchitectures)
         }
         PatchSelectionScreenContent(viewModel = viewModel)
     }

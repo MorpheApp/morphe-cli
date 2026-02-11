@@ -23,12 +23,25 @@ class PatchRepository(
         private const val GITHUB_API_BASE = "https://api.github.com"
         private const val PATCHES_REPO = "MorpheApp/morphe-patches"
         private const val RELEASES_ENDPOINT = "$GITHUB_API_BASE/repos/$PATCHES_REPO/releases"
+        private const val CACHE_TTL_MS = 5 * 60 * 1000L // 5 minutes
     }
 
+    // In-memory cache so multiple callers (both modes) don't re-fetch from GitHub
+    private var cachedReleases: List<Release>? = null
+    private var cacheTimestamp: Long = 0L
+
     /**
-     * Fetch all releases from GitHub.
+     * Fetch all releases from GitHub. Returns cached result if still fresh.
+     * @param forceRefresh bypass the in-memory cache
      */
-    suspend fun fetchReleases(): Result<List<Release>> = withContext(Dispatchers.IO) {
+    suspend fun fetchReleases(forceRefresh: Boolean = false): Result<List<Release>> = withContext(Dispatchers.IO) {
+        // Return cached releases if still fresh
+        val cached = cachedReleases
+        if (!forceRefresh && cached != null && (System.currentTimeMillis() - cacheTimestamp) < CACHE_TTL_MS) {
+            Logger.info("Using cached releases (${cached.size} releases, age=${(System.currentTimeMillis() - cacheTimestamp) / 1000}s)")
+            return@withContext Result.success(cached)
+        }
+
         try {
             Logger.info("Fetching releases from $RELEASES_ENDPOINT")
             val response: HttpResponse = httpClient.get(RELEASES_ENDPOINT) {
@@ -41,6 +54,8 @@ class PatchRepository(
             if (response.status.isSuccess()) {
                 val releases: List<Release> = response.body()
                 Logger.info("Fetched ${releases.size} releases")
+                cachedReleases = releases
+                cacheTimestamp = System.currentTimeMillis()
                 Result.success(releases)
             } else {
                 val error = "Failed to fetch releases: ${response.status}"
@@ -49,7 +64,14 @@ class PatchRepository(
             }
         } catch (e: Exception) {
             Logger.error("Error fetching releases", e)
-            Result.failure(e)
+            // If we have stale cached data, return it rather than failing
+            val stale = cachedReleases
+            if (stale != null) {
+                Logger.info("Returning stale cached releases after fetch failure")
+                Result.success(stale)
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -167,6 +189,8 @@ class PatchRepository(
      * Delete cached patches.
      */
     fun clearCache(): Boolean {
+        cachedReleases = null
+        cacheTimestamp = 0L
         return try {
             var failedCount = 0
             FileUtils.getPatchesDir().listFiles()?.forEach { file ->

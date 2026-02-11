@@ -17,6 +17,7 @@ class PatchSelectionViewModel(
     private val apkPath: String,
     private val apkName: String,
     private val patchesFilePath: String,
+    private val packageName: String,
     private val apkArchitectures: List<String>,
     private val patchService: PatchService,
     private val patchRepository: PatchRepository
@@ -60,10 +61,8 @@ class PatchSelectionViewModel(
                 actualPatchesFilePath = downloadResult.getOrNull()!!.absolutePath
             }
 
-            val packageName = getPackageNameFromApk()
-
             // Load patches using PatchService (direct library call)
-            val patchesResult = patchService.listPatches(actualPatchesFilePath, packageName)
+            val patchesResult = patchService.listPatches(actualPatchesFilePath, packageName.ifEmpty { null })
 
             patchesResult.fold(
                 onSuccess = { patches ->
@@ -177,9 +176,11 @@ class PatchSelectionViewModel(
         val outputDir = File(inputFile.parentFile, appFolderName)
         outputDir.mkdirs()
 
-        // Extract version from APK filename for output name
+        // Extract version from APK filename and patches version for output name
         val version = extractVersionFromFilename(inputFile.name) ?: "patched"
-        val outputFileName = "${appFolderName}-${version}-patched.apk"
+        val patchesVersion = extractPatchesVersion(File(actualPatchesFilePath).name)
+        val patchesSuffix = if (patchesVersion != null) "-patches-$patchesVersion" else ""
+        val outputFileName = "${appFolderName}-Morphe-${version}${patchesSuffix}.apk"
         val outputPath = File(outputDir, outputFileName).absolutePath
 
         // Convert unique IDs back to patch names for CLI
@@ -219,6 +220,12 @@ class PatchSelectionViewModel(
         }
     }
 
+    private fun extractPatchesVersion(patchesFileName: String): String? {
+        // Extract version from patches filename: morphe-patches-1.13.0-dev.11.mpp -> 1.13.0-dev.11
+        val regex = Regex("""(\d+\.\d+\.\d+(?:-dev\.\d+)?)""")
+        return regex.find(patchesFileName)?.groupValues?.get(1)
+    }
+
     fun getApkName(): String = apkName
 
     /**
@@ -230,11 +237,20 @@ class PatchSelectionViewModel(
         val patchesFile = File(actualPatchesFilePath)
         val appFolderName = apkName.replace(" ", "-")
         val version = extractVersionFromFilename(inputFile.name) ?: "patched"
-        val outputFileName = "${appFolderName}-${version}-patched.apk"
+        val patchesVersion = extractPatchesVersion(patchesFile.name)
+        val patchesSuffix = if (patchesVersion != null) "-patches-$patchesVersion" else ""
+        val outputFileName = "${appFolderName}-Morphe-${version}${patchesSuffix}.apk"
 
         val selectedPatchNames = _uiState.value.allPatches
             .filter { _uiState.value.selectedPatches.contains(it.uniqueId) }
             .map { it.name }
+
+        val disabledPatchNames = _uiState.value.allPatches
+            .filter { !_uiState.value.selectedPatches.contains(it.uniqueId) }
+            .map { it.name }
+
+        // Use whichever produces fewer flags
+        val useExclusive = selectedPatchNames.size <= disabledPatchNames.size
 
         // striplibs flag: only when user deselected at least one architecture
         val striplibsArg = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
@@ -248,15 +264,21 @@ class PatchSelectionViewModel(
             sb.append("java -jar morphe-cli.jar patch \\\n")
             sb.append("  -p ${patchesFile.name} \\\n")
             sb.append("  -o ${outputFileName} \\\n")
-            sb.append("  --exclusive \\\n")
+
+            if (useExclusive) {
+                sb.append("  --exclusive \\\n")
+            }
 
             if (striplibsArg != null) {
                 sb.append("  --striplibs $striplibsArg \\\n")
             }
 
-            selectedPatchNames.forEachIndexed { index, patch ->
-                val isLast = index == selectedPatchNames.lastIndex
-                sb.append("  -e \"$patch\"")
+            val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
+            val flag = if (useExclusive) "-e" else "-d"
+
+            flagPatches.forEachIndexed { index, patch ->
+                val isLast = index == flagPatches.lastIndex
+                sb.append("  $flag \"$patch\"")
                 if (!isLast) {
                     sb.append(" \\")
                 }
@@ -266,10 +288,12 @@ class PatchSelectionViewModel(
             sb.append("  ${inputFile.name}")
             sb.toString()
         } else {
-            // Compact mode - single line that wraps naturally
-            val patches = selectedPatchNames.joinToString(" ") { "-e \"$it\"" }
+            val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
+            val flag = if (useExclusive) "-e" else "-d"
+            val patches = flagPatches.joinToString(" ") { "$flag \"$it\"" }
+            val exclusivePart = if (useExclusive) " --exclusive" else ""
             val striplibsPart = if (striplibsArg != null) " --striplibs $striplibsArg" else ""
-            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --exclusive$striplibsPart $patches ${inputFile.name}"
+            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName$exclusivePart$striplibsPart $patches ${inputFile.name}"
         }
     }
 
@@ -315,16 +339,6 @@ class PatchSelectionViewModel(
         return patchRepository.downloadPatches(targetRelease)
     }
 
-    private fun getPackageNameFromApk(): String {
-        // Extract package name from APK filename (APKMirror format)
-        val fileName = File(apkPath).name
-        return when {
-            fileName.startsWith("com.google.android.youtube_") -> "com.google.android.youtube"
-            fileName.startsWith("com.google.android.apps.youtube.music_") -> "com.google.android.apps.youtube.music"
-            fileName.startsWith("com.reddit.frontpage_") -> "com.reddit.frontpage"
-            else -> ""
-        }
-    }
 }
 
 data class PatchSelectionUiState(
