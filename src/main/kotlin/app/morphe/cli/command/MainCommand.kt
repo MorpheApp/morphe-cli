@@ -5,11 +5,13 @@ import app.morphe.library.logging.Logger
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.IVersionProvider
-import java.util.*
+import java.util.Properties
+import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     Logger.setDefault()
-    CommandLine(MainCommand).execute(*args).let(System::exit)
+    val exitCode = CommandLine(MainCommand).execute(*args)
+    exitProcess(exitCode)
 }
 
 private object CLIVersionProvider : IVersionProvider {
@@ -37,6 +39,6 @@ private object CLIVersionProvider : IVersionProvider {
         ListPatchesCommand::class,
         ListCompatibleVersions::class,
         UtilityCommand::class,
-    ],
+    ]
 )
 private object MainCommand

@@ -28,6 +28,7 @@ import picocli.CommandLine.Spec
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.util.concurrent.Callable
 import java.util.logging.Logger
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -35,7 +36,11 @@ import java.util.logging.Logger
     name = "patch",
     description = ["Patch an APK file."],
 )
-internal object PatchCommand : Runnable {
+internal object PatchCommand : Callable<Int> {
+
+    private const val EXIT_CODE_SUCCESS = 0
+    private const val EXIT_CODE_ERROR = 1
+
     private val logger = Logger.getLogger(this::class.java.name)
 
     @Spec
@@ -271,7 +276,7 @@ internal object PatchCommand : Runnable {
     )
     private var continueOnError: Boolean = false
 
-    override fun run() {
+    override fun call(): Int {
         // region Setup
 
         val outputFilePath =
@@ -297,7 +302,7 @@ internal object PatchCommand : Runnable {
                 } else {
                     AdbInstaller(deviceSerial)
                 }
-            } catch (e: DeviceNotFoundException) {
+            } catch (_: DeviceNotFoundException) {
                 if (deviceSerial?.isNotEmpty() == true) {
                     logger.severe(
                         "Device with serial $deviceSerial not found to install to. " +
@@ -310,7 +315,7 @@ internal object PatchCommand : Runnable {
                     )
                 }
 
-                return
+                return EXIT_CODE_ERROR
             }
         } else {
             null
@@ -318,41 +323,41 @@ internal object PatchCommand : Runnable {
 
         // endregion
 
-        // region Load patches
-
-        logger.info("Loading patches")
-
-        val patches = loadPatchesFromJar(patchesFiles)
-
-        // endregion
-
-        val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
-
-        // Checking if the file is in apkm format (like reddit)
-        var mergedApkToCleanup: File? = null
-        val inputApk = if (apk.extension.equals("apkm", ignoreCase = true)) {
-            logger.info("Merging APKM bundle")
-
-            // Save merged APK to output directory (will be cleaned up after patching)
-            val outputApk = outputFilePath.parentFile.resolve("${apk.nameWithoutExtension}-merged.apk")
-
-            // Use APKEditor's Merger directly (handles extraction and merging)
-            val mergerOptions = MergerOptions().apply {
-                inputFile = apk  // Original APKM file
-                outputFile = outputApk
-                cleanMeta = true
-            }
-            Merger(mergerOptions).run()
-
-            mergedApkToCleanup = outputApk
-            outputApk
-        } else {
-            apk
-        }
-
         val patchingResult = PatchingResult()
+        var mergedApkToCleanup: File? = null
 
         try {
+            // region Load patches
+
+            logger.info("Loading patches")
+
+            val patches = loadPatchesFromJar(patchesFiles)
+
+            // endregion
+
+            val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
+
+            // Checking if the file is in apkm format (like reddit)
+            val inputApk = if (apk.extension.equals("apkm", ignoreCase = true)) {
+                logger.info("Merging APKM bundle")
+
+                // Save merged APK to output directory (will be cleaned up after patching)
+                val outputApk = outputFilePath.parentFile.resolve("${apk.nameWithoutExtension}-merged.apk")
+
+                // Use APKEditor's Merger directly (handles extraction and merging)
+                val mergerOptions = MergerOptions().apply {
+                    inputFile = apk  // Original APKM file
+                    outputFile = outputApk
+                    cleanMeta = true
+                }
+                Merger(mergerOptions).run()
+
+                mergedApkToCleanup = outputApk
+                outputApk
+            } else {
+                apk
+            }
+
             val (packageName, patcherResult) = Patcher(
                 PatcherConfig(
                     inputApk,
@@ -497,6 +502,12 @@ internal object PatchCommand : Runnable {
             logger.info(
                 "Use --continue-on-error to skip failed patches and continue patching"
             )
+            return EXIT_CODE_ERROR
+        } catch (e: Exception) {
+            // Should never happen.
+            logger.severe("An unexpected error occurred: ${e.message}")
+            e.printStackTrace()
+            return EXIT_CODE_ERROR
         } finally {
             patchingResultOutputFilePath?.let { outputFile ->
                 outputFile.outputStream().use { outputStream ->
@@ -504,19 +515,21 @@ internal object PatchCommand : Runnable {
                 }
                 logger.info("Patching result saved to $outputFile")
             }
-        }
 
-        if (purge) {
-            logger.info("Purging temporary files")
-            purge(temporaryFilesPath)
-        }
+            if (purge) {
+                logger.info("Purging temporary files")
+                purge(temporaryFilesPath)
+            }
 
-        // Clean up merged APK if we created one from APKM
-        mergedApkToCleanup?.let {
-            if (!it.delete()) {
-                logger.warning("Could not clean up merged APK: ${it.path}")
+            // Clean up merged APK if we created one from APKM
+            mergedApkToCleanup?.let {
+                if (!it.delete()) {
+                    logger.warning("Could not clean up merged APK: ${it.path}")
+                }
             }
         }
+
+        return EXIT_CODE_SUCCESS
     }
 
     /**
