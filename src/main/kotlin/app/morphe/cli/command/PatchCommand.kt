@@ -381,7 +381,7 @@ internal object PatchCommand : Callable<Int> {
                     val enabledSelection = it.enabled!!
 
                     val resolvedName = enabledSelection.selector.name?.let { userInput ->
-                        patchesList.firstOrNull { it.name?.lowercase() == userInput.lowercase() }?.name ?: userInput
+                        patchesList.firstOrNull { it.name.equals(userInput, ignoreCase = true) }?.name ?: userInput
                     } ?: patchesList[enabledSelection.selector.index!!].name!!
 
                     resolvedName to enabledSelection.options
