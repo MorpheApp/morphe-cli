@@ -380,8 +380,11 @@ internal object PatchCommand : Callable<Int> {
                 selection.filter { it.enabled != null }.associate {
                     val enabledSelection = it.enabled!!
 
-                    (enabledSelection.selector.name ?: patchesList[enabledSelection.selector.index!!].name!!) to
-                            enabledSelection.options
+                    val resolvedName = enabledSelection.selector.name?.let { userInput ->
+                        patchesList.firstOrNull { it.name?.lowercase() == userInput.lowercase() }?.name ?: userInput
+                    } ?: patchesList[enabledSelection.selector.index!!].name!!
+
+                    resolvedName to enabledSelection.options
                 }.let(filteredPatches::setOptions)
 
                 patcher += filteredPatches
