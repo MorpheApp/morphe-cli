@@ -544,19 +544,19 @@ internal object PatchCommand : Callable<Int> {
         packageVersion: String,
     ): Set<Patch<*>> = buildSet {
         val enabledPatchesByName =
-            selection.mapNotNull { it.enabled?.selector?.name }.toSet()
+            selection.mapNotNull { it.enabled?.selector?.name?.lowercase() }.toSet()
         val enabledPatchesByIndex =
             selection.mapNotNull { it.enabled?.selector?.index }.toSet()
 
         val disabledPatches =
-            selection.mapNotNull { it.disable?.selector?.name }.toSet()
+            selection.mapNotNull { it.disable?.selector?.name?.lowercase() }.toSet()
         val disabledPatchesByIndex =
             selection.mapNotNull { it.disable?.selector?.index }.toSet()
 
         this@filterPatchSelection.withIndex().forEach patchLoop@{ (i, patch) ->
             val patchName = patch.name!!
 
-            val isManuallyDisabled = patchName in disabledPatches || i in disabledPatchesByIndex
+            val isManuallyDisabled = patchName.lowercase() in disabledPatches || i in disabledPatchesByIndex
             if (isManuallyDisabled) return@patchLoop logger.info("\"$patchName\" disabled manually")
 
             // Make sure the patch is compatible with the supplied APK files package name and version.
@@ -588,7 +588,7 @@ internal object PatchCommand : Callable<Int> {
             } ?: logger.fine("\"$patchName\" has no package constraints")
 
             val isEnabled = !exclusive && patch.use
-            val isManuallyEnabled = patchName in enabledPatchesByName || i in enabledPatchesByIndex
+            val isManuallyEnabled = patchName.lowercase() in enabledPatchesByName || i in enabledPatchesByIndex
 
             if (!(isEnabled || isManuallyEnabled)) {
                 return@patchLoop logger.info("\"$patchName\" disabled")
