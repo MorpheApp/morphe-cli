@@ -1,3 +1,10 @@
+# [1.4.0-dev.4](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.3...v1.4.0-dev.4) (2026-02-14)
+
+
+### Bug Fixes
+
+* Allow enabling/disabling patches using case insensitive patch names ([#48](https://github.com/MorpheApp/morphe-cli/issues/48)) ([03a280a](https://github.com/MorpheApp/morphe-cli/commit/03a280abea6c9187eec22548707eb889b0252c3f))
+
 # [1.4.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.2...v1.4.0-dev.3) (2026-02-12)
 
 
