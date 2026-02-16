@@ -6,9 +6,9 @@ import app.morphe.cli.command.model.PatchOptionsFile
 import app.morphe.cli.command.model.PatchingResult
 import app.morphe.cli.command.model.PatchingStep
 import app.morphe.cli.command.model.addStepResult
+import app.morphe.cli.command.model.PatchSerializer
 import app.morphe.cli.command.model.deserializeOptionValue
 import app.morphe.cli.command.model.toSerializablePatch
-import app.morphe.cli.command.model.PatchSerializer
 import app.morphe.gui.util.ApkLibraryStripper
 import app.morphe.library.ApkUtils
 import app.morphe.library.ApkUtils.applyTo
@@ -284,6 +284,19 @@ internal object PatchCommand : Callable<Int> {
         names = ["--options-file"],
         description = ["Path to an options JSON file to read patch enable/disable and option values from."],
     )
+    @Suppress("unused")
+    private fun setOptionsFilePath(optionsFilePath: File?) {
+        optionsFilePath?.let {
+            if (!it.exists()) {
+                throw CommandLine.ParameterException(
+                    spec.commandLine(),
+                    "Options file ${it.path} does not exist",
+                )
+            }
+        }
+        this.optionsFilePath = optionsFilePath
+    }
+
     private var optionsFilePath: File? = null
 
     @CommandLine.Option(
@@ -343,24 +356,15 @@ internal object PatchCommand : Callable<Int> {
         val patchingResult = PatchingResult()
         var mergedApkToCleanup: File? = null
 
+        // Load patches before try block so they're accessible in finally for auto-update
+        logger.info("Loading patches")
+        val patches = loadPatchesFromJar(patchesFiles)
+
         try {
-            // region Load patches
-
-            logger.info("Loading patches")
-
-            val patches = loadPatchesFromJar(patchesFiles)
-
-            // endregion
 
             // region Parse options JSON
 
             val patchOptionsFile = optionsFilePath?.let { file ->
-                if (!file.exists()) {
-                    throw CommandLine.ParameterException(
-                        spec.commandLine(),
-                        "Options file ${file.path} does not exist",
-                    )
-                }
                 logger.info("Reading options from ${file.path}")
                 Json.decodeFromString<PatchOptionsFile>(file.readText())
             }
@@ -597,7 +601,6 @@ internal object PatchCommand : Callable<Int> {
             // Auto-update options JSON file
             if (optionsFilePath != null && !skipOptionsUpdate) {
                 try {
-                    val patches = loadPatchesFromJar(patchesFiles)
                     val currentOptionsFile = optionsFilePath!!.let { file ->
                         if (file.exists()) {
                             Json.decodeFromString<PatchOptionsFile>(file.readText())
