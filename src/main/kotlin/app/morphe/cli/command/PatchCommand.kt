@@ -436,7 +436,8 @@ internal object PatchCommand : Callable<Int> {
                     inputApk,
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
-                    patcherTemporaryFilesPath.absolutePath
+                    patcherTemporaryFilesPath.absolutePath,
+                    true,
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName

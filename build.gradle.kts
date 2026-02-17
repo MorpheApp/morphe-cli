@@ -52,7 +52,7 @@ val strippedApkEditorLib by tasks.registering(org.gradle.jvm.tasks.Jar::class) {
 }
 
 dependencies {
-    implementation(libs.morphe.patcher)
+    api(libs.morphe.patcher)
     implementation(libs.morphe.library)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
