@@ -327,14 +327,6 @@ internal object PatchCommand : Callable<Int> {
         var mergedApkToCleanup: File? = null
 
         try {
-            // region Load patches
-
-            logger.info("Loading patches")
-
-            val patches = loadPatchesFromJar(patchesFiles)
-
-            // endregion
-
             val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
 
             // Checking if the file is in apkm format (like reddit)
@@ -363,7 +355,7 @@ internal object PatchCommand : Callable<Int> {
                     inputApk,
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
-                    patcherTemporaryFilesPath.absolutePath,
+                    patcherTemporaryFilesPath.absolutePath
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
@@ -372,22 +364,30 @@ internal object PatchCommand : Callable<Int> {
                 patchingResult.packageName = packageName
                 patchingResult.packageVersion = packageVersion
 
-                val filteredPatches = patches.filterPatchSelection(packageName, packageVersion)
+                // region Load patches
 
-                logger.info("Setting patch options")
+                logger.info("Loading patches")
 
-                val patchesList = patches.toList()
-                selection.filter { it.enabled != null }.associate {
-                    val enabledSelection = it.enabled!!
+                // endregion
 
-                    val resolvedName = enabledSelection.selector.name?.let { userInput ->
-                        patchesList.firstOrNull { it.name.equals(userInput, ignoreCase = true) }?.name ?: userInput
-                    } ?: patchesList[enabledSelection.selector.index!!].name!!
+                loadPatchesFromJar(patchesFiles).let { patches ->
+                    val filteredPatches = patches.filterPatchSelection(packageName, packageVersion)
 
-                    resolvedName to enabledSelection.options
-                }.let(filteredPatches::setOptions)
+                    logger.info("Setting patch options")
 
-                patcher += filteredPatches
+                    val patchesList = patches.toList()
+                    selection.filter { it.enabled != null }.associate {
+                        val enabledSelection = it.enabled!!
+
+                        val resolvedName = enabledSelection.selector.name?.let { userInput ->
+                            patchesList.firstOrNull { it.name.equals(userInput, ignoreCase = true) }?.name ?: userInput
+                        } ?: patchesList[enabledSelection.selector.index!!].name!!
+
+                        resolvedName to enabledSelection.options
+                    }.let(filteredPatches::setOptions)
+
+                    patcher += filteredPatches
+                }
 
                 // Execute patches.
                 patchingResult.addStepResult(

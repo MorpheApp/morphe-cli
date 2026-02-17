@@ -79,6 +79,10 @@ tasks {
         testLogging {
             events("PASSED", "SKIPPED", "FAILED")
         }
+        // Set heap size to 512 MB to check for OOM conditions.
+        minHeapSize = "512m"
+        maxHeapSize = "512m"
+        jvmArgs("-XX:+HeapDumpOnOutOfMemoryError")
     }
 
     processResources {
