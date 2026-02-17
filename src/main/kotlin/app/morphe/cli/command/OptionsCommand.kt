@@ -1,5 +1,7 @@
 package app.morphe.cli.command
 
+import app.morphe.cli.command.model.PatchOptionsFile
+import app.morphe.cli.command.model.mergeWithOptionsFile
 import app.morphe.cli.command.model.toPatchOptionsFile
 import app.morphe.patcher.patch.loadPatchesFromJar
 import kotlinx.serialization.json.Json
@@ -67,15 +69,38 @@ internal object OptionsCommand : Callable<Int> {
                 }.toSet()
             } ?: patches
 
-            val patchOptionsFile = filtered.toPatchOptionsFile(
-                sourcePatches = patchesFiles.joinToString(", ") { it.name }
+            val sourcePatchesName = patchesFiles.joinToString(", ") { it.name }
+
+            // Merge with existing file if it exists, otherwise create fresh
+            val existing = if (outputFile.exists()) {
+                try {
+                    Json.decodeFromString<PatchOptionsFile>(outputFile.readText())
+                } catch (e: Exception) {
+                    logger.warning("Could not parse existing file, creating fresh: ${e.message}")
+                    null
+                }
+            } else null
+
+            val patchOptionsFile = filtered.mergeWithOptionsFile(
+                existing = existing,
+                sourcePatches = sourcePatchesName,
             )
             val jsonString = json.encodeToString(patchOptionsFile)
 
             outputFile.absoluteFile.parentFile?.mkdirs()
             outputFile.writeText(jsonString)
 
-            logger.info("Exported ${patchOptionsFile.patches.size} patches to ${outputFile.path}")
+            if (existing != null) {
+                val existingNames = existing.patches.keys.map { it.lowercase() }.toSet()
+                val newNames = patchOptionsFile.patches.keys.map { it.lowercase() }.toSet()
+                val added = newNames - existingNames
+                val removed = existingNames - newNames
+                val kept = newNames.intersect(existingNames)
+                logger.info("Updated existing options file at ${outputFile.path}")
+                logger.info("  ${kept.size} patch(es) preserved, ${added.size} added, ${removed.size} removed")
+            } else {
+                logger.info("Created new options file at ${outputFile.path} with ${patchOptionsFile.patches.size} patches")
+            }
 
             EXIT_CODE_SUCCESS
         } catch (e: Exception) {

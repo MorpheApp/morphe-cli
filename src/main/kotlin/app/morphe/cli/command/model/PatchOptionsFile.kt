@@ -63,6 +63,84 @@ fun Set<Patch<*>>.toPatchOptionsFile(sourcePatches: String? = null): PatchOption
 }
 
 /**
+ * Merges patches from the current .mpp with an existing [PatchOptionsFile].
+ * - Patches that exist in both: preserves user's enabled/disabled and option values.
+ * - New patches (in .mpp but not in existing): added with defaults.
+ * - Removed patches (in existing but not in .mpp): dropped.
+ * - New option keys within existing patches: added with defaults.
+ * - Removed option keys: dropped.
+ *
+ * @param existing the existing options file to merge with, or null to create fresh.
+ * @param sourcePatches name(s) of the source .mpp file(s).
+ */
+@OptIn(ExperimentalSerializationApi::class)
+fun Set<Patch<*>>.mergeWithOptionsFile(
+    existing: PatchOptionsFile?,
+    sourcePatches: String? = null,
+): PatchOptionsFile {
+    val entries = this
+        .filter { it.name != null }
+        .associate { patch ->
+            val patchName = patch.name!!
+            val existingEntry = existing?.patches?.entries
+                ?.firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
+
+            val updatedOptions = patch.options.keys.associateWith { key ->
+                existingEntry?.options?.get(key)
+                    ?: PatchSerializer.serializeValue(patch.options[key].default)
+            }
+
+            patchName to PatchEntry(
+                enabled = existingEntry?.enabled ?: patch.use,
+                options = updatedOptions,
+            )
+        }
+
+    return PatchOptionsFile(
+        createdAt = existing?.createdAt ?: now(),
+        updatedAt = if (existing != null) now() else null,
+        sourcePatches = sourcePatches,
+        patches = entries,
+    )
+}
+
+/**
+ * Merges a [PatchOptionsFile] (representing current .mpp defaults) with an existing user options file.
+ * Same merge logic as [Set<Patch<*>>.mergeWithOptionsFile] but operates on lightweight
+ * [PatchOptionsFile] objects instead of heavy [Patch] objects that hold DEX classloaders.
+ *
+ * @param existing the existing user options file to merge with, or null to return this as-is.
+ * @param sourcePatches name(s) of the source .mpp file(s).
+ */
+fun PatchOptionsFile.mergeWith(
+    existing: PatchOptionsFile?,
+    sourcePatches: String? = null,
+): PatchOptionsFile {
+    if (existing == null) return this.copy(sourcePatches = sourcePatches)
+
+    val entries = this.patches.map { (patchName, defaultEntry) ->
+        val existingEntry = existing.patches.entries
+            .firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
+
+        val updatedOptions = defaultEntry.options.keys.associateWith { key ->
+            existingEntry?.options?.get(key) ?: defaultEntry.options[key]!!
+        }
+
+        patchName to PatchEntry(
+            enabled = existingEntry?.enabled ?: defaultEntry.enabled,
+            options = updatedOptions,
+        )
+    }.toMap()
+
+    return PatchOptionsFile(
+        createdAt = existing.createdAt ?: this.createdAt,
+        updatedAt = now(),
+        sourcePatches = sourcePatches,
+        patches = entries,
+    )
+}
+
+/**
  * Deserializes a [JsonElement] to a typed value based on the option's [KType].
  */
 fun deserializeOptionValue(element: JsonElement, type: KType): Any? {
