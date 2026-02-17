@@ -293,11 +293,11 @@ internal object PatchCommand : Callable<Int> {
     private var optionsFilePath: File? = null
 
     @CommandLine.Option(
-        names = ["--options-skip-update"],
-        description = ["Don't auto-update the options JSON file after patching."],
+        names = ["--options-update"],
+        description = ["Auto-update the options JSON file after patching to reflect the current patches. Without this flag, the file is left unchanged."],
         showDefaultValue = ALWAYS,
     )
-    private var skipOptionsUpdate: Boolean = false
+    private var updateOptions: Boolean = false
 
     override fun call(): Int {
         // region Setup
@@ -363,7 +363,9 @@ internal object PatchCommand : Callable<Int> {
                     Json.decodeFromString<PatchOptionsFile>(file.readText())
                 } else {
                     logger.info("Options file ${file.path} does not exist, generating with defaults")
-                    val generated = patches.toPatchOptionsFile()
+                    val generated = patches.toPatchOptionsFile(
+                        sourcePatches = patchesFiles.joinToString(", ") { it.name }
+                    )
                     val json = Json { prettyPrint = true }
                     file.absoluteFile.parentFile?.mkdirs()
                     file.writeText(json.encodeToString(generated))
@@ -602,7 +604,7 @@ internal object PatchCommand : Callable<Int> {
             }
 
             // Auto-update options JSON file
-            if (optionsFilePath != null && !skipOptionsUpdate) {
+            if (optionsFilePath != null && updateOptions) {
                 try {
                     val currentOptionsFile = optionsFilePath!!.let { file ->
                         if (file.exists()) {
@@ -635,7 +637,12 @@ internal object PatchCommand : Callable<Int> {
                             )
                         }
 
-                    val updatedFile = PatchOptionsFile(patches = updatedEntries)
+                    val updatedFile = PatchOptionsFile(
+                        createdAt = currentOptionsFile?.createdAt,
+                        updatedAt = java.time.Instant.now().toString(),
+                        sourcePatches = patchesFiles.joinToString(", ") { it.name },
+                        patches = updatedEntries,
+                    )
                     val json = Json { prettyPrint = true }
                     optionsFilePath!!.writeText(json.encodeToString(updatedFile))
                     logger.info("Updated options file ${optionsFilePath!!.path}")

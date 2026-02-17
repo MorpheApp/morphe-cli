@@ -67,7 +67,9 @@ internal object OptionsCommand : Callable<Int> {
                 }.toSet()
             } ?: patches
 
-            val patchOptionsFile = filtered.toPatchOptionsFile()
+            val patchOptionsFile = filtered.toPatchOptionsFile(
+                sourcePatches = patchesFiles.joinToString(", ") { it.name }
+            )
             val jsonString = json.encodeToString(patchOptionsFile)
 
             outputFile.absoluteFile.parentFile?.mkdirs()

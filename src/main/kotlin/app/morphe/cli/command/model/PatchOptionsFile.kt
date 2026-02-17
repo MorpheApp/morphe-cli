@@ -2,6 +2,7 @@ package app.morphe.cli.command.model
 
 import app.morphe.patcher.patch.Patch
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -14,9 +15,18 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @Serializable
 data class PatchOptionsFile(
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("updated_at")
+    val updatedAt: String? = null,
+    @SerialName("source_patches")
+    val sourcePatches: String? = null,
     val patches: Map<String, PatchEntry>,
 )
 
@@ -26,11 +36,15 @@ data class PatchEntry(
     val options: Map<String, JsonElement> = emptyMap(),
 )
 
+private fun now(): String = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
+
 /**
  * Converts a set of loaded patches to a [PatchOptionsFile] for JSON export.
+ *
+ * @param sourcePatches optional name(s) of the source .mpp file(s) used to generate this file.
  */
 @OptIn(ExperimentalSerializationApi::class)
-fun Set<Patch<*>>.toPatchOptionsFile(): PatchOptionsFile {
+fun Set<Patch<*>>.toPatchOptionsFile(sourcePatches: String? = null): PatchOptionsFile {
     val entries = this
         .filter { it.name != null }
         .associate { patch ->
@@ -41,7 +55,11 @@ fun Set<Patch<*>>.toPatchOptionsFile(): PatchOptionsFile {
                 },
             )
         }
-    return PatchOptionsFile(patches = entries)
+    return PatchOptionsFile(
+        createdAt = now(),
+        sourcePatches = sourcePatches,
+        patches = entries,
+    )
 }
 
 /**
