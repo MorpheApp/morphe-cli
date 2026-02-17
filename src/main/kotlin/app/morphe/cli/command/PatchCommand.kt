@@ -293,7 +293,7 @@ internal object PatchCommand : Callable<Int> {
     private var optionsFilePath: File? = null
 
     @CommandLine.Option(
-        names = ["--skip-options-update"],
+        names = ["--options-skip-update"],
         description = ["Don't auto-update the options JSON file after patching."],
         showDefaultValue = ALWAYS,
     )

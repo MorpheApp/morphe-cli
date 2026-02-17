@@ -7,7 +7,7 @@ You can list patches, patch an app, uninstall, and install an app.
 ## 🚀 Show all commands
 
 ```bash
-java -jar morphe-cli.jar -h
+java -jar morphe-cli.jar --help
 ```
 
 ## 📃 List patches
@@ -21,13 +21,7 @@ java -jar morphe-cli.jar list-patches --with-packages --with-versions --with-opt
 To patch an app using the default list of patches, use the `patch` command:
 
 ```bash
-java -jar morphe-cli.jar patch -p patches.mpp input.apk
-```
-
-You can also use multiple MPP files:
-
-```bash
-java -jar morphe-cli.jar patch -p patches.mpp -p another-patches.mpp input.apk
+java -jar morphe-cli.jar patch --patches patches.mpp input.apk
 ```
 
 To change the default set of enabled or disabled patches, use the option `-e` or `-d` to enable or disable specific patches.
@@ -37,7 +31,7 @@ To only enable specific patches, you can use the option `--exclusive` combined w
 Remember that the options `-e` and `-d` match the patch's name exactly. Here is an example:
 
 ```bash
-java -jar morphe-cli.jar patch -p patches.mpp --exclusive -e "Patch name" -e "Another patch name" input.apk
+java -jar morphe-cli.jar patch --patches patches.mpp --exclusive -e "Patch name" -e "Another patch name" input.apk
 ```
 
 You can also use the options `--ei` or `--di` to enable or disable patches by their index.
@@ -51,13 +45,13 @@ java -jar morphe-cli.jar list-patches patches.mpp
 Then you can use the indices to enable or disable patches:
 
 ```bash
-java -jar morphe-cli.jar patch -p patches.mpp --ei 123 --di 456 input.apk
+java -jar morphe-cli.jar patch --patches patches.mpp --ei 123 --di 456 input.apk
 ```
 
 You can combine the option `-e`, `-d`, `--ei`, `--di` and `--exclusive`. Here is an example:
 
 ```bash
-java -jar morphe-cli.jar patch -p patches.mpp --exclusive -e "Patch name" --ei 123 input.apk
+java -jar morphe-cli.jar patch --patches patches.mpp --exclusive -e "Patch name" --ei 123 input.apk
 ```
 
 
@@ -79,6 +73,8 @@ java -jar morphe-cli.jar patch -p patches.mpp --exclusive -e "Patch name" --ei 1
 > adb install input.apk
 > ```
 
+## 📃 Patch options
+
 Patches can have options you can set using the option `-O` alongside the option to include the patch by name or index.
 To know the options of a patch, use the option `--with-options` when listing patches:
 
@@ -91,14 +87,29 @@ For example, to set the options for the patch with the name `Patch name`
 with the key `key1` and `key2` to `value1` and `value2` respectively, use the following command:
 
 ```bash
-java -jar morphe-cli.jar patch -p patches.mpp -e "Patch name" -Okey1=value1 -Okey2=value2 input.apk
+java -jar morphe-cli.jar patch --patches patches.mpp -e "Patch name" -Okey1=value1 -Okey2=value2 input.apk
 ```
 
 If you want to set the option value to `null`, you can omit the value:
 
 ```bash
-java -jar morphe-cli.jar patch -p patches.mpp -i "Patch name" -Okey1 input.apk
+java -jar morphe-cli.jar patch --patches patches.mpp -i "Patch name" -Okey1 input.apk
 ```
+
+## 📃 Patch option json
+
+Generate a template patch options file:
+```bash
+java -jar morphe-cli.jar options --patches patches.mpp options-create --out options.json
+```
+
+After modifying the json file to include/exclude patches or set any patch options, use the file with `--options-file`:
+```bash
+java -jar morphe-cli.jar patch --patches patches.mpp --options-file options.json input.apk
+```
+
+
+## 📃 List patches
 
 > [!WARNING]
 > Option values are usually typed. If you set a value with the wrong type, the patch can fail.
@@ -131,7 +142,7 @@ java -jar morphe-cli.jar patch -p patches.mpp -i "Patch name" -Okey1 input.apk
 > Example command with an escaped integer as a string:
 > 
 > ```bash
-> java -jar morphe-cli.jar -p patches.mpp -e "Patch name" -OstringKey=\'1\' input.apk
+> java -jar morphe-cli.jar --patches patches.mpp -e "Patch name" -OstringKey=\'1\' input.apk
 > ```
 ## 📦 Install an app manually 
 

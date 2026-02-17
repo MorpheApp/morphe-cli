@@ -12,8 +12,8 @@ import java.util.concurrent.Callable
 import java.util.logging.Logger
 
 @Command(
-    name = "options",
-    description = ["Export patches and their options from MPP files to a JSON file."],
+    name = "options-create",
+    description = ["Create an options JSON file for the patches and options."],
 )
 internal object OptionsCommand : Callable<Int> {
 
