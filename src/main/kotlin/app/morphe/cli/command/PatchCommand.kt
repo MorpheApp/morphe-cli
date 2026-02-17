@@ -8,6 +8,7 @@ import app.morphe.cli.command.model.PatchingStep
 import app.morphe.cli.command.model.addStepResult
 import app.morphe.cli.command.model.PatchSerializer
 import app.morphe.cli.command.model.deserializeOptionValue
+import app.morphe.cli.command.model.toPatchOptionsFile
 import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.gui.util.ApkLibraryStripper
 import app.morphe.library.ApkUtils
@@ -286,14 +287,6 @@ internal object PatchCommand : Callable<Int> {
     )
     @Suppress("unused")
     private fun setOptionsFilePath(optionsFilePath: File?) {
-        optionsFilePath?.let {
-            if (!it.exists()) {
-                throw CommandLine.ParameterException(
-                    spec.commandLine(),
-                    "Options file ${it.path} does not exist",
-                )
-            }
-        }
         this.optionsFilePath = optionsFilePath
     }
 
@@ -365,8 +358,18 @@ internal object PatchCommand : Callable<Int> {
             // region Parse options JSON
 
             val patchOptionsFile = optionsFilePath?.let { file ->
-                logger.info("Reading options from ${file.path}")
-                Json.decodeFromString<PatchOptionsFile>(file.readText())
+                if (file.exists()) {
+                    logger.info("Reading options from ${file.path}")
+                    Json.decodeFromString<PatchOptionsFile>(file.readText())
+                } else {
+                    logger.info("Options file ${file.path} does not exist, generating with defaults")
+                    val generated = patches.toPatchOptionsFile()
+                    val json = Json { prettyPrint = true }
+                    file.absoluteFile.parentFile?.mkdirs()
+                    file.writeText(json.encodeToString(generated))
+                    logger.info("Generated options file at ${file.path}")
+                    generated
+                }
             }
 
             // Build enable/disable sets from JSON (lowercase for case-insensitive matching)
