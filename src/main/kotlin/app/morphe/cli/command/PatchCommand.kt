@@ -411,39 +411,6 @@ internal object PatchCommand : Callable<Int> {
 
             // endregion
 
-            // Warn if options file is out of date with the current patches
-            if (patchOptionsFile != null && optionsFilePath?.exists() == true && !updateOptions) {
-                val jsonPatchNames = patchOptionsFile.patches.keys.map { it.lowercase() }.toSet()
-                val mppPatchNames = patchesSnapshot.patches.keys.map { it.lowercase() }.toSet()
-
-                val newPatches = mppPatchNames - jsonPatchNames
-                val removedPatches = jsonPatchNames - mppPatchNames
-
-                // Check for new option keys within existing patches
-                var patchesWithNewOptions = 0
-                for ((patchName, snapshotEntry) in patchesSnapshot.patches) {
-                    val jsonEntry = patchOptionsFile.patches.entries
-                        .firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
-                        ?: continue
-                    val newOptionKeys = snapshotEntry.options.keys - jsonEntry.options.keys
-                    if (newOptionKeys.isNotEmpty()) patchesWithNewOptions++
-                }
-
-                if (newPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions > 0) {
-                    logger.warning("Your options file is out of date with the current patches:")
-                    if (newPatches.isNotEmpty()) {
-                        logger.warning("  ${newPatches.size} new patch(es) not in your options file (will use defaults)")
-                    }
-                    if (removedPatches.isNotEmpty()) {
-                        logger.warning("  ${removedPatches.size} patch(es) in your options file no longer exist (will be ignored)")
-                    }
-                    if (patchesWithNewOptions > 0) {
-                        logger.warning("  $patchesWithNewOptions patch(es) have new options not in your file (will use defaults)")
-                    }
-                    logger.warning("  Run with --options-update to sync, or use 'options-create' to regenerate.")
-                }
-            }
-
             val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
 
             // Checking if the file is in apkm format (like reddit)
@@ -480,6 +447,46 @@ internal object PatchCommand : Callable<Int> {
 
                 patchingResult.packageName = packageName
                 patchingResult.packageVersion = packageVersion
+
+                // Warn if options file is out of date (only for patches compatible with this app)
+                if (patchOptionsFile != null && optionsFilePath?.exists() == true && !updateOptions) {
+                    val compatiblePatchNames = patches
+                        .filter { patch ->
+                            patch.compatiblePackages == null ||
+                                patch.compatiblePackages!!.any { (name, _) -> name == packageName }
+                        }
+                        .mapNotNull { it.name?.lowercase() }
+                        .toSet()
+                    val jsonPatchNames = patchOptionsFile.patches.keys.map { it.lowercase() }.toSet()
+
+                    val newPatches = compatiblePatchNames - jsonPatchNames
+                    val removedPatches = jsonPatchNames - compatiblePatchNames
+
+                    // Check for new option keys within existing patches
+                    var patchesWithNewOptions = 0
+                    for ((patchName, snapshotEntry) in patchesSnapshot.patches) {
+                        if (patchName.lowercase() !in compatiblePatchNames) continue
+                        val jsonEntry = patchOptionsFile.patches.entries
+                            .firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
+                            ?: continue
+                        val newOptionKeys = snapshotEntry.options.keys - jsonEntry.options.keys
+                        if (newOptionKeys.isNotEmpty()) patchesWithNewOptions++
+                    }
+
+                    if (newPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions > 0) {
+                        logger.warning("Your options file is out of date with the current patches:")
+                        if (newPatches.isNotEmpty()) {
+                            logger.warning("  ${newPatches.size} new patch(es) not in your options file (will use defaults)")
+                        }
+                        if (removedPatches.isNotEmpty()) {
+                            logger.warning("  ${removedPatches.size} patch(es) in your options file no longer exist (will be ignored)")
+                        }
+                        if (patchesWithNewOptions > 0) {
+                            logger.warning("  $patchesWithNewOptions patch(es) have new options not in your file (will use defaults)")
+                        }
+                        logger.warning("  Run with --options-update to sync, or use 'options-create' to regenerate.")
+                    }
+                }
 
                 val filteredPatches = patches.filterPatchSelection(
                     packageName,
