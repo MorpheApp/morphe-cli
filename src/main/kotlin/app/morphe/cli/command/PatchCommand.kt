@@ -26,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToStream
+import org.jetbrains.annotations.VisibleForTesting
 import picocli.CommandLine
 import picocli.CommandLine.ArgGroup
 import picocli.CommandLine.Help.Visibility.ALWAYS
@@ -38,6 +39,7 @@ import java.util.concurrent.Callable
 import java.util.logging.Logger
 
 @OptIn(ExperimentalSerializationApi::class)
+@VisibleForTesting
 @CommandLine.Command(
     name = "patch",
     description = ["Patch an APK file."],
@@ -249,7 +251,7 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["--custom-aapt2-binary"],
-        description = ["Path to a custom AAPT binary to compile resources with."],
+        description = ["Path to a custom AAPT binary to compile resources with. Only valid when --use-arsclib is not specified."],
     )
     @Suppress("unused")
     private fun setAaptBinaryPath(aaptBinaryPath: File) {
@@ -261,6 +263,13 @@ internal object PatchCommand : Callable<Int> {
         }
         this.aaptBinaryPath = aaptBinaryPath
     }
+
+    @CommandLine.Option(
+        names = ["--use-arsclib"],
+        description = ["Use arsclib instead of apktool to compile resources."],
+        showDefaultValue = ALWAYS,
+    )
+    private var useArsclib: Boolean = false
 
     @CommandLine.Option(
         names = ["--unsigned"],
@@ -437,7 +446,7 @@ internal object PatchCommand : Callable<Int> {
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
                     patcherTemporaryFilesPath.absolutePath,
-                    true,
+                    useArsclib,
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName

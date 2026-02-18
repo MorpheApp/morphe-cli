@@ -61,6 +61,7 @@ dependencies {
     implementation(files(strippedApkEditorLib))
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.params)
 }
 
 kotlin {
