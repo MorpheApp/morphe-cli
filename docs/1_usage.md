@@ -98,14 +98,20 @@ java -jar morphe-cli.jar patch --patches patches.mpp -i "Patch name" -Okey1 inpu
 
 ## 📃 Patch option json
 
-Generate a template patch options file:
+Generate a template patch options file, or update your existing file (remove invalid json, add missing json):
 ```bash
-java -jar morphe-cli.jar options --patches patches.mpp options-create --out options.json
+java -jar morphe-cli.jar options-create --patches patches.mpp --out options.json
 ```
 
 After modifying the json file to include/exclude patches or set any patch options, use the file with `--options-file`:
 ```bash
 java -jar morphe-cli.jar patch --patches patches.mpp --options-file options.json input.apk
+```
+
+To patch with an options.json and update the json (same functionality as `options-create` above),
+then add parameter `--options-update`:
+```bash
+java -jar morphe-cli.jar patch --patches patches.mpp --options-file options.json --options-update input.apk
 ```
 
 

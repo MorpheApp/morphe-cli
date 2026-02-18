@@ -101,7 +101,7 @@ internal object OptionsCommand : Callable<Int> {
                 val removed = existingNames - newNames
                 val kept = newNames.intersect(existingNames)
                 logger.info("Updated bundle in options file at ${outputFile.path}")
-                logger.info("  ${kept.size} patch(es) preserved, ${added.size} added, ${removed.size} removed")
+                logger.info("  ${kept.size} patches preserved, ${added.size} added, ${removed.size} removed")
             } else {
                 logger.info("Created new bundle in options file at ${outputFile.path} with ${updatedBundle.patches.size} patches")
             }

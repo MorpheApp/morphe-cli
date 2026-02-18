@@ -473,15 +473,15 @@ internal object PatchCommand : Callable<Int> {
                     if (newPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions > 0) {
                         logger.warning("Your options file is out of date with the current patches:")
                         if (newPatches.isNotEmpty()) {
-                            logger.warning("  ${newPatches.size} new patch(es) not in your options file (will use defaults)")
+                            logger.warning("  ${newPatches.size} new patches not in your options file, default patch values will be applied")
                         }
                         if (removedPatches.isNotEmpty()) {
-                            logger.warning("  ${removedPatches.size} patch(es) in your options file no longer exist (will be ignored)")
+                            logger.warning("  ${removedPatches.size} patches in your options file no longer exist and will be ignored")
                         }
                         if (patchesWithNewOptions > 0) {
-                            logger.warning("  $patchesWithNewOptions patch(es) have new options not in your file (will use defaults)")
+                            logger.warning("  $patchesWithNewOptions patches have new options not in your file, default patch values will be applied")
                         }
-                        logger.warning("  Run with --options-update to sync, or use 'options-create' to regenerate.")
+                        logger.warning("  Use --options-update parameter to sync, or use 'options-create' command to regenerate.")
                     }
                 }
 
