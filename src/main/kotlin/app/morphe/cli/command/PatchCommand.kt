@@ -454,10 +454,14 @@ internal object PatchCommand : Callable<Int> {
                         }
                         .mapNotNull { it.name?.lowercase() }
                         .toSet()
+                    // All patch names in the .mpp regardless of app compatibility.
+                    // Used for "removed" detection: a patch is only truly removed if it's
+                    // gone from the .mpp entirely, not just incompatible with this app.
+                    val allMppPatchNames = patches.mapNotNull { it.name?.lowercase() }.toSet()
                     val jsonPatchNames = patchOptionsBundle.patches.keys.map { it.lowercase() }.toSet()
 
                     val newPatches = compatiblePatchNames - jsonPatchNames
-                    val removedPatches = jsonPatchNames - compatiblePatchNames
+                    val removedPatches = jsonPatchNames - allMppPatchNames
 
                     // Check for new option keys within existing patches
                     var patchesWithNewOptions = 0
