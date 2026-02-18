@@ -1,3 +1,11 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ *
+ * Original hard forked code:
+ * https://github.com/revanced/revanced-cli
+ */
+
 package app.morphe.cli.command
 
 import app.morphe.cli.command.model.FailedPatch
@@ -265,11 +273,11 @@ internal object PatchCommand : Callable<Int> {
     }
 
     @CommandLine.Option(
-        names = ["--use-arsclib"],
-        description = ["Use arsclib instead of apktool to compile resources."],
+        names = ["--force-apktool"],
+        description = ["Use apktool instead of arsclib to compile resources. Implied if --custom-aapt2-binary is specified."],
         showDefaultValue = ALWAYS,
     )
-    private var useArsclib: Boolean = false
+    private var forceApktool: Boolean = false
 
     @CommandLine.Option(
         names = ["--unsigned"],
@@ -446,7 +454,7 @@ internal object PatchCommand : Callable<Int> {
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
                     patcherTemporaryFilesPath.absolutePath,
-                    useArsclib,
+                    if (aaptBinaryPath != null) { false } else { !forceApktool },
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
