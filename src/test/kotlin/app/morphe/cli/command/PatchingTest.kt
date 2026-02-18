@@ -17,7 +17,7 @@ class PatchingTest {
     private val logger = Logger.getLogger(PatchingTest::class.java.name)
 
     @ParameterizedTest
-    @ValueSource(booleans = [false, true])
+    @ValueSource(booleans = [true, false])
     fun `patch example apk`(useArsclib: Boolean) {
         val apkFileStream = javaClass.getResourceAsStream("/nowinandroid-apk")
         val patchesFileStream = javaClass.getResourceAsStream("/patches.mpp")
@@ -73,8 +73,8 @@ class PatchingTest {
             apkFile.absolutePath
         )
 
-        if (useArsclib) {
-            args += "--use-arsclib"
+        if (!useArsclib) {
+            args += "--force-apktool"
         }
 
         return CommandLine(MainCommand).execute(*args)
