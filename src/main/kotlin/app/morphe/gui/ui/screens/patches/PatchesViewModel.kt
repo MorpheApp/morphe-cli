@@ -1,6 +1,6 @@
 package app.morphe.gui.ui.screens.patches
 
-import app.morphe.cli.command.model.toPatchOptionsFile
+import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.patcher.patch.loadPatchesFromJar
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
@@ -300,10 +300,10 @@ class PatchesViewModel(
             try {
                 withContext(Dispatchers.IO) {
                     val patches = loadPatchesFromJar(setOf(patchFile))
-                    val patchOptionsFile = patches.toPatchOptionsFile()
+                    val bundle = patches.toPatchBundle(sourceFiles = setOf(patchFile))
                     val json = Json { prettyPrint = true }
                     outputFile.parentFile?.mkdirs()
-                    outputFile.writeText(json.encodeToString(patchOptionsFile))
+                    outputFile.writeText(json.encodeToString(listOf(bundle)))
                 }
                 Logger.info("Exported ${_uiState.value.downloadedPatchFile?.name} options to ${outputFile.path}")
             } catch (e: Exception) {
