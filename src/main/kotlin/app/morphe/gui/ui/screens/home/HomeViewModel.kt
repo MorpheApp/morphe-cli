@@ -58,6 +58,12 @@ class HomeViewModel(
                 val releases = releasesResult.getOrNull()
 
                 if (releases.isNullOrEmpty()) {
+                    // Try to fall back to cached .mpp file when offline
+                    val offlinePatchFile = findCachedPatchFile(savedVersion)
+                    if (offlinePatchFile != null) {
+                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile), latestVersion = null)
+                        return@launch
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
                         patchLoadError = "Could not fetch patches: ${releasesResult.exceptionOrNull()?.message}"
@@ -129,6 +135,7 @@ class HomeViewModel(
 
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
+                    isOffline = false,
                     supportedApps = supportedApps,
                     patchesVersion = release.tagName,
                     latestPatchesVersion = latestVersion,
@@ -136,12 +143,88 @@ class HomeViewModel(
                 )
             } catch (e: Exception) {
                 Logger.error("Failed to load patches and supported apps", e)
+                // Try to fall back to cached .mpp file
+                val config = configRepository.loadConfig()
+                val offlinePatchFile = findCachedPatchFile(config.lastPatchesVersion)
+                if (offlinePatchFile != null) {
+                    try {
+                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile), latestVersion = null)
+                        return@launch
+                    } catch (inner: Exception) {
+                        Logger.error("Failed to load cached patches fallback", inner)
+                    }
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
                     patchLoadError = e.message ?: "Unknown error"
                 )
             }
         }
+    }
+
+    /**
+     * Find any cached .mpp file when offline.
+     * Prefers the file matching savedVersion from config.
+     */
+    private fun findCachedPatchFile(savedVersion: String?): File? {
+        val patchesDir = FileUtils.getPatchesDir()
+        val mppFiles = patchesDir.listFiles { file -> file.extension.equals("mpp", ignoreCase = true) }
+            ?.filter { it.length() > 0 }
+            ?: return null
+
+        if (mppFiles.isEmpty()) return null
+
+        return if (savedVersion != null) {
+            // Strip "v" prefix — savedVersion is "v1.13.0" but filenames are "patches-1.13.0.mpp"
+            val versionNumber = savedVersion.removePrefix("v")
+            mppFiles.firstOrNull { it.name.contains(versionNumber, ignoreCase = true) }
+                ?: mppFiles.maxByOrNull { it.lastModified() }
+        } else {
+            mppFiles.maxByOrNull { it.lastModified() }
+        }
+    }
+
+    /**
+     * Extract a version string from an .mpp filename (e.g. "morphe-patches-1.3.0.mpp" -> "v1.3.0").
+     */
+    private fun versionFromFilename(file: File): String {
+        val name = file.nameWithoutExtension
+        // Try to find a version pattern like 1.2.3 or v1.2.3
+        val match = Regex("""v?(\d+\.\d+\.\d+[^\s]*)""").find(name)
+        return match?.value ?: name
+    }
+
+    /**
+     * Load patches from a local .mpp file and update UI state.
+     * Used as fallback when offline with cached patches.
+     */
+    private suspend fun loadPatchesFromFile(patchFile: File, version: String, latestVersion: String?) {
+        cachedPatchesFile = patchFile
+        lastLoadedVersion = version
+
+        val patchesResult = patchService.listPatches(patchFile.absolutePath)
+        val patches = patchesResult.getOrNull()
+
+        if (patches == null || patches.isEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                isLoadingPatches = false,
+                patchLoadError = "Could not load cached patches: ${patchesResult.exceptionOrNull()?.message}"
+            )
+            return
+        }
+
+        cachedPatches = patches
+        val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
+        Logger.info("Loaded ${supportedApps.size} supported apps from cached patches: ${patchFile.name}")
+
+        _uiState.value = _uiState.value.copy(
+            isLoadingPatches = false,
+            isOffline = true,
+            supportedApps = supportedApps,
+            patchesVersion = version,
+            latestPatchesVersion = latestVersion,
+            patchLoadError = null
+        )
     }
 
     /**
@@ -450,6 +533,7 @@ data class HomeUiState(
     val isAnalyzing: Boolean = false,
     // Dynamic patches data
     val isLoadingPatches: Boolean = true,
+    val isOffline: Boolean = false,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
     val latestPatchesVersion: String? = null,  // Track the latest available version

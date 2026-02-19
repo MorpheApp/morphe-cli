@@ -2,6 +2,9 @@ package app.morphe.gui.ui.screens.patches
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,7 +34,10 @@ import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
+import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.theme.MorpheColors
+import java.awt.FileDialog
+import java.awt.Frame
 import java.io.File
 
 /**
@@ -129,14 +135,24 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Channel selector
-            ChannelSelector(
-                selectedChannel = uiState.selectedChannel,
-                onChannelSelected = { viewModel.setChannel(it) },
-                stableCount = uiState.stableReleases.size,
-                devCount = uiState.devReleases.size,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+            // Channel selector (hidden when offline)
+            if (!uiState.isOffline) {
+                ChannelSelector(
+                    selectedChannel = uiState.selectedChannel,
+                    onChannelSelected = { viewModel.setChannel(it) },
+                    stableCount = uiState.stableReleases.size,
+                    devCount = uiState.devReleases.size,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            // Offline banner
+            if (uiState.isOffline && uiState.currentReleases.isNotEmpty()) {
+                OfflineBanner(
+                    onRetry = { viewModel.loadReleases() },
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp)
+                )
+            }
 
             when {
                 uiState.isLoading -> {
@@ -159,7 +175,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
 
                 uiState.currentReleases.isEmpty() && !uiState.isLoading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -187,10 +203,15 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(uiState.currentReleases) { release ->
+                        items(
+                            items = uiState.currentReleases,
+                            key = { it.tagName }
+                        ) { release ->
                             ReleaseCard(
                                 release = release,
-                                isSelected = release == uiState.selectedRelease,
+                                isSelected = release.tagName == uiState.selectedRelease?.tagName,
+                                isDownloaded = release.tagName in uiState.cachedReleaseVersions,
+                                isOffline = uiState.isOffline,
                                 onClick = { viewModel.selectRelease(release) }
                             )
                         }
@@ -205,6 +226,17 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                             viewModel.confirmSelection()
                             // Go back to HomeScreen - the new patches file is now cached
                             navigator.pop()
+                        },
+                        onExportJsonClick = {
+                            val fileDialog = FileDialog(null as Frame?, "Export Options JSON", FileDialog.SAVE).apply {
+                                file = "options.json"
+                                isVisible = true
+                            }
+                            val directory = fileDialog.directory
+                            val file = fileDialog.file
+                            if (directory != null && file != null) {
+                                viewModel.exportOptionsJson(File(directory, file))
+                            }
                         }
                     )
                 }
@@ -296,26 +328,50 @@ private fun ChannelChip(
 private fun ReleaseCard(
     release: Release,
     isSelected: Boolean,
+    isDownloaded: Boolean,
+    isOffline: Boolean = false,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) {
-        MorpheColors.Blue.copy(alpha = 0.1f)
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    }
+    val titleColor = MaterialTheme.colorScheme.onSurface
+    val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val dateColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+    val accentColor = if (isSelected && isDownloaded) MorpheColors.Teal else MorpheColors.Blue
+    val devBadgeColor = MorpheColors.Teal
 
     var isExpanded by remember { mutableStateOf(false) }
     val hasNotes = !release.body.isNullOrBlank()
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val cardBackground = when {
+        isSelected && isDownloaded -> MorpheColors.Teal.copy(alpha = if (isHovered) 0.22f else 0.15f)
+        isSelected -> MorpheColors.Blue.copy(alpha = if (isHovered) 0.22f else 0.15f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isHovered) 0.7f else 0.25f)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() },
+        colors = CardDefaults.cardColors(containerColor = cardBackground),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            // Green ribbon for downloaded (non-selected) cards
+            if (isDownloaded && !isSelected) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(
+                            MorpheColors.Teal,
+                            RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                        )
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -332,18 +388,18 @@ private fun ReleaseCard(
                             text = release.tagName,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = titleColor
                         )
                         if (release.isDevRelease()) {
                             Surface(
-                                color = MorpheColors.Teal.copy(alpha = 0.2f),
+                                color = devBadgeColor.copy(alpha = 0.2f),
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
                                     text = "DEV",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MorpheColors.Teal,
+                                    color = devBadgeColor,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -357,24 +413,30 @@ private fun ReleaseCard(
                         Text(
                             text = "${mppAsset.name} (${mppAsset.getFormattedSize()})",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = subtitleColor
                         )
                     }
 
-                    Text(
-                        text = "Published: ${formatDate(release.publishedAt)}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                    val formattedDate = formatDate(release.publishedAt)
+                    if (formattedDate.isNotEmpty()) {
+                        Text(
+                            text = "${if (isOffline) "Cached:" else "Published:"} $formattedDate",
+                            fontSize = 12.sp,
+                            color = dateColor
+                        )
+                    }
 
                     if (hasNotes) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Surface(
-                            color = MorpheColors.Blue.copy(alpha = 0.1f),
+                            color = accentColor.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(6.dp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .clickable { isExpanded = !isExpanded }
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { isExpanded = !isExpanded }
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -385,12 +447,12 @@ private fun ReleaseCard(
                                     text = if (isExpanded) "Hide patch notes" else "Patch notes",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = MorpheColors.Blue
+                                    color = accentColor
                                 )
                                 Icon(
                                     imageVector = if (isExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
                                     contentDescription = null,
-                                    tint = MorpheColors.Blue,
+                                    tint = accentColor,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -398,14 +460,6 @@ private fun ReleaseCard(
                     }
                 }
 
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
-                        tint = MorpheColors.Blue,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
             }
 
             // Expandable release notes
@@ -417,6 +471,7 @@ private fun ReleaseCard(
                     markdown = release.body.orEmpty(),
                     modifier = Modifier.padding(16.dp)
                 )
+            }
             }
         }
     }
@@ -518,7 +573,8 @@ private fun cleanMarkdown(text: String): String {
 private fun BottomActionBar(
     uiState: PatchesUiState,
     onDownloadClick: () -> Unit,
-    onSelectClick: () -> Unit
+    onSelectClick: () -> Unit,
+    onExportJsonClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -586,18 +642,39 @@ private fun BottomActionBar(
                             fontWeight = FontWeight.Medium
                         )
                     }
+
+                    // Export JSON button / spinner
+                    if (uiState.isExporting) {
+                        Box(
+                            modifier = Modifier.height(48.dp).width(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MorpheColors.Blue,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onExportJsonClick,
+                            modifier = Modifier.height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MorpheColors.Blue
+                            ),
+                        ) {
+                            Text(
+                                text = "Export JSON",
+                                fontWeight = FontWeight.Medium,
+                                color = MorpheColors.Blue
+                            )
+                        }
+                    }
                 }
             }
 
-            // Downloaded file info
-            uiState.downloadedPatchFile?.let { file ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Downloaded: ${file.name}",
-                    fontSize = 12.sp,
-                    color = MorpheColors.Teal
-                )
-            }
         }
     }
 }

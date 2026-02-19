@@ -7,11 +7,15 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -253,7 +257,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 onQueryChange = { viewModel.setSearchQuery(it) },
                 showOnlySelected = uiState.showOnlySelected,
                 onShowOnlySelectedChange = { viewModel.setShowOnlySelected(it) },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
             // Info card about default-disabled patches
@@ -398,13 +402,14 @@ private fun SearchBar(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Search patches...") },
+            modifier = Modifier.weight(1f).height(48.dp),
+            placeholder = { Text("Search patches...", style = MaterialTheme.typography.bodySmall) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
                 )
             },
             trailingIcon = {
@@ -413,33 +418,58 @@ private fun SearchBar(
                         Icon(
                             imageVector = Icons.Default.Clear,
                             contentDescription = "Clear",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
+            textStyle = MaterialTheme.typography.bodySmall,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MorpheColors.Blue,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
             )
         )
 
-        FilterChip(
-            selected = showOnlySelected,
-            onClick = { onShowOnlySelectedChange(!showOnlySelected) },
-            label = { Text("Selected") },
-            leadingIcon = if (showOnlySelected) {
-                {
+        val chipInteractionSource = remember { MutableInteractionSource() }
+        val chipHovered by chipInteractionSource.collectIsHoveredAsState()
+        Surface(
+            modifier = Modifier
+                .hoverable(chipInteractionSource)
+                .clickable(interactionSource = chipInteractionSource, indication = null) {
+                    onShowOnlySelectedChange(!showOnlySelected)
+                },
+            shape = RoundedCornerShape(8.dp),
+            color = if (showOnlySelected) MorpheColors.Blue.copy(alpha = if (chipHovered) 0.22f else 0.12f)
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (chipHovered) 0.7f else 0.4f),
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (showOnlySelected) MorpheColors.Blue.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (showOnlySelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
+                        tint = MorpheColors.Blue,
                         modifier = Modifier.size(16.dp)
                     )
                 }
-            } else null
-        )
+                Text(
+                    text = "Selected",
+                    fontSize = 14.sp,
+                    color = if (showOnlySelected) MorpheColors.Blue else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -449,17 +479,19 @@ private fun PatchListItem(
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
     val backgroundColor = if (isSelected) {
-        MorpheColors.Blue.copy(alpha = 0.1f)
+        MorpheColors.Blue.copy(alpha = if (isHovered) 0.17f else 0.1f)
     } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isHovered) 0.5f else 0.3f)
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onToggle),
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -500,17 +532,22 @@ private fun PatchListItem(
 
                 // Show compatible packages if any
                 if (patch.compatiblePackages.isNotEmpty()) {
+                    val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         patch.compatiblePackages.take(2).forEach { pkg ->
+                            val meaningful = pkg.name.split(".").filter { it !in genericSegments }
+                            val displayName = meaningful.takeLast(2).joinToString(" ")
+                                .replaceFirstChar { it.uppercase() }
                             Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = if (isSelected) MorpheColors.Blue.copy(alpha = 0.18f)
+                                        else MaterialTheme.colorScheme.surfaceVariant,
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = pkg.name.substringAfterLast("."),
+                                    text = displayName,
                                     fontSize = 10.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -793,29 +830,45 @@ private fun ArchitectureSelectorCard(
             ) {
                 architectures.forEach { arch ->
                     val isSelected = selectedArchitectures.contains(arch)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onToggleArchitecture(arch) },
-                        label = {
+                    val archInteractionSource = remember { MutableInteractionSource() }
+                    val archHovered by archInteractionSource.collectIsHoveredAsState()
+                    Surface(
+                        modifier = Modifier
+                            .hoverable(archInteractionSource)
+                            .clickable(interactionSource = archInteractionSource, indication = null) {
+                                onToggleArchitecture(arch)
+                            },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) MorpheColors.Teal.copy(alpha = if (archHovered) 0.28f else 0.2f)
+                                else if (archHovered) MorpheColors.Teal.copy(alpha = 0.1f)
+                                else Color.Transparent,
+                        border = BorderStroke(
+                            width = 0.5.dp,
+                            color = if (isSelected) MorpheColors.Teal.copy(alpha = 0.5f)
+                                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) MorpheColors.Teal
+                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                                    )
+                            )
                             Text(
                                 text = arch,
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                color = if (isSelected) MorpheColors.Teal else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
-                        },
-                        leadingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MorpheColors.Teal.copy(alpha = 0.2f),
-                            selectedLabelColor = MorpheColors.Teal
-                        )
-                    )
+                        }
+                    }
                 }
             }
         }

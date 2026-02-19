@@ -118,7 +118,7 @@ fun ApkInfoCard(
                 // Architecture
                 InfoColumn(
                     label = "Architecture",
-                    value = formatArchitectures(apkInfo.architectures),
+                    value = if (apkInfo.architectures.isEmpty()) "Unknown" else apkInfo.architectures.joinToString(", "),
                     modifier = Modifier.weight(1f)
                 )
 
@@ -369,19 +369,19 @@ private fun VersionStatusBanner(
     }
 }
 
-private fun formatArchitectures(archs: List<String>): String {
-    if (archs.isEmpty()) return "Unknown"
-
-    // Show full architecture names for clarity
-    val formatted = archs.map { arch ->
-        when (arch) {
-            "arm64-v8a" -> "arm64-v8a"
-            "armeabi-v7a" -> "armeabi-v7a"
-            "x86_64" -> "x86_64"
-            "x86" -> "x86"
-            else -> arch
-        }
-    }
-
-    return formatted.joinToString(", ")
-}
+//private fun formatArchitectures(archs: List<String>): String {
+//    if (archs.isEmpty()) return "Unknown"
+//
+//    // Show full architecture names for clarity
+//    val formatted = archs.map { arch ->
+//        when (arch) {
+//            "arm64-v8a" -> "arm64-v8a"
+//            "armeabi-v7a" -> "armeabi-v7a"
+//            "x86_64" -> "x86_64"
+//            "x86" -> "x86"
+//            else -> arch
+//        }
+//    }
+//
+//    return formatted.joinToString(", ")
+//}

@@ -58,6 +58,13 @@ class QuickPatchViewModel(
                 val releases = releasesResult.getOrNull()
 
                 if (releases.isNullOrEmpty()) {
+                    // Try to fall back to cached .mpp file when offline
+                    val config = configRepository.loadConfig()
+                    val offlinePatchFile = findCachedPatchFile(config.lastPatchesVersion)
+                    if (offlinePatchFile != null) {
+                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile))
+                        return@launch
+                    }
                     Logger.warn("Quick mode: Could not fetch releases")
                     _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "Could not fetch releases. Check your internet connection.")
                     return@launch
@@ -106,13 +113,81 @@ class QuickPatchViewModel(
                     isLoadingPatches = false,
                     supportedApps = supportedApps,
                     patchesVersion = release.tagName,
-                    patchLoadError = null
+                    patchLoadError = null,
+                    isOffline = false
                 )
             } catch (e: Exception) {
                 Logger.error("Quick mode: Failed to load patches", e)
+                // Try to fall back to cached .mpp file
+                val config = configRepository.loadConfig()
+                val offlinePatchFile = findCachedPatchFile(config.lastPatchesVersion)
+                if (offlinePatchFile != null) {
+                    try {
+                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile))
+                        return@launch
+                    } catch (inner: Exception) {
+                        Logger.error("Quick mode: Failed to load cached patches fallback", inner)
+                    }
+                }
                 _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "Failed to load patches: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Find any cached .mpp file when offline.
+     */
+    private fun findCachedPatchFile(savedVersion: String?): File? {
+        val patchesDir = FileUtils.getPatchesDir()
+        val mppFiles = patchesDir.listFiles { file -> file.extension.equals("mpp", ignoreCase = true) }
+            ?.filter { it.length() > 0 }
+            ?: return null
+
+        if (mppFiles.isEmpty()) return null
+
+        return if (savedVersion != null) {
+            mppFiles.firstOrNull { it.name.contains(savedVersion, ignoreCase = true) }
+                ?: mppFiles.maxByOrNull { it.lastModified() }
+        } else {
+            mppFiles.maxByOrNull { it.lastModified() }
+        }
+    }
+
+    private fun versionFromFilename(file: File): String {
+        val name = file.nameWithoutExtension
+        val match = Regex("""v?(\d+\.\d+\.\d+[^\s]*)""").find(name)
+        return match?.value ?: name
+    }
+
+    /**
+     * Load patches from a local .mpp file (offline fallback).
+     */
+    private suspend fun loadPatchesFromFile(patchFile: File, version: String) {
+        cachedPatchesFile = patchFile
+
+        val patchesResult = patchService.listPatches(patchFile.absolutePath)
+        val patches = patchesResult.getOrNull()
+
+        if (patches.isNullOrEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                isLoadingPatches = false,
+                patchLoadError = "Could not load cached patches: ${patchesResult.exceptionOrNull()?.message}"
+            )
+            return
+        }
+
+        cachedPatches = patches
+        val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
+        cachedSupportedApps = supportedApps
+        Logger.info("Quick mode: Loaded ${supportedApps.size} supported apps from cached patches: ${patchFile.name}")
+
+        _uiState.value = _uiState.value.copy(
+            isLoadingPatches = false,
+            supportedApps = supportedApps,
+            patchesVersion = version,
+            patchLoadError = null,
+            isOffline = true
+        )
     }
 
     /**
@@ -462,5 +537,6 @@ data class QuickPatchUiState(
     val isLoadingPatches: Boolean = true,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
-    val patchLoadError: String? = null
+    val patchLoadError: String? = null,
+    val isOffline: Boolean = false
 )

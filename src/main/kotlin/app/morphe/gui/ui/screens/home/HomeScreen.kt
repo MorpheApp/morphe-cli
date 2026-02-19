@@ -37,6 +37,7 @@ import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
+import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.ui.theme.MorpheColors
@@ -177,6 +178,17 @@ fun HomeScreenContent(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                        }
+
+                        // Offline banner
+                        if (uiState.isOffline && !uiState.isLoadingPatches) {
+                            Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
+                            OfflineBanner(
+                                onRetry = { viewModel.retryLoadPatches() },
+                                modifier = Modifier
+                                    .widthIn(max = 400.dp)
+                                    .padding(horizontal = if (isCompact) 8.dp else 16.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(if (isSmall) 16.dp else 32.dp))

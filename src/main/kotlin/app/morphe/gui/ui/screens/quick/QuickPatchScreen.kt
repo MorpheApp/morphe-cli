@@ -41,6 +41,7 @@ import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.util.PatchService
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
+import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.theme.MorpheColors
 import androidx.compose.runtime.rememberCoroutineScope
@@ -158,6 +159,14 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Offline banner
+                if (uiState.isOffline && uiState.phase == QuickPatchPhase.IDLE) {
+                    OfflineBanner(
+                        onRetry = { viewModel.retryLoadPatches() },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+                }
 
                 // Main content based on phase
                 // Remember last valid data for safe animation transitions
