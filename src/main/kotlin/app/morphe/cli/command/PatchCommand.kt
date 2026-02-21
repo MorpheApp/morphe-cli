@@ -458,7 +458,7 @@ internal object PatchCommand : Callable<Int> {
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
-                val packageVersion = patcher.context.packageMetadata.packageVersion
+                val packageVersion = patcher.context.packageMetadata.versionName
 
                 patchingResult.packageName = packageName
                 patchingResult.packageVersion = packageVersion
