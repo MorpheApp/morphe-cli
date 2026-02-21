@@ -1,3 +1,10 @@
+# [1.5.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0...v1.5.0-dev.1) (2026-02-21)
+
+
+### Features
+
+* Add ARSCLib support ([#55](https://github.com/MorpheApp/morphe-cli/issues/55)) ([07c3f7e](https://github.com/MorpheApp/morphe-cli/commit/07c3f7ec50d52739ee2695f52c3c7182f2287ecf))
+
 # [1.4.0](https://github.com/MorpheApp/morphe-cli/compare/v1.3.0...v1.4.0) (2026-02-21)
 
 
