@@ -23,3 +23,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew build --no-daemon
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: morphe-patches
+          path: build/libs/morphe-cli-*-all.jar
+

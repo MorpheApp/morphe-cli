@@ -1,3 +1,45 @@
+# [1.4.0-dev.6](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.5...v1.4.0-dev.6) (2026-02-19)
+
+
+### Features
+
+* Add `--options-file` json patch/option configuration ([#53](https://github.com/MorpheApp/morphe-cli/issues/53)) ([44943da](https://github.com/MorpheApp/morphe-cli/commit/44943da5f40f8ec37364d4f67b9d2e82d2b5e98f))
+
+# [1.4.0-dev.5](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.4...v1.4.0-dev.5) (2026-02-14)
+
+
+### Bug Fixes
+
+* Do not log patch name more than once if disabled ([#49](https://github.com/MorpheApp/morphe-cli/issues/49)) ([b980bb8](https://github.com/MorpheApp/morphe-cli/commit/b980bb8e0b3bf8eb4c7af1fe289ff1b63c437fa3))
+
+# [1.4.0-dev.4](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.3...v1.4.0-dev.4) (2026-02-14)
+
+
+### Bug Fixes
+
+* Allow enabling/disabling patches using case insensitive patch names ([#48](https://github.com/MorpheApp/morphe-cli/issues/48)) ([03a280a](https://github.com/MorpheApp/morphe-cli/commit/03a280abea6c9187eec22548707eb889b0252c3f))
+
+# [1.4.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.2...v1.4.0-dev.3) (2026-02-12)
+
+
+### Features
+
+* Add `--continue-on-error` argument, return non zero exit code if patching fails ([#47](https://github.com/MorpheApp/morphe-cli/issues/47)) ([255646b](https://github.com/MorpheApp/morphe-cli/commit/255646b250237087ab7d7f9733daa6751b7e4016))
+
+# [1.4.0-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.1...v1.4.0-dev.2) (2026-02-10)
+
+
+### Features
+
+* Add `--striplibs` argument to strip unwanted architectures ([#46](https://github.com/MorpheApp/morphe-cli/issues/46)) ([7442d94](https://github.com/MorpheApp/morphe-cli/commit/7442d942d392b3e1e9ce959c30db8460bffee8d6))
+
+# [1.4.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.3.0...v1.4.0-dev.1) (2026-02-07)
+
+
+### Features
+
+* Support patching APKM bundles ([#40](https://github.com/MorpheApp/morphe-cli/issues/40)) ([bfe43d0](https://github.com/MorpheApp/morphe-cli/commit/bfe43d0b747d0e336a3f36f048e85907a140f1fc))
+
 # [1.3.0](https://github.com/MorpheApp/morphe-cli/compare/v1.2.0...v1.3.0) (2026-02-04)
 
 

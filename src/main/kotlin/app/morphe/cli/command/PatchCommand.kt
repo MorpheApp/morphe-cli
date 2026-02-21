@@ -1,11 +1,17 @@
 package app.morphe.cli.command
 
 import app.morphe.cli.command.model.FailedPatch
+import app.morphe.cli.command.model.PatchBundle
 import app.morphe.cli.command.model.PatchingResult
 import app.morphe.cli.command.model.PatchingStep
-import app.morphe.cli.command.model.PatchingStepResult
 import app.morphe.cli.command.model.addStepResult
+import app.morphe.cli.command.model.deserializeOptionValue
+import app.morphe.cli.command.model.findMatchingBundle
+import app.morphe.cli.command.model.mergeWith
+import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.cli.command.model.toSerializablePatch
+import app.morphe.cli.command.model.withUpdatedBundle
+import app.morphe.gui.util.ApkLibraryStripper
 import app.morphe.library.ApkUtils
 import app.morphe.library.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
@@ -14,6 +20,8 @@ import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
+import com.reandroid.apkeditor.merge.Merger
+import com.reandroid.apkeditor.merge.MergerOptions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -26,6 +34,7 @@ import picocli.CommandLine.Spec
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.util.concurrent.Callable
 import java.util.logging.Logger
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -33,7 +42,11 @@ import java.util.logging.Logger
     name = "patch",
     description = ["Patch an APK file."],
 )
-internal object PatchCommand : Runnable {
+internal object PatchCommand : Callable<Int> {
+
+    private const val EXIT_CODE_SUCCESS = 0
+    private const val EXIT_CODE_ERROR = 1
+
     private val logger = Logger.getLogger(this::class.java.name)
 
     @Spec
@@ -255,12 +268,44 @@ internal object PatchCommand : Runnable {
     )
     private var unsigned: Boolean = false
 
-    override fun run() {
+    @CommandLine.Option(
+        names = ["--striplibs"],
+        description = ["Architectures to keep, comma-separated (e.g. arm64-v8a,x86). Strips all other native architectures."],
+        split = ",",
+    )
+    private var striplibs: List<String> = emptyList()
+
+    @CommandLine.Option(
+        names = ["--continue-on-error"],
+        description = ["Continue patching even if a patch fails. By default, patching stops on the first error."],
+        showDefaultValue = ALWAYS,
+    )
+    private var continueOnError: Boolean = false
+
+    @CommandLine.Option(
+        names = ["--options-file"],
+        description = ["Path to an options JSON file to read patch enable/disable and option values from."],
+    )
+    @Suppress("unused")
+    private fun setOptionsFilePath(optionsFilePath: File?) {
+        this.optionsFilePath = optionsFilePath
+    }
+
+    private var optionsFilePath: File? = null
+
+    @CommandLine.Option(
+        names = ["--options-update"],
+        description = ["Auto-update the options JSON file after patching to reflect the current patches. Without this flag, the file is left unchanged."],
+        showDefaultValue = ALWAYS,
+    )
+    private var updateOptions: Boolean = false
+
+    override fun call(): Int {
         // region Setup
 
         val outputFilePath =
             outputFilePath ?: File("").absoluteFile.resolve(
-                "${apk.nameWithoutExtension}-patched.${apk.extension}",
+                "${apk.nameWithoutExtension}-patched.apk",
             )
 
         val temporaryFilesPath =
@@ -281,7 +326,7 @@ internal object PatchCommand : Runnable {
                 } else {
                     AdbInstaller(deviceSerial)
                 }
-            } catch (e: DeviceNotFoundException) {
+            } catch (_: DeviceNotFoundException) {
                 if (deviceSerial?.isNotEmpty() == true) {
                     logger.severe(
                         "Device with serial $deviceSerial not found to install to. " +
@@ -294,7 +339,7 @@ internal object PatchCommand : Runnable {
                     )
                 }
 
-                return
+                return EXIT_CODE_ERROR
             }
         } else {
             null
@@ -302,25 +347,96 @@ internal object PatchCommand : Runnable {
 
         // endregion
 
-        // region Load patches
-
-        logger.info("Loading patches")
-
-        val patches = loadPatchesFromJar(patchesFiles)
-
-        // endregion
-
-        val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
-
         val patchingResult = PatchingResult()
+        var mergedApkToCleanup: File? = null
+
+        // Lightweight snapshot of patch metadata for use in finally block (auto-update).
+        // Lightweight snapshot of current bundle metadata for use in finally block (auto-update).
+        // The heavy Patch objects hold DEX classloaders and must not leak into finally.
+        var patchesSnapshot: PatchBundle? = null
 
         try {
+            logger.info("Loading patches")
+            val patches: MutableSet<Patch<*>> = loadPatchesFromJar(patchesFiles).toMutableSet()
+            patchesSnapshot = patches.toPatchBundle(sourceFiles = patchesFiles)
+
+            // region Parse options JSON
+
+            val patchOptionsBundle: PatchBundle? = optionsFilePath?.let { file ->
+                if (file.exists()) {
+                    logger.info("Reading options from ${file.path}")
+                    val bundles = Json.decodeFromString<List<PatchBundle>>(file.readText())
+                    bundles.findMatchingBundle(patchesFiles)
+                } else {
+                    logger.info("Options file ${file.path} does not exist, generating with defaults")
+                    val bundle = patches.toPatchBundle(sourceFiles = patchesFiles)
+                    val json = Json { prettyPrint = true }
+                    file.absoluteFile.parentFile?.mkdirs()
+                    file.writeText(json.encodeToString(listOf(bundle)))
+                    logger.info("Generated options file at ${file.path}")
+                    bundle
+                }
+            }
+
+            // Build enable/disable sets from JSON (lowercase for case-insensitive matching)
+            val jsonEnabledPatches = patchOptionsBundle?.patches
+                ?.filter { (_, entry) -> entry.enabled }
+                ?.keys?.map { it.lowercase() }?.toSet() ?: emptySet()
+            val jsonDisabledPatches = patchOptionsBundle?.patches
+                ?.filter { (_, entry) -> !entry.enabled }
+                ?.keys?.map { it.lowercase() }?.toSet() ?: emptySet()
+
+            // Build options map from JSON, deserializing values using each patch's option types
+            val jsonOptionsMap: Map<String, Map<String, Any?>> = patchOptionsBundle?.patches
+                ?.mapNotNull { (patchName, entry) ->
+                    if (entry.options.isEmpty()) return@mapNotNull null
+                    val patch = patches.firstOrNull { it.name.equals(patchName, ignoreCase = true) }
+                        ?: return@mapNotNull null
+                    val resolvedName = patch.name ?: return@mapNotNull null
+                    val deserializedOptions = entry.options.mapNotNull { (key, element) ->
+                        if (!patch.options.containsKey(key)) return@mapNotNull null
+                        val option = patch.options[key]
+                        try {
+                            key to deserializeOptionValue(element, option.type)
+                        } catch (e: Exception) {
+                            logger.warning("Failed to deserialize option \"$key\" for \"$patchName\": ${e.message}")
+                            null
+                        }
+                    }.toMap()
+                    if (deserializedOptions.isEmpty()) null else resolvedName to deserializedOptions
+                }?.toMap() ?: emptyMap()
+
+            // endregion
+
+            val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
+
+            // Checking if the file is in apkm format (like reddit)
+            val inputApk = if (apk.extension.equals("apkm", ignoreCase = true)) {
+                logger.info("Merging APKM bundle")
+
+                // Save merged APK to output directory (will be cleaned up after patching)
+                val outputApk = outputFilePath.parentFile.resolve("${apk.nameWithoutExtension}-merged.apk")
+
+                // Use APKEditor's Merger directly (handles extraction and merging)
+                val mergerOptions = MergerOptions().apply {
+                    inputFile = apk  // Original APKM file
+                    outputFile = outputApk
+                    cleanMeta = true
+                }
+                Merger(mergerOptions).run()
+
+                mergedApkToCleanup = outputApk
+                outputApk
+            } else {
+                apk
+            }
+
             val (packageName, patcherResult) = Patcher(
                 PatcherConfig(
-                    apk,
+                    inputApk,
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
-                    patcherTemporaryFilesPath.absolutePath,
+                    patcherTemporaryFilesPath.absolutePath
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
@@ -329,19 +445,88 @@ internal object PatchCommand : Runnable {
                 patchingResult.packageName = packageName
                 patchingResult.packageVersion = packageVersion
 
-                val filteredPatches = patches.filterPatchSelection(packageName, packageVersion)
+                // Warn if options file is out of date (only for patches compatible with this app)
+                if (patchOptionsBundle != null && optionsFilePath?.exists() == true && !updateOptions) {
+                    val compatiblePatchNames = patches
+                        .filter { patch ->
+                            patch.compatiblePackages == null ||
+                                patch.compatiblePackages!!.any { (name, _) -> name == packageName }
+                        }
+                        .mapNotNull { it.name?.lowercase() }
+                        .toSet()
+                    // All patch names in the .mpp regardless of app compatibility.
+                    // Used for "removed" detection: a patch is only truly removed if it's
+                    // gone from the .mpp entirely, not just incompatible with this app.
+                    val allMppPatchNames = patches.mapNotNull { it.name?.lowercase() }.toSet()
+                    val jsonPatchNames = patchOptionsBundle.patches.keys.map { it.lowercase() }.toSet()
+
+                    val newPatches = compatiblePatchNames - jsonPatchNames
+                    val removedPatches = jsonPatchNames - allMppPatchNames
+
+                    // Check for new option keys within existing patches
+                    var patchesWithNewOptions = 0
+                    for ((patchName, snapshotEntry) in patchesSnapshot.patches) {
+                        if (patchName.lowercase() !in compatiblePatchNames) continue
+                        val jsonEntry = patchOptionsBundle.patches.entries
+                            .firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
+                            ?: continue
+                        val newOptionKeys = snapshotEntry.options.keys - jsonEntry.options.keys
+                        if (newOptionKeys.isNotEmpty()) patchesWithNewOptions++
+                    }
+
+                    if (newPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions > 0) {
+                        logger.warning("Your options file is out of date with the current patches:")
+                        if (newPatches.isNotEmpty()) {
+                            logger.warning("  ${newPatches.size} new patches not in your options file, default patch values will be applied")
+                        }
+                        if (removedPatches.isNotEmpty()) {
+                            logger.warning("  ${removedPatches.size} patches in your options file no longer exist and will be ignored")
+                        }
+                        if (patchesWithNewOptions > 0) {
+                            logger.warning("  $patchesWithNewOptions patches have new options not in your file, default patch values will be applied")
+                        }
+                        logger.warning("  Use --options-update parameter to sync, or use 'options-create' command to regenerate.")
+                    }
+                }
 
                 logger.info("Setting patch options")
 
-                val patchesList = patches.toList()
-                selection.filter { it.enabled != null }.associate {
-                    val enabledSelection = it.enabled!!
+                // Scope filteredPatches inside let so it goes out of scope immediately after
+                // patcher += filteredPatches, matching the pattern from PR #54.
+                patches.filterPatchSelection(
+                    packageName,
+                    packageVersion,
+                    jsonEnabledPatches,
+                    jsonDisabledPatches,
+                ).let { filteredPatches ->
+                    val patchesList = patches.toList()
+                    val cliOptionsMap = selection.filter { it.enabled != null }.associate {
+                        val enabledSelection = it.enabled!!
 
-                    (enabledSelection.selector.name ?: patchesList[enabledSelection.selector.index!!].name!!) to
-                            enabledSelection.options
-                }.let(filteredPatches::setOptions)
+                        val resolvedName = enabledSelection.selector.name?.let { userInput ->
+                            patchesList.firstOrNull { it.name.equals(userInput, ignoreCase = true) }?.name ?: userInput
+                        } ?: patchesList[enabledSelection.selector.index!!].name!!
 
-                patcher += filteredPatches
+                        resolvedName to enabledSelection.options
+                    }
+
+                    (jsonOptionsMap.keys + cliOptionsMap.keys).associateWith { patchName ->
+                        val jsonOpts = jsonOptionsMap[patchName] ?: emptyMap()
+                        val cliOpts = cliOptionsMap[patchName] ?: emptyMap()
+
+                        // Log when CLI options override JSON values
+                        for ((key, cliValue) in cliOpts) {
+                            val jsonValue = jsonOpts[key]
+                            if (jsonValue != null && jsonValue != cliValue) {
+                                logger.info("CLI option overrides JSON for \"$patchName\" -> \"$key\": $jsonValue -> $cliValue")
+                            }
+                        }
+
+                        jsonOpts + cliOpts // CLI entries override JSON entries for same key
+                    }.let(filteredPatches::setOptions)
+
+                    patcher += filteredPatches
+                }   // filteredPatches and patchesList go out of scope here
 
                 // Execute patches.
                 patchingResult.addStepResult(
@@ -362,6 +547,13 @@ internal object PatchCommand : Runnable {
                                             )
                                         )
                                         patchingResult.success = false
+
+                                        if (!continueOnError) {
+                                            throw PatchFailedException(
+                                                "\"${patchResult.patch}\" failed",
+                                                exception
+                                            )
+                                        }
                                     }
                                 } ?: patchResult.patch.let {
                                     patchingResult.appliedPatches.add(patchResult.patch.toSerializablePatch())
@@ -372,18 +564,35 @@ internal object PatchCommand : Runnable {
                     }
                 )
 
+                // patches lives in the outer try scope (needed for patchesSnapshot and options
+                // file generation before the Patcher block). Clear it explicitly now — after
+                // patcher() finishes and before patcher.get() — so the JVM can GC the DEX
+                // classloaders before the most memory-intensive step.
+                patches.clear()
+
                 patcher.context.packageMetadata.packageName to patcher.get()
             }
 
             // region Save.
 
-            apk.copyTo(temporaryFilesPath.resolve(apk.name), overwrite = true).apply {
+            inputApk.copyTo(temporaryFilesPath.resolve(inputApk.name), overwrite = true).apply {
                 patchingResult.addStepResult(
                     PatchingStep.REBUILDING,
                     {
                         patcherResult.applyTo(this)
                     }
                 )
+            }.also { rebuiltApk ->
+                if (striplibs.isNotEmpty()) {
+                    patchingResult.addStepResult(
+                        PatchingStep.STRIPPING_LIBS,
+                        {
+                            ApkLibraryStripper.stripLibraries(rebuiltApk, striplibs) { msg ->
+                                logger.info(msg)
+                            }
+                        }
+                    )
+                }
             }.let { patchedApkFile ->
                 if (!mount && !unsigned) {
                     patchingResult.addStepResult(
@@ -406,6 +615,7 @@ internal object PatchCommand : Runnable {
                     patchedApkFile.copyTo(outputFilePath, overwrite = true)
                 }
             }
+
             logger.info("Saved to $outputFilePath")
 
             // endregion
@@ -435,6 +645,17 @@ internal object PatchCommand : Runnable {
             }
 
             // endregion
+        } catch (e: PatchFailedException) {
+            logger.severe("Patching aborted: ${e.message}")
+            logger.info(
+                "Use --continue-on-error to skip failed patches and continue patching"
+            )
+            return EXIT_CODE_ERROR
+        } catch (e: Exception) {
+            // Should never happen.
+            logger.severe("An unexpected error occurred: ${e.message}")
+            e.printStackTrace()
+            return EXIT_CODE_ERROR
         } finally {
             patchingResultOutputFilePath?.let { outputFile ->
                 outputFile.outputStream().use { outputStream ->
@@ -442,12 +663,42 @@ internal object PatchCommand : Runnable {
                 }
                 logger.info("Patching result saved to $outputFile")
             }
+
+            // Auto-update options JSON file using lightweight snapshot (no DEX references)
+            val snapshot = patchesSnapshot
+            if (optionsFilePath != null && updateOptions && snapshot != null) {
+                try {
+                    val existingBundles = optionsFilePath!!.let { file ->
+                        if (file.exists()) {
+                            try { Json.decodeFromString<List<PatchBundle>>(file.readText()) }
+                            catch (e: Exception) { emptyList() }
+                        } else emptyList()
+                    }
+                    val existingBundle = existingBundles.findMatchingBundle(patchesFiles)
+                    val updatedBundle = snapshot.mergeWith(existingBundle)
+                    val updatedBundles = existingBundles.withUpdatedBundle(updatedBundle)
+                    val json = Json { prettyPrint = true }
+                    optionsFilePath!!.writeText(json.encodeToString(updatedBundles))
+                    logger.info("Updated options file ${optionsFilePath!!.path}")
+                } catch (e: Exception) {
+                    logger.warning("Failed to update options file: ${e.message}")
+                }
+            }
+
+            if (purge) {
+                logger.info("Purging temporary files")
+                purge(temporaryFilesPath)
+            }
+
+            // Clean up merged APK if we created one from APKM
+            mergedApkToCleanup?.let {
+                if (!it.delete()) {
+                    logger.warning("Could not clean up merged APK: ${it.path}")
+                }
+            }
         }
 
-        if (purge) {
-            logger.info("Purging temporary files")
-            purge(temporaryFilesPath)
-        }
+        return EXIT_CODE_SUCCESS
     }
 
     /**
@@ -455,29 +706,31 @@ internal object PatchCommand : Runnable {
      *
      * @param packageName The package name of the APK file to be patched.
      * @param packageVersion The version of the APK file to be patched.
+     * @param jsonEnabledPatches Patch names enabled via JSON options file (lowercase).
+     * @param jsonDisabledPatches Patch names disabled via JSON options file (lowercase).
      * @return The filtered patches.
      */
     private fun Set<Patch<*>>.filterPatchSelection(
         packageName: String,
         packageVersion: String,
+        jsonEnabledPatches: Set<String> = emptySet(),
+        jsonDisabledPatches: Set<String> = emptySet(),
     ): Set<Patch<*>> = buildSet {
-        val enabledPatchesByName =
-            selection.mapNotNull { it.enabled?.selector?.name }.toSet()
-        val enabledPatchesByIndex =
+        // CLI flags (take precedence over JSON)
+        val cliEnabledByName =
+            selection.mapNotNull { it.enabled?.selector?.name?.lowercase() }.toSet()
+        val cliEnabledByIndex =
             selection.mapNotNull { it.enabled?.selector?.index }.toSet()
-
-        val disabledPatches =
-            selection.mapNotNull { it.disable?.selector?.name }.toSet()
-        val disabledPatchesByIndex =
+        val cliDisabledByName =
+            selection.mapNotNull { it.disable?.selector?.name?.lowercase() }.toSet()
+        val cliDisabledByIndex =
             selection.mapNotNull { it.disable?.selector?.index }.toSet()
 
         this@filterPatchSelection.withIndex().forEach patchLoop@{ (i, patch) ->
             val patchName = patch.name!!
+            val patchNameLower = patchName.lowercase()
 
-            val isManuallyDisabled = patchName in disabledPatches || i in disabledPatchesByIndex
-            if (isManuallyDisabled) return@patchLoop logger.info("\"$patchName\" disabled manually")
-
-            // Make sure the patch is compatible with the supplied APK files package name and version.
+            // Check package compatibility first to avoid duplicate logs for multi-app patches.
             patch.compatiblePackages?.let { packages ->
                 packages.singleOrNull { (name, _) -> name == packageName }?.let { (_, versions) ->
                     if (versions?.isEmpty() == true) {
@@ -505,10 +758,31 @@ internal object PatchCommand : Runnable {
                 return@let
             } ?: logger.fine("\"$patchName\" has no package constraints")
 
-            val isEnabled = !exclusive && patch.use
-            val isManuallyEnabled = patchName in enabledPatchesByName || i in enabledPatchesByIndex
+            // CLI flags take precedence over JSON, JSON takes precedence over defaults
+            val isCliDisabled = patchNameLower in cliDisabledByName || i in cliDisabledByIndex
+            if (isCliDisabled) {
+                if (patchNameLower in jsonEnabledPatches) {
+                    logger.info("\"$patchName\" disabled manually (overrides options file: enabled)")
+                } else {
+                    logger.info("\"$patchName\" disabled manually")
+                }
+                return@patchLoop
+            }
 
-            if (!(isEnabled || isManuallyEnabled)) {
+            val isCliEnabled = patchNameLower in cliEnabledByName || i in cliEnabledByIndex
+            if (isCliEnabled && patchNameLower in jsonDisabledPatches) {
+                logger.info("\"$patchName\" enabled manually (overrides options file: disabled)")
+            }
+
+            // JSON-sourced enable/disable (only applies if no CLI flag for this patch)
+            val isJsonDisabled = !isCliEnabled && patchNameLower in jsonDisabledPatches
+            if (isJsonDisabled) return@patchLoop logger.info("\"$patchName\" disabled via options file")
+
+            val isJsonEnabled = patchNameLower in jsonEnabledPatches
+
+            val isEnabled = !exclusive && patch.use
+
+            if (!(isEnabled || isCliEnabled || isJsonEnabled)) {
                 return@patchLoop logger.info("\"$patchName\" disabled")
             }
 
@@ -528,3 +802,5 @@ internal object PatchCommand : Runnable {
         logger.info(result)
     }
 }
+
+private class PatchFailedException(message: String, cause: Throwable) : Exception(message, cause)
