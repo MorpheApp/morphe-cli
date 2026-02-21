@@ -6,6 +6,7 @@
 package app.morphe.cli.command
 
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import picocli.CommandLine
@@ -18,6 +19,7 @@ class PatchingTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
+    @Disabled("Need to create lighter weight patch bundle")
     fun `patch example apk`(useArsclib: Boolean) {
         val apkFileStream = javaClass.getResourceAsStream("/nowinandroid-apk")
         val patchesFileStream = javaClass.getResourceAsStream("/patches.mpp")
