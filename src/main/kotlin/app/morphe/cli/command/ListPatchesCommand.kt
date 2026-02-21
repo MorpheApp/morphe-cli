@@ -17,7 +17,7 @@ import app.morphe.patcher.patch.Option as PatchOption
 internal object ListPatchesCommand : Runnable {
     private val logger = Logger.getLogger(this::class.java.name)
 
-    // Patches is not flag based rather than position based
+    // Patches is now flag based rather than position based
     @Option(
         names = ["--patches"],
         description = ["One or more paths to MPP files."],
