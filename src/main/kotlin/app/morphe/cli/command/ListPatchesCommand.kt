@@ -3,7 +3,8 @@ package app.morphe.cli.command
 import app.morphe.patcher.patch.Package
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
-import picocli.CommandLine.*
+import picocli.CommandLine.Command
+import picocli.CommandLine.Option
 import picocli.CommandLine.Help.Visibility.ALWAYS
 import java.io.File
 import java.util.logging.Logger
@@ -16,11 +17,19 @@ import app.morphe.patcher.patch.Option as PatchOption
 internal object ListPatchesCommand : Runnable {
     private val logger = Logger.getLogger(this::class.java.name)
 
-    @Parameters(
-        description = ["Paths to MPP files."],
+    // Patches is not flag based rather than position based
+    @Option(
+        names = ["--patches"],
+        description = ["One or more paths to MPP files."],
         arity = "1..*",
     )
-    private lateinit var patchesFiles: Set<File>
+    private var patchFiles: Set<File>? = null
+
+    @Option(
+        names = ["--out"],
+        description = ["Path to the output text file."],
+    )
+    private var outputFile: File? = null
 
     @Option(
         names = ["-d", "--with-descriptions"],
@@ -138,11 +147,28 @@ internal object ListPatchesCommand : Runnable {
             compatiblePackages?.any { (compatiblePackageName, _) -> compatiblePackageName == name }
                 ?: withUniversalPatches
 
-        val patches = loadPatchesFromJar(patchesFiles).withIndex().toList()
+        if (patchFiles.isNullOrEmpty()) return logger.warning("No patch file passed. Please add a patch file.")
+
+        // We are using !! here because we already have a guard above that returns if the value is null or empty.
+        val patches = loadPatchesFromJar(patchFiles!!).withIndex().toList()
 
         val filtered =
             packageName?.let { patches.filter { (_, patch) -> patch.filterCompatiblePackages(it) } } ?: patches
 
-        if (filtered.isNotEmpty()) logger.info(filtered.joinToString("\n\n") { it.buildString() })
+        // Extracted the final output that we get into this variable. Now we just call this based
+        // on what the user wants. In the console or as an external text file.
+        val finalOutput = filtered.joinToString("\n\n") {it.buildString()}
+
+
+        if (filtered.isNotEmpty()) {
+            if (outputFile == null) {
+                logger.info(finalOutput)
+            } else if (outputFile != null) {
+                logger.info("Created new output file at ${outputFile?.path}")
+                outputFile?.writeText(finalOutput)
+            }
+        }
+
+
     }
 }
