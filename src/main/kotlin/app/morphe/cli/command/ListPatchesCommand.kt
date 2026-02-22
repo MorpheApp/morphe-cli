@@ -1,3 +1,11 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ *
+ * Original hard forked code:
+ * https://github.com/revanced/revanced-cli
+ */
+
 package app.morphe.cli.command
 
 import app.morphe.patcher.patch.Package
@@ -147,7 +155,7 @@ internal object ListPatchesCommand : Runnable {
             compatiblePackages?.any { (compatiblePackageName, _) -> compatiblePackageName == name }
                 ?: withUniversalPatches
 
-        if (patchFiles.isNullOrEmpty()) return logger.warning("No patch file passed. Please add a patch file.")
+        if (patchFiles.isNullOrEmpty()) return logger.warning("No patch file provided. Please specify one or more mpp files using --patches")
 
         // We are using !! here because we already have a guard above that returns if the value is null or empty.
         val patches = loadPatchesFromJar(patchFiles!!).withIndex().toList()
