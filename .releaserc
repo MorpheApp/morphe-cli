@@ -32,14 +32,14 @@
       {
         "assets": [
           {
-            "path": "build/libs/*-all*"
+            "path": "build/libs/morphe-cli*-all.jar"
           }
         ],
         successComment: false
       }
     ],
     [
-      "@saithodev/semantic-release-backmerge",
+      "@cleyrop-org/semantic-release-backmerge",
       {
         backmergeBranches: [{"from": "main", "to": "dev"}],
         clearWorkspace: true
