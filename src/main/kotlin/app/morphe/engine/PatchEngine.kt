@@ -103,7 +103,7 @@ object PatchEngine {
 
             Patcher(patcherConfig).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
-                val packageVersion = patcher.context.packageMetadata.packageVersion
+                val packageVersion = patcher.context.packageMetadata.versionCode
 
                 coroutineContext.ensureActive()
 
