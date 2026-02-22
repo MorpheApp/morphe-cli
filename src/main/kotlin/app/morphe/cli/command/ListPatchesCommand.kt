@@ -171,7 +171,9 @@ internal object ListPatchesCommand : Runnable {
         // on what the user wants. In the console or as an external text file.
         val finalOutput = filtered.joinToString("\n\n") {it.buildString()}
 
-        if (filtered.isNotEmpty()) {
+        if (filtered.isEmpty()) {
+            logger.warning("No compatible patches found in: $patchFiles")
+        } else {
             if (outputFile == null) {
                 logger.info(finalOutput)
             } else {
