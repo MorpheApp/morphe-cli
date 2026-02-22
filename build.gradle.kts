@@ -105,9 +105,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
-    testImplementation(libs.kotlin.test)
-    testImplementation(libs.junit.params)
-}
+//    testImplementation(libs.kotlin.test)
+//}
 
     // -- Networking (GUI) --------------------------------------------------
     implementation(libs.ktor.client.core)
@@ -131,6 +130,7 @@ dependencies {
 
     // -- Testing -----------------------------------------------------------
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.params)
     testImplementation(libs.mockk)
 }
 

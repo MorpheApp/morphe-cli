@@ -35,9 +35,6 @@ mockk = "1.14.3"
 [libraries]
 # Morphe Core
 junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx" }
 picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
 morphe-patcher = { module = "app.morphe:morphe-patcher", version.ref = "morphe-patcher" }
 morphe-library = { module = "app.morphe:morphe-library-jvm", version.ref = "morphe-library" }
