@@ -14,20 +14,16 @@ plugins {
 rootProject.name = "morphe-cli"
 
 // Include morphe-patcher and morphe-library as composite builds if they exist locally
-val morphePatcherDir = file("../morphe-patcher")
-if (morphePatcherDir.exists()) {
-    includeBuild(morphePatcherDir) {
-        dependencySubstitution {
-            substitute(module("app.morphe:morphe-patcher")).using(project(":"))
-        }
-    }
-}
-
-val morpheLibraryDir = file("../morphe-library")
-if (morpheLibraryDir.exists()) {
-    includeBuild(morpheLibraryDir) {
-        dependencySubstitution {
-            substitute(module("app.morphe:morphe-library")).using(project(":"))
+mapOf(
+    "morphe-patcher" to "app.morphe:morphe-patcher",
+    "morphe-library" to "app.morphe:morphe-library",
+).forEach { (libraryPath, libraryName) ->
+    val libDir = file("../$libraryPath")
+    if (libDir.exists()) {
+        includeBuild(libDir) {
+            dependencySubstitution {
+                substitute(module(libraryName)).using(project(":"))
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package app.morphe.cli.command
 
 import app.morphe.cli.command.utility.UtilityCommand
 import app.morphe.library.logging.Logger
+import org.jetbrains.annotations.VisibleForTesting
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.IVersionProvider
@@ -42,4 +43,5 @@ private object CLIVersionProvider : IVersionProvider {
         UtilityCommand::class,
     ]
 )
+@VisibleForTesting
 internal object MainCommand

@@ -39,3 +39,5 @@ google-services.json
 
 # Mac files
 .DS_Store
+# NPM modules
+node_modules/

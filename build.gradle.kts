@@ -82,8 +82,7 @@ val strippedApkEditorLib by tasks.registering(org.gradle.jvm.tasks.Jar::class) {
 }
 
 dependencies {
-    // -- CLI / Core --------------------------------------------------------
-    implementation(libs.morphe.patcher)
+    api(libs.morphe.patcher)
     implementation(libs.morphe.library)
     implementation(libs.picocli)
     apkEditorLib(files("$rootDir/libs/APKEditor-1.4.7.jar"))
@@ -106,6 +105,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.params)
+}
 
     // -- Networking (GUI) --------------------------------------------------
     implementation(libs.ktor.client.core)

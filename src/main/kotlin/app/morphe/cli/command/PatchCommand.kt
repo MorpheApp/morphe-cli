@@ -1,3 +1,11 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ *
+ * Original hard forked code:
+ * https://github.com/revanced/revanced-cli
+ */
+
 package app.morphe.cli.command
 
 import app.morphe.cli.command.model.FailedPatch
@@ -26,6 +34,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToStream
+import org.jetbrains.annotations.VisibleForTesting
 import picocli.CommandLine
 import picocli.CommandLine.ArgGroup
 import picocli.CommandLine.Help.Visibility.ALWAYS
@@ -38,6 +47,7 @@ import java.util.concurrent.Callable
 import java.util.logging.Logger
 
 @OptIn(ExperimentalSerializationApi::class)
+@VisibleForTesting
 @CommandLine.Command(
     name = "patch",
     description = ["Patch an APK file."],
@@ -249,7 +259,7 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["--custom-aapt2-binary"],
-        description = ["Path to a custom AAPT binary to compile resources with."],
+        description = ["Path to a custom AAPT binary to compile resources with. Only valid when --use-arsclib is not specified."],
     )
     @Suppress("unused")
     private fun setAaptBinaryPath(aaptBinaryPath: File) {
@@ -261,6 +271,13 @@ internal object PatchCommand : Callable<Int> {
         }
         this.aaptBinaryPath = aaptBinaryPath
     }
+
+    @CommandLine.Option(
+        names = ["--force-apktool"],
+        description = ["Use apktool instead of arsclib to compile resources. Implied if --custom-aapt2-binary is specified."],
+        showDefaultValue = ALWAYS,
+    )
+    private var forceApktool: Boolean = false
 
     @CommandLine.Option(
         names = ["--unsigned"],
@@ -436,11 +453,12 @@ internal object PatchCommand : Callable<Int> {
                     inputApk,
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
-                    patcherTemporaryFilesPath.absolutePath
+                    patcherTemporaryFilesPath.absolutePath,
+                    if (aaptBinaryPath != null) { false } else { !forceApktool },
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
-                val packageVersion = patcher.context.packageMetadata.packageVersion
+                val packageVersion = patcher.context.packageMetadata.versionName
 
                 patchingResult.packageName = packageName
                 patchingResult.packageVersion = packageVersion

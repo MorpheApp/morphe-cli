@@ -1,3 +1,26 @@
+# [1.5.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0...v1.5.0-dev.1) (2026-02-21)
+
+
+### Features
+
+* Add ARSCLib support ([#55](https://github.com/MorpheApp/morphe-cli/issues/55)) ([07c3f7e](https://github.com/MorpheApp/morphe-cli/commit/07c3f7ec50d52739ee2695f52c3c7182f2287ecf))
+
+# [1.4.0](https://github.com/MorpheApp/morphe-cli/compare/v1.3.0...v1.4.0) (2026-02-21)
+
+
+### Bug Fixes
+
+* Allow enabling/disabling patches using case insensitive patch names ([#48](https://github.com/MorpheApp/morphe-cli/issues/48)) ([03a280a](https://github.com/MorpheApp/morphe-cli/commit/03a280abea6c9187eec22548707eb889b0252c3f))
+* Do not log patch name more than once if disabled ([#49](https://github.com/MorpheApp/morphe-cli/issues/49)) ([b980bb8](https://github.com/MorpheApp/morphe-cli/commit/b980bb8e0b3bf8eb4c7af1fe289ff1b63c437fa3))
+
+
+### Features
+
+* Add `--continue-on-error` argument, return non zero exit code if patching fails ([#47](https://github.com/MorpheApp/morphe-cli/issues/47)) ([255646b](https://github.com/MorpheApp/morphe-cli/commit/255646b250237087ab7d7f9733daa6751b7e4016))
+* Add `--options-file` json patch/option configuration ([#53](https://github.com/MorpheApp/morphe-cli/issues/53)) ([44943da](https://github.com/MorpheApp/morphe-cli/commit/44943da5f40f8ec37364d4f67b9d2e82d2b5e98f))
+* Add `--striplibs` argument to strip unwanted architectures ([#46](https://github.com/MorpheApp/morphe-cli/issues/46)) ([7442d94](https://github.com/MorpheApp/morphe-cli/commit/7442d942d392b3e1e9ce959c30db8460bffee8d6))
+* Support patching APKM bundles ([#40](https://github.com/MorpheApp/morphe-cli/issues/40)) ([bfe43d0](https://github.com/MorpheApp/morphe-cli/commit/bfe43d0b747d0e336a3f36f048e85907a140f1fc))
+
 # [1.4.0-dev.6](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0-dev.5...v1.4.0-dev.6) (2026-02-19)
 
 
