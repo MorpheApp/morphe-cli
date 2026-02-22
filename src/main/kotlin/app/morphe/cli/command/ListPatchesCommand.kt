@@ -157,26 +157,27 @@ internal object ListPatchesCommand : Runnable {
 
         if (patchFiles.isNullOrEmpty()) return logger.warning("No patch file provided. Please specify one or more mpp files using --patches")
 
-        // We are using !! here because we already have a guard above that returns if the value is null or empty.
         val patches = loadPatchesFromJar(patchFiles!!).withIndex().toList()
 
-        val filtered =
-            packageName?.let { patches.filter { (_, patch) -> patch.filterCompatiblePackages(it) } } ?: patches
+        val filtered = packageName?.let {
+            patches.filter { (_, patch) ->
+                patch.filterCompatiblePackages(
+                    it
+                )
+            }
+        } ?: patches
 
         // Extracted the final output that we get into this variable. Now we just call this based
         // on what the user wants. In the console or as an external text file.
         val finalOutput = filtered.joinToString("\n\n") {it.buildString()}
 
-
         if (filtered.isNotEmpty()) {
             if (outputFile == null) {
                 logger.info(finalOutput)
-            } else if (outputFile != null) {
-                logger.info("Created new output file at ${outputFile?.path}")
-                outputFile?.writeText(finalOutput)
+            } else {
+                logger.info("Created new output file at ${outputFile!!.path}")
+                outputFile!!.writeText(finalOutput)
             }
         }
-
-
     }
 }
