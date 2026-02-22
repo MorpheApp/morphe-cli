@@ -30,12 +30,13 @@ internal object ListPatchesCommand : Runnable {
         names = ["--patches"],
         description = ["One or more paths to MPP files."],
         arity = "1..*",
+        required = true
     )
-    private var patchFiles: Set<File>? = null
+    private lateinit var patchFiles: Set<File>
 
     @Option(
         names = ["--out"],
-        description = ["Path to the output text file."],
+        description = ["Path to the output text file. Writes patch list to this file instead of stdout."],
     )
     private var outputFile: File? = null
 
@@ -152,12 +153,11 @@ internal object ListPatchesCommand : Runnable {
             }
 
         fun Patch<*>.filterCompatiblePackages(name: String) =
-            compatiblePackages?.any { (compatiblePackageName, _) -> compatiblePackageName == name }
-                ?: withUniversalPatches
+            compatiblePackages?.any { (compatiblePackageName, _) ->
+                compatiblePackageName == name
+            } ?: withUniversalPatches
 
-        if (patchFiles.isNullOrEmpty()) return logger.warning("No patch file provided. Please specify one or more mpp files using --patches")
-
-        val patches = loadPatchesFromJar(patchFiles!!).withIndex().toList()
+        val patches = loadPatchesFromJar(patchFiles).withIndex().toList()
 
         val filtered = packageName?.let {
             patches.filter { (_, patch) ->
