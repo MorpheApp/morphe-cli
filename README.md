@@ -33,6 +33,8 @@ All modifications made by Morphe can be found in the Git history.
 4. [Required] Desired app file (app.apk). You can download your apk from [APK Mirror](https://www.apkmirror.com/).
 5. [Optional] [Android Debug Bridge (ADB)](https://developer.android.com/studio/command-line/adb) Only if you want to install the patched APK file on your device
 
+## Documentation
+Learn how to use Morphe Desktop by following the [documentation](/docs/documentation.md).
 
 ## Getting Started
 Morphe Desktop is a powerful little application that allows you to patch and install(via ADB) android apps. Although sticking to the suggested apps is recommended, 
@@ -55,7 +57,7 @@ Following the [prerequisites](#prerequisites) section will get you the two basic
 - morphe-desktop-*-all.jar file
 - patches-*.mpp
 
-Ideally place both of these files and your desired apk (preferably YouTube) file in the same folder for now to avoid path headaches.
+Ideally place both of these files and your desired apk (preferably YouTube for your first run) file in the same folder for now to avoid path headaches.
 
 ##### Steps:
 1. Open the terminal in the folder you have placed your files. If you are not in that folder, go there by:
@@ -124,10 +126,6 @@ Unlike the CLI, the GUI is much user-friendly and straight forward to understand
 ![Morphe GUI Success](docs/images/success.png)
 
 Bravo! That should be your first successful patch. If you run into issues or want to tinker around more, please head to the [documentation](docs/documentation.md).
-
-
-## Documentation
-Learn how to use Morphe Desktop by following the [documentation](/docs/documentation.md).
 
 
 [//]: # (## Everything else)
