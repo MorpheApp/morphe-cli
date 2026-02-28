@@ -1,9 +1,9 @@
 package app.morphe.cli.command
 
-import app.morphe.library.PackageName
-import app.morphe.library.VersionMap
-import app.morphe.library.mostCommonCompatibleVersions
+import app.morphe.patcher.patch.PackageName
+import app.morphe.patcher.patch.VersionMap
 import app.morphe.patcher.patch.loadPatchesFromJar
+import app.morphe.patcher.patch.mostCommonCompatibleVersions
 import picocli.CommandLine
 import java.io.File
 import java.util.logging.Logger

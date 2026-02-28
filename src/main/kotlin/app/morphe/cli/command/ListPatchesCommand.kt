@@ -1,9 +1,18 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ *
+ * Original hard forked code:
+ * https://github.com/revanced/revanced-cli
+ */
+
 package app.morphe.cli.command
 
 import app.morphe.patcher.patch.Package
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
-import picocli.CommandLine.*
+import picocli.CommandLine.Command
+import picocli.CommandLine.Option
 import picocli.CommandLine.Help.Visibility.ALWAYS
 import java.io.File
 import java.util.logging.Logger
@@ -16,11 +25,20 @@ import app.morphe.patcher.patch.Option as PatchOption
 internal object ListPatchesCommand : Runnable {
     private val logger = Logger.getLogger(this::class.java.name)
 
-    @Parameters(
-        description = ["Paths to MPP files."],
+    // Patches is now flag based rather than position based
+    @Option(
+        names = ["--patches"],
+        description = ["One or more paths to MPP files."],
         arity = "1..*",
+        required = true
     )
-    private lateinit var patchesFiles: Set<File>
+    private lateinit var patchFiles: Set<File>
+
+    @Option(
+        names = ["--out"],
+        description = ["Path to the output text file. Writes patch list to this file instead of stdout."],
+    )
+    private var outputFile: File? = null
 
     @Option(
         names = ["-d", "--with-descriptions"],
@@ -135,14 +153,33 @@ internal object ListPatchesCommand : Runnable {
             }
 
         fun Patch<*>.filterCompatiblePackages(name: String) =
-            compatiblePackages?.any { (compatiblePackageName, _) -> compatiblePackageName == name }
-                ?: withUniversalPatches
+            compatiblePackages?.any { (compatiblePackageName, _) ->
+                compatiblePackageName == name
+            } ?: withUniversalPatches
 
-        val patches = loadPatchesFromJar(patchesFiles).withIndex().toList()
+        val patches = loadPatchesFromJar(patchFiles).withIndex().toList()
 
-        val filtered =
-            packageName?.let { patches.filter { (_, patch) -> patch.filterCompatiblePackages(it) } } ?: patches
+        val filtered = packageName?.let {
+            patches.filter { (_, patch) ->
+                patch.filterCompatiblePackages(
+                    it
+                )
+            }
+        } ?: patches
 
-        if (filtered.isNotEmpty()) logger.info(filtered.joinToString("\n\n") { it.buildString() })
+        // Extracted the final output that we get into this variable. Now we just call this based
+        // on what the user wants. In the console or as an external text file.
+        val finalOutput = filtered.joinToString("\n\n") {it.buildString()}
+
+        if (filtered.isEmpty()) {
+            logger.warning("No compatible patches found in: $patchFiles")
+        } else {
+            if (outputFile == null) {
+                logger.info(finalOutput)
+            } else {
+                logger.info("Created new output file at ${outputFile!!.path}")
+                outputFile!!.writeText(finalOutput)
+            }
+        }
     }
 }
