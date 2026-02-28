@@ -7,9 +7,13 @@ on:
       - dev
 
 jobs:
-  release:
-    name: Build
-    runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,11 +24,13 @@ jobs:
         uses: burrunan/gradle-cache-action@v1
 
       - name: Build
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew build --no-daemon
 
       - name: Upload artifacts
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v6
         with:
           name: morphe-cli
