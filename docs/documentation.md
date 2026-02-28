@@ -102,6 +102,12 @@ Here is a quick lookup for all the flags under this subcommand:
 | `--options-update`             | Auto-update options JSON file after patching                  |
 | `-r`, `--result-file`          | Path to save patching result JSON                             |
 
+> [!NOTE]
+> The examples used for each flag below only show the usage of that specific flag, but in practice, you'll almost always combine multiple flags together to customize your patching. Here's an example of a more complete command:
+> ```
+> java -jar morphe-desktop-*-all.jar patch -p patches.mpp -o your_app_patched.apk --striplibs arm64-v8a --force --continue-on-error -d "change package name" -d "spoof signature" "your_app.apk"
+> ```
+
 
 #### 1. `-p`, `--patches`:
 Required: Yes
@@ -230,6 +236,10 @@ Skip the APK version compatibility check. By default, Morphe will warn you and s
 ```
 java -jar morphe-desktop-*-all.jar patch -p patches.mpp --force your_app.apk
 ```
+
+> [!TIP]
+> Patches are built for specific app versions. 
+> If you're using versions that are newer or older than the recommended ones, Morphe will skip all the incompatible patches (which is almost all of them since the version don't match) by default. **Use `--force` to apply them anyway** — they may still work fine, especially on recent versions.
 
 
 #### 11. `-i`, `--install`:
