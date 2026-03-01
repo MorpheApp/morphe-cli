@@ -31,7 +31,7 @@ jobs:
 
       - name: Upload artifacts
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: morphe-cli
           path: build/libs/morphe-cli-*-all.jar
