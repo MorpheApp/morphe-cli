@@ -1,6 +1,6 @@
 [versions]
 shadow = "8.3.9"
-junit = "5.11.0"
+junit = "6.0.3"
 kotlin = "2.3.0"
 kotlinx = "1.9.0"
 picocli = "4.7.7"
