@@ -1,7 +1,7 @@
 [versions]
 shadow = "8.3.9"
 junit = "5.11.0"
-kotlin = "2.3.0"
+kotlin = "2.3.10"
 kotlinx = "1.9.0"
 picocli = "4.7.7"
 morphe-patcher = "1.2.0-dev.9" # TODO: change to 1.2.0 before stable release
