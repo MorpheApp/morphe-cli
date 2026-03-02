@@ -1,3 +1,10 @@
+# [1.5.0-dev.8](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.7...v1.5.0-dev.8) (2026-03-02)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([9cf07f9](https://github.com/MorpheApp/morphe-cli/commit/9cf07f922fb5129aeeee2de0a3e990fecadae4fb))
+
 # [1.5.0-dev.7](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.6...v1.5.0-dev.7) (2026-02-28)
 
 
