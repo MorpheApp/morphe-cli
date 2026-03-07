@@ -1,3 +1,80 @@
+# [1.5.0-dev.11](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.10...v1.5.0-dev.11) (2026-03-05)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([ea6e231](https://github.com/MorpheApp/morphe-cli/commit/ea6e2313268a8111c8a21faf425bda1eda534f35))
+
+# [1.5.0-dev.10](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.9...v1.5.0-dev.10) (2026-03-05)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([2b33a6c](https://github.com/MorpheApp/morphe-cli/commit/2b33a6cc0523be29cb7dcd86990de7e0e08c0c87))
+
+# [1.5.0-dev.9](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.8...v1.5.0-dev.9) (2026-03-02)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([baf34de](https://github.com/MorpheApp/morphe-cli/commit/baf34de0857f1c94b044aedbac33485b51ab3f2c))
+
+# [1.5.0-dev.8](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.7...v1.5.0-dev.8) (2026-03-02)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([9cf07f9](https://github.com/MorpheApp/morphe-cli/commit/9cf07f922fb5129aeeee2de0a3e990fecadae4fb))
+
+# [1.5.0-dev.7](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.6...v1.5.0-dev.7) (2026-02-28)
+
+
+### Bug Fixes
+
+* Use latest patcher and library dev release ([2f21880](https://github.com/MorpheApp/morphe-cli/commit/2f21880c49705b3e5153b7e636f01cf578d7b1c0))
+
+# [1.5.0-dev.6](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.5...v1.5.0-dev.6) (2026-02-27)
+
+
+### Bug Fixes
+
+* Use latest library dev release ([b60ea86](https://github.com/MorpheApp/morphe-cli/commit/b60ea86c72b8a62e2220b3a76dba01d47c494750))
+
+# [1.5.0-dev.5](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.4...v1.5.0-dev.5) (2026-02-26)
+
+
+### Features
+
+* Add `--out` and `--patches` arguments to `list-patches` command ([#60](https://github.com/MorpheApp/morphe-cli/issues/60)) ([ef9fc48](https://github.com/MorpheApp/morphe-cli/commit/ef9fc482fcc6de2e51741b23ce12729991d6b36d))
+
+# [1.5.0-dev.4](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.3...v1.5.0-dev.4) (2026-02-26)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([791257c](https://github.com/MorpheApp/morphe-cli/commit/791257c48983c1a006eca87abd458331141252f1))
+
+# [1.5.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.2...v1.5.0-dev.3) (2026-02-25)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([7cc195a](https://github.com/MorpheApp/morphe-cli/commit/7cc195a59d37521751fcbe5f15d267b3efbeeb0a))
+
+# [1.5.0-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0-dev.1...v1.5.0-dev.2) (2026-02-24)
+
+
+### Bug Fixes
+
+* Use latest patcher dev release ([f8bd235](https://github.com/MorpheApp/morphe-cli/commit/f8bd2354438dd3a1e969610d43dca224e9d3ef63))
+
+# [1.5.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0...v1.5.0-dev.1) (2026-02-21)
+
+
+### Features
+
+* Add ARSCLib support ([#55](https://github.com/MorpheApp/morphe-cli/issues/55)) ([07c3f7e](https://github.com/MorpheApp/morphe-cli/commit/07c3f7ec50d52739ee2695f52c3c7182f2287ecf))
+
 # [1.4.0](https://github.com/MorpheApp/morphe-cli/compare/v1.3.0...v1.4.0) (2026-02-21)
 
 
