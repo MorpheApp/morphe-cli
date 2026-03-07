@@ -19,7 +19,7 @@ import app.morphe.cli.command.model.mergeWith
 import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.cli.command.model.withUpdatedBundle
-import app.morphe.gui.util.ApkLibraryStripper
+import app.morphe.engine.ApkLibraryStripper
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
