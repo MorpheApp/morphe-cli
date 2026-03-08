@@ -3,7 +3,7 @@
  * https://github.com/MorpheApp/morphe-cli
  *
  * Original hard forked code:
- * https://github.com/revanced/revanced-cli
+ * https://github.com/ReVanced/revanced-cli/tree/731865e167ee449be15fff3dde7a476faea0c2de
  */
 
 package app.morphe.cli.command
