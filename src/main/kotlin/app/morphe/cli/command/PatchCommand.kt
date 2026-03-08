@@ -230,13 +230,6 @@ internal object PatchCommand : Callable<Int> {
     )
     private var purge: Boolean = false
 
-    @CommandLine.Option(
-        names = ["--prerelease"],
-        description = ["Get the latest dev release instead of the stable release from the repo provided."],
-        showDefaultValue = ALWAYS,
-    )
-    private var prerelease: Boolean = false
-
     @CommandLine.Parameters(
         description = ["APK file to patch."],
         arity = "1",
@@ -256,7 +249,7 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["-p", "--patches"],
-        description = ["One or more path to MPP files."],
+        description = ["One or more path to MPP files or GitHub repo urls such as https://github.com/MorpheApp/morphe-patches"],
         required = true,
     )
     @Suppress("unused")
@@ -275,6 +268,13 @@ internal object PatchCommand : Callable<Int> {
     }
 
     private var patchesFiles = emptySet<File>()
+
+    @CommandLine.Option(
+        names = ["--prerelease"],
+        description = ["Fetch the latest dev pre-release instead of the stable main release from the repo provided in --patches."],
+        showDefaultValue = ALWAYS,
+    )
+    private var prerelease: Boolean = false
 
     @CommandLine.Option(
         names = ["--custom-aapt2-binary"],
