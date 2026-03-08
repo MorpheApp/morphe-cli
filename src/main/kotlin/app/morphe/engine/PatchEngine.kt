@@ -19,7 +19,7 @@ import java.nio.file.Files
 import kotlin.coroutines.coroutineContext
 
 /**
- * Single patching pipeline shared by CLI and GUI.
+ * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
  */
 object PatchEngine {
 
