@@ -77,8 +77,7 @@ val strippedApkEditorLib by tasks.registering(org.gradle.jvm.tasks.Jar::class) {
         "com/beust/jcommander/**",
         "javax/annotation/**",
         "smali.properties",
-        "baksmali.properties",
-        "/prebuilt/android/**"
+        "baksmali.properties"
     )
 }
 
