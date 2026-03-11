@@ -22,7 +22,8 @@ class PatchesViewModel(
     private val apkPath: String,
     private val apkName: String,
     private val patchRepository: PatchRepository,
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
+    private val localPatchFilePath: String? = null
 ) : ScreenModel {
 
     private val _uiState = MutableStateFlow(PatchesUiState())
@@ -35,6 +36,24 @@ class PatchesViewModel(
     fun loadReleases() {
         screenModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
+            // LOCAL source: skip GitHub, use the file directly
+            if (localPatchFilePath != null) {
+                val localFile = File(localPatchFilePath)
+                if (localFile.exists()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isLocalSource = true,
+                        downloadedPatchFile = localFile
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Local patch file not found: ${localFile.name}"
+                    )
+                }
+                return@launch
+            }
 
             val result = patchRepository.fetchReleases()
 
@@ -139,7 +158,7 @@ class PatchesViewModel(
             // In offline mode, find the cached file by matching the asset name
             val assetName = release.assets.firstOrNull()?.name
             if (assetName != null) {
-                val patchesDir = app.morphe.gui.util.FileUtils.getPatchesDir()
+                val patchesDir = patchRepository.getCacheDir()
                 val file = File(patchesDir, assetName)
                 if (file.exists()) file else null
             } else null
@@ -155,13 +174,14 @@ class PatchesViewModel(
     }
 
     /**
-     * Find all cached .mpp files in the patches directory.
+     * Find all cached .mpp files in the per-source cache directory.
      */
     private fun findAllCachedPatchFiles(): List<File> {
-        val patchesDir = app.morphe.gui.util.FileUtils.getPatchesDir()
-        return patchesDir.listFiles { file -> file.extension.equals("mpp", ignoreCase = true) }
-            ?.filter { it.length() > 0 }
-            ?: emptyList()
+        val patchesDir = patchRepository.getCacheDir()
+        return patchesDir.listFiles { file ->
+            val ext = file.extension.lowercase()
+            ext == "mpp" || ext == "jar"
+        }?.filter { it.length() > 0 } ?: emptyList()
     }
 
     private val versionRegex = Regex("""(\d+\.\d+\.\d+(?:-dev\.\d+)?)""")
@@ -205,8 +225,8 @@ class PatchesViewModel(
      * Check if patches for a release are already downloaded and valid.
      */
     private fun checkCachedPatches(release: Release): File? {
-        val asset = patchRepository.findMppAsset(release) ?: return null
-        val patchesDir = app.morphe.gui.util.FileUtils.getPatchesDir()
+        val asset = patchRepository.findPatchAsset(release) ?: return null
+        val patchesDir = patchRepository.getCacheDir()
         val cachedFile = File(patchesDir, asset.name)
 
         // Verify file exists and size matches (size check acts as basic integrity verification)
@@ -329,6 +349,7 @@ enum class ReleaseChannel {
 data class PatchesUiState(
     val isLoading: Boolean = false,
     val isOffline: Boolean = false,
+    val isLocalSource: Boolean = false,
     val offlineReleases: List<Release> = emptyList(),
     val stableReleases: List<Release> = emptyList(),
     val devReleases: List<Release> = emptyList(),

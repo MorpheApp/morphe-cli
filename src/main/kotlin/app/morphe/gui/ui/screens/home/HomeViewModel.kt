@@ -6,10 +6,13 @@ import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.gui.data.repository.PatchSourceManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.dongliu.apk.parser.ApkFile
@@ -20,21 +23,40 @@ import app.morphe.gui.util.SupportedAppExtractor
 import java.io.File
 
 class HomeViewModel(
-    private val patchRepository: PatchRepository,
+    private val patchSourceManager: PatchSourceManager,
     private val patchService: PatchService,
     private val configRepository: ConfigRepository
 ) : ScreenModel {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private var patchRepository: PatchRepository = patchSourceManager.getActiveRepositorySync()
+    private var localPatchFilePath: String? = patchSourceManager.getLocalFilePath()
+    private var isDefaultSource: Boolean = patchSourceManager.isDefaultSource()
+
+    private val _uiState = MutableStateFlow(HomeUiState(isDefaultSource = isDefaultSource))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     // Cached patches and supported apps
     private var cachedPatches: List<Patch> = emptyList()
     private var cachedPatchesFile: File? = null
+    private var loadJob: Job? = null
 
     init {
         // Auto-fetch patches on startup
         loadPatchesAndSupportedApps()
+
+        // Observe source changes — drop(1) to skip the initial value
+        screenModelScope.launch {
+            patchSourceManager.sourceVersion.drop(1).collect {
+                Logger.info("HomeVM: Source changed, reloading patches...")
+                patchRepository = patchSourceManager.getActiveRepositorySync()
+                localPatchFilePath = patchSourceManager.getLocalFilePath()
+                isDefaultSource = patchSourceManager.isDefaultSource()
+                lastLoadedVersion = null
+                cachedPatchesFile = null
+                _uiState.value = HomeUiState(isDefaultSource = isDefaultSource)
+                loadPatchesAndSupportedApps(forceRefresh = true)
+            }
+        }
     }
 
     // Track the last loaded version to avoid reloading unnecessarily
@@ -45,8 +67,23 @@ class HomeViewModel(
      * If a saved version exists in config, load that version instead of latest.
      */
     private fun loadPatchesAndSupportedApps(forceRefresh: Boolean = false) {
-        screenModelScope.launch {
+        loadJob?.cancel()
+        loadJob = screenModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingPatches = true, patchLoadError = null)
+
+            // LOCAL source: skip GitHub entirely, load directly from the .mpp file
+            if (localPatchFilePath != null) {
+                val localFile = File(localPatchFilePath)
+                if (localFile.exists()) {
+                    loadPatchesFromFile(localFile, localFile.nameWithoutExtension, latestVersion = null, isOffline = false)
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPatches = false,
+                        patchLoadError = "Local patch file not found: ${localFile.name}"
+                    )
+                }
+                return@launch
+            }
 
             try {
                 // Check if there's a saved patches version in config
@@ -165,22 +202,24 @@ class HomeViewModel(
     /**
      * Find any cached .mpp file when offline.
      * Prefers the file matching savedVersion from config.
+     * Searches the per-source cache directory.
      */
     private fun findCachedPatchFile(savedVersion: String?): File? {
-        val patchesDir = FileUtils.getPatchesDir()
-        val mppFiles = patchesDir.listFiles { file -> file.extension.equals("mpp", ignoreCase = true) }
-            ?.filter { it.length() > 0 }
-            ?: return null
+        val patchesDir = patchRepository.getCacheDir()
+        val patchFiles = patchesDir.listFiles { file ->
+            val ext = file.extension.lowercase()
+            ext == "mpp" || ext == "jar"
+        }?.filter { it.length() > 0 } ?: return null
 
-        if (mppFiles.isEmpty()) return null
+        if (patchFiles.isEmpty()) return null
 
         return if (savedVersion != null) {
             // Strip "v" prefix — savedVersion is "v1.13.0" but filenames are "patches-1.13.0.mpp"
             val versionNumber = savedVersion.removePrefix("v")
-            mppFiles.firstOrNull { it.name.contains(versionNumber, ignoreCase = true) }
-                ?: mppFiles.maxByOrNull { it.lastModified() }
+            patchFiles.firstOrNull { it.name.contains(versionNumber, ignoreCase = true) }
+                ?: patchFiles.maxByOrNull { it.lastModified() }
         } else {
-            mppFiles.maxByOrNull { it.lastModified() }
+            patchFiles.maxByOrNull { it.lastModified() }
         }
     }
 
@@ -198,7 +237,7 @@ class HomeViewModel(
      * Load patches from a local .mpp file and update UI state.
      * Used as fallback when offline with cached patches.
      */
-    private suspend fun loadPatchesFromFile(patchFile: File, version: String, latestVersion: String?) {
+    private suspend fun loadPatchesFromFile(patchFile: File, version: String, latestVersion: String?, isOffline: Boolean = true) {
         cachedPatchesFile = patchFile
         lastLoadedVersion = version
 
@@ -208,18 +247,18 @@ class HomeViewModel(
         if (patches == null || patches.isEmpty()) {
             _uiState.value = _uiState.value.copy(
                 isLoadingPatches = false,
-                patchLoadError = "Could not load cached patches: ${patchesResult.exceptionOrNull()?.message}"
+                patchLoadError = "Could not load patches: ${patchesResult.exceptionOrNull()?.message}"
             )
             return
         }
 
         cachedPatches = patches
         val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
-        Logger.info("Loaded ${supportedApps.size} supported apps from cached patches: ${patchFile.name}")
+        Logger.info("Loaded ${supportedApps.size} supported apps from ${if (isOffline) "cached" else "local"} patches: ${patchFile.name}")
 
         _uiState.value = _uiState.value.copy(
             isLoadingPatches = false,
-            isOffline = true,
+            isOffline = isOffline,
             supportedApps = supportedApps,
             patchesVersion = version,
             latestPatchesVersion = latestVersion,
@@ -534,6 +573,7 @@ data class HomeUiState(
     // Dynamic patches data
     val isLoadingPatches: Boolean = true,
     val isOffline: Boolean = false,
+    val isDefaultSource: Boolean = true,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
     val latestPatchesVersion: String? = null,  // Track the latest available version

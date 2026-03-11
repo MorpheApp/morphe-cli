@@ -1,7 +1,7 @@
 package app.morphe.gui.di
 
 import app.morphe.gui.data.repository.ConfigRepository
-import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.util.PatchService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -52,12 +52,21 @@ val appModule = module {
 
     // Repositories and Services
     single { ConfigRepository() }
-    single { PatchRepository(get()) }
+    single { PatchSourceManager(get(), get()) }
     single { PatchService() }
 
     // ViewModels (ScreenModels)
-    factory { HomeViewModel(get(), get(), get()) }
-    factory { params -> PatchesViewModel(params.get(), params.get(), get(), get()) }
-    factory { params -> PatchSelectionViewModel(params.get(), params.get(), params.get(), params.get(), params.get(), get(), get()) }
+    // ViewModels observe PatchSourceManager.sourceVersion and reload on source changes.
+    factory {
+        HomeViewModel(get(), get(), get())
+    }
+    factory { params ->
+        val psm = get<PatchSourceManager>()
+        PatchesViewModel(params.get(), params.get(), psm.getActiveRepositorySync(), get(), psm.getLocalFilePath())
+    }
+    factory { params ->
+        val psm = get<PatchSourceManager>()
+        PatchSelectionViewModel(params.get(), params.get(), params.get(), params.get(), params.get(), get(), psm.getActiveRepositorySync(), psm.getLocalFilePath())
+    }
     factory { params -> PatchingViewModel(params.get(), get(), get()) }
 }

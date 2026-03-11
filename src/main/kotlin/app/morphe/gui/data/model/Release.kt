@@ -11,12 +11,14 @@ data class Release(
     val id: Long,
     @SerialName("tag_name")
     val tagName: String,
-    val name: String,
+    val name: String? = null,
     @SerialName("prerelease")
-    val isPrerelease: Boolean,
+    val isPrerelease: Boolean = false,
     val draft: Boolean = false,
     @SerialName("published_at")
-    val publishedAt: String,
+    val publishedAt: String? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null,
     val assets: List<ReleaseAsset> = emptyList(),
     val body: String? = null
 ) {
@@ -56,6 +58,11 @@ data class ReleaseAsset(
      * Check if this is an MPP (Morphe Patches) file
      */
     fun isMpp(): Boolean = name.endsWith(".mpp", ignoreCase = true)
+
+    /**
+     * Check if this is a patch file (.mpp or .jar)
+     */
+    fun isPatchFile(): Boolean = isMpp() || isJar()
 
     /**
      * Get human-readable file size

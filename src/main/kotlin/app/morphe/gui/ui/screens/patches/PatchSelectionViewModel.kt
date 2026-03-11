@@ -20,7 +20,8 @@ class PatchSelectionViewModel(
     private val packageName: String,
     private val apkArchitectures: List<String>,
     private val patchService: PatchService,
-    private val patchRepository: PatchRepository
+    private val patchRepository: PatchRepository,
+    private val localPatchFilePath: String? = null
 ) : ScreenModel {
 
     // Actual path to use - may differ from patchesFilePath if we had to re-download
@@ -163,6 +164,28 @@ class PatchSelectionViewModel(
     }
 
     /**
+     * Set a patch option value. Key format: "patchName.optionKey"
+     */
+    fun setOptionValue(patchName: String, optionKey: String, value: String) {
+        val key = "$patchName.$optionKey"
+        val current = _uiState.value.patchOptionValues.toMutableMap()
+        if (value.isBlank()) {
+            current.remove(key)
+        } else {
+            current[key] = value
+        }
+        _uiState.value = _uiState.value.copy(patchOptionValues = current)
+    }
+
+    /**
+     * Get a patch option value. Returns the user-set value, or the default if not set.
+     */
+    fun getOptionValue(patchName: String, optionKey: String, default: String?): String {
+        val key = "$patchName.$optionKey"
+        return _uiState.value.patchOptionValues[key] ?: default ?: ""
+    }
+
+    /**
      * Count of patches that are disabled by default (from .mpp metadata).
      */
     fun getDefaultDisabledCount(): Int {
@@ -205,6 +228,7 @@ class PatchSelectionViewModel(
             patchesFilePath = actualPatchesFilePath,
             enabledPatches = selectedPatchNames,
             disabledPatches = disabledPatchNames,
+            patchOptions = _uiState.value.patchOptionValues,
             useExclusiveMode = true,
             striplibs = striplibs,
             continueOnError = continueOnError
@@ -306,9 +330,20 @@ class PatchSelectionViewModel(
 
     /**
      * Download patches file if it's missing (e.g., after cache clear).
+     * For LOCAL sources, uses the local file directly.
      * Tries to find a release matching the expected filename, or falls back to latest stable.
      */
     private suspend fun downloadMissingPatches(expectedFilename: String): Result<File> {
+        // LOCAL source: use the local file directly instead of downloading
+        if (localPatchFilePath != null) {
+            val localFile = File(localPatchFilePath)
+            return if (localFile.exists()) {
+                Result.success(localFile)
+            } else {
+                Result.failure(Exception("Local patch file not found: ${localFile.name}"))
+            }
+        }
+
         // Try to extract version from filename (e.g., "morphe-patches-1.9.0.mpp" -> "1.9.0")
         val versionRegex = Regex("""(\d+\.\d+\.\d+(?:-dev\.\d+)?)""")
         val versionMatch = versionRegex.find(expectedFilename)
@@ -357,7 +392,8 @@ data class PatchSelectionUiState(
     val showOnlySelected: Boolean = false,
     val error: String? = null,
     val apkArchitectures: List<String> = emptyList(),
-    val selectedArchitectures: Set<String> = emptySet()
+    val selectedArchitectures: Set<String> = emptySet(),
+    val patchOptionValues: Map<String, String> = emptyMap()
 ) {
     val selectedCount: Int get() = selectedPatches.size
     val totalCount: Int get() = allPatches.size

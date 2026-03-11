@@ -342,7 +342,13 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                             PatchListItem(
                                 patch = patch,
                                 isSelected = uiState.selectedPatches.contains(patch.uniqueId),
-                                onToggle = { viewModel.togglePatch(patch.uniqueId) }
+                                onToggle = { viewModel.togglePatch(patch.uniqueId) },
+                                getOptionValue = { optionKey, default ->
+                                    viewModel.getOptionValue(patch.name, optionKey, default)
+                                },
+                                onOptionValueChange = { optionKey, value ->
+                                    viewModel.setOptionValue(patch.name, optionKey, value)
+                                }
                             )
                         }
                     }
@@ -402,7 +408,7 @@ private fun SearchBar(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f).height(48.dp),
+            modifier = Modifier.weight(1f),
             placeholder = { Text("Search patches...", style = MaterialTheme.typography.bodySmall) },
             leadingIcon = {
                 Icon(
@@ -477,7 +483,9 @@ private fun SearchBar(
 private fun PatchListItem(
     patch: Patch,
     isSelected: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    getOptionValue: (optionKey: String, default: String?) -> String = { _, d -> d ?: "" },
+    onOptionValueChange: (optionKey: String, value: String) -> Unit = { _, _ -> }
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -487,97 +495,238 @@ private fun PatchListItem(
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isHovered) 0.5f else 0.3f)
     }
 
+    var showOptions by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .hoverable(interactionSource)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle),
+            .hoverable(interactionSource),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         shape = RoundedCornerShape(12.dp)
     ) {
+        Column {
+            // Header area — clicking here toggles the patch
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = null,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MorpheColors.Blue,
+                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = patch.name,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    if (patch.description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = patch.description,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Show compatible packages if any
+                    if (patch.compatiblePackages.isNotEmpty()) {
+                        val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            patch.compatiblePackages.take(2).forEach { pkg ->
+                                val meaningful = pkg.name.split(".").filter { it !in genericSegments }
+                                val displayName = meaningful.takeLast(2).joinToString(" ")
+                                    .replaceFirstChar { it.uppercase() }
+                                Surface(
+                                    color = if (isSelected) MorpheColors.Blue.copy(alpha = 0.18f)
+                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = displayName,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Options chip
+                    if (patch.options.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${patch.options.size} option${if (patch.options.size > 1) "s" else ""} ${if (showOptions) "▲" else "▼"}",
+                            fontSize = 10.sp,
+                            color = MorpheColors.Teal
+                        )
+                    }
+                }
+            }
+
+            // Options editor — completely outside the toggle-clickable area
+            if (patch.options.isNotEmpty()) {
+                // Toggle button for options
+                if (!showOptions) {
+                    Surface(
+                        onClick = { showOptions = true },
+                        color = MorpheColors.Teal.copy(alpha = 0.06f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Configure options",
+                            fontSize = 10.sp,
+                            color = MorpheColors.Teal.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = showOptions,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Collapse button
+                        Surface(
+                            onClick = { showOptions = false },
+                            color = MorpheColors.Teal.copy(alpha = 0.06f),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Hide options ▲",
+                                fontSize = 10.sp,
+                                color = MorpheColors.Teal.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        patch.options.forEach { option ->
+                            PatchOptionEditor(
+                                option = option,
+                                value = getOptionValue(option.key, option.default),
+                                onValueChange = { onOptionValueChange(option.key, it) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PatchOptionEditor(
+    option: app.morphe.gui.data.model.PatchOption,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = null,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = MorpheColors.Blue,
-                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Text(
+                text = option.title.ifBlank { option.key },
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MorpheColors.Teal
             )
-
-            Column(modifier = Modifier.weight(1f)) {
+            if (option.required) {
                 Text(
-                    text = patch.name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "*",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.error
                 )
-
-                if (patch.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+        if (option.description.isNotBlank()) {
+            Text(
+                text = option.description,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        when (option.type) {
+            app.morphe.gui.data.model.PatchOptionType.BOOLEAN -> {
+                var localChecked by remember(option.key) { mutableStateOf(value.equals("true", ignoreCase = true)) }
+                LaunchedEffect(value) {
+                    val v = value.equals("true", ignoreCase = true)
+                    if (localChecked != v) localChecked = v
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Switch(
+                        checked = localChecked,
+                        onCheckedChange = { newChecked ->
+                            localChecked = newChecked
+                            onValueChange(newChecked.toString())
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = MorpheColors.Teal
+                        )
+                    )
                     Text(
-                        text = patch.description,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        text = if (localChecked) "Enabled" else "Disabled",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                // Show compatible packages if any
-                if (patch.compatiblePackages.isNotEmpty()) {
-                    val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        patch.compatiblePackages.take(2).forEach { pkg ->
-                            val meaningful = pkg.name.split(".").filter { it !in genericSegments }
-                            val displayName = meaningful.takeLast(2).joinToString(" ")
-                                .replaceFirstChar { it.uppercase() }
-                            Surface(
-                                color = if (isSelected) MorpheColors.Blue.copy(alpha = 0.18f)
-                                        else MaterialTheme.colorScheme.surfaceVariant,
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = displayName,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
+            }
+            else -> {
+                // Use local state to ensure text field is responsive, sync back to ViewModel
+                var localText by remember(option.key) { mutableStateOf(value) }
+                LaunchedEffect(value) {
+                    if (localText != value) localText = value
                 }
 
-                // Show options if patch has any
-                if (patch.options.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        patch.options.forEach { option ->
-                            Surface(
-                                color = MorpheColors.Teal.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = option.title.ifBlank { option.key },
-                                    fontSize = 10.sp,
-                                    color = MorpheColors.Teal,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                OutlinedTextField(
+                    value = localText,
+                    onValueChange = { newText ->
+                        localText = newText
+                        onValueChange(newText)
+                    },
+                    placeholder = {
+                        Text(
+                            text = option.default ?: option.type.name.lowercase(),
+                            fontSize = 11.sp
+                        )
+                    },
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = MorpheColors.Teal.copy(alpha = 0.3f),
+                        focusedBorderColor = MorpheColors.Teal
+                    )
+                )
             }
         }
     }

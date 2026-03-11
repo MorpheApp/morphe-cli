@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -37,7 +38,7 @@ import app.morphe.morphe_cli.generated.resources.morphe_light
 import app.morphe.gui.ui.theme.LocalThemeState
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.data.repository.ConfigRepository
-import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.util.PatchService
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
@@ -62,12 +63,12 @@ import java.awt.Frame
 class QuickPatchScreen : Screen {
     @Composable
     override fun Content() {
-        val patchRepository: PatchRepository = koinInject()
+        val patchSourceManager: PatchSourceManager = koinInject()
         val patchService: PatchService = koinInject()
         val configRepository: ConfigRepository = koinInject()
 
         val viewModel = remember {
-            QuickPatchViewModel(patchRepository, patchService, configRepository)
+            QuickPatchViewModel(patchSourceManager, patchService, configRepository)
         }
 
         QuickPatchContent(viewModel)
@@ -230,6 +231,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                         isLoading = uiState.isLoadingPatches,
                         loadError = uiState.patchLoadError,
                         patchesVersion = uiState.patchesVersion,
+                        isDefaultSource = uiState.isDefaultSource,
                         onOpenUrl = { url ->
                             openUrlAndFollowRedirects(url) { urlResolved ->
                                 uriHandler.openUri(urlResolved)
@@ -708,6 +710,7 @@ private fun SupportedAppsRow(
     isLoading: Boolean,
     loadError: String? = null,
     patchesVersion: String?,
+    isDefaultSource: Boolean = true,
     onOpenUrl: (String) -> Unit,
     onRetry: () -> Unit = {}
 ) {
@@ -720,7 +723,7 @@ private fun SupportedAppsRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Download original APK",
+                text = if (isDefaultSource) "Download original APK" else "Supported apps",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -776,45 +779,155 @@ private fun SupportedAppsRow(
                 }
             }
         } else {
-            // Show supported apps dynamically
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                supportedApps.forEach { app ->
-                    val url = app.apkDownloadUrl
-                    if (url != null) {
+            // Search bar for many apps
+            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+            var searchQuery by remember { mutableStateOf("") }
+            val filteredApps = if (searchQuery.isBlank()) supportedApps
+            else supportedApps.filter {
+                it.displayName.contains(searchQuery, ignoreCase = true) ||
+                it.packageName.contains(searchQuery, ignoreCase = true)
+            }
+
+            if (supportedApps.size > 4) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            "Search apps...",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MorpheColors.Blue,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (isDefaultSource) {
+                // Default source: show clickable download cards with fixed width
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .height(IntrinsicSize.Max)
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { focusManager.clearFocus() },
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    filteredApps.forEach { app ->
+                        val url = app.apkDownloadUrl
+                        if (url != null) {
+                            OutlinedCard(
+                                onClick = { onOpenUrl(url) },
+                                modifier = Modifier.width(180.dp).fillMaxHeight(),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = app.displayName,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        app.recommendedVersion?.let { version ->
+                                            Text(
+                                                text = "v$version",
+                                                fontSize = 10.sp,
+                                                color = MorpheColors.Teal
+                                            )
+                                        }
+                                    }
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = "Open",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Custom source: show app names and versions in a scrollable row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .height(IntrinsicSize.Max)
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { focusManager.clearFocus() },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    filteredApps.forEach { app ->
                         OutlinedCard(
-                            onClick = { onOpenUrl(url) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.width(160.dp).fillMaxHeight(),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(12.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = app.displayName,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    app.recommendedVersion?.let { version ->
-                                        Text(
-                                            text = "v$version",
-                                            fontSize = 10.sp,
-                                            color = MorpheColors.Teal
-                                        )
-                                    }
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = "Open",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
+                                Text(
+                                    text = app.displayName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
+                                Text(
+                                    text = app.packageName,
+                                    fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                app.recommendedVersion?.let { version ->
+                                    Text(
+                                        text = "v$version",
+                                        fontSize = 10.sp,
+                                        color = MorpheColors.Teal
+                                    )
+                                }
                             }
                         }
                     }

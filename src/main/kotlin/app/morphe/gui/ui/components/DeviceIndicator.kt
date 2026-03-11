@@ -1,8 +1,13 @@
 package app.morphe.gui.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -13,60 +18,73 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.theme.JetBrainsMono
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.DeviceStatus
 
 @Composable
 fun DeviceIndicator(modifier: Modifier = Modifier) {
+    val mono = JetBrainsMono
     val monitorState by DeviceMonitor.state.collectAsState()
 
     val isAdbAvailable = monitorState.isAdbAvailable
     val readyDevices = monitorState.devices.filter { it.isReady }
     val unauthorizedDevices = monitorState.devices.filter { it.status == DeviceStatus.UNAUTHORIZED }
     val selectedDevice = monitorState.selectedDevice
-    val hasDevices = monitorState.devices.isNotEmpty()
 
     var showPopup by remember { mutableStateOf(false) }
+
+    val hoverInteraction = remember { MutableInteractionSource() }
+    val isHovered by hoverInteraction.collectIsHoveredAsState()
+
+    val dotColor = when {
+        isAdbAvailable == false -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+        selectedDevice != null && selectedDevice.isReady -> MorpheColors.Teal
+        unauthorizedDevices.isNotEmpty() -> Color(0xFFFF9800)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+    }
+
+    val borderColor by animateColorAsState(
+        when {
+            isHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            selectedDevice != null && selectedDevice.isReady -> MorpheColors.Teal.copy(alpha = 0.2f)
+            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+        },
+        animationSpec = tween(150)
+    )
 
     Box(modifier = modifier) {
         Surface(
             onClick = { showPopup = !showPopup },
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            shape = RoundedCornerShape(2.dp),
+            color = Color.Transparent,
+            modifier = Modifier
+                .hoverable(hoverInteraction)
+                .border(1.dp, borderColor, RoundedCornerShape(2.dp))
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Status dot
-                val dotColor = when {
-                    isAdbAvailable == false -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-                    selectedDevice != null && selectedDevice.isReady -> MorpheColors.Teal
-                    unauthorizedDevices.isNotEmpty() -> Color(0xFFFF9800)
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                }
-
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(dotColor)
+                        .size(6.dp)
+                        .background(dotColor, RoundedCornerShape(1.dp))
                 )
 
-                // Display text
                 val displayText = when {
-                    isAdbAvailable == null -> "Checking..."
+                    isAdbAvailable == null -> "Checking…"
                     isAdbAvailable == false -> "No ADB"
                     selectedDevice != null -> {
-                        val arch = selectedDevice.architecture?.let { " \u2022 $it" } ?: ""
+                        val arch = selectedDevice.architecture?.let { " · $it" } ?: ""
                         "${selectedDevice.displayName}$arch"
                     }
                     unauthorizedDevices.isNotEmpty() -> "Unauthorized"
@@ -75,37 +93,36 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
 
                 Text(
                     text = displayText,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
+                    fontFamily = mono,
                     color = when {
                         isAdbAvailable == false -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                         selectedDevice != null -> MaterialTheme.colorScheme.onSurface
                         unauthorizedDevices.isNotEmpty() -> Color(0xFFFF9800)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 180.dp)
                 )
 
-                // Always show dropdown arrow — popup has useful info in every state
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = "Device details",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
             }
         }
 
-        // Popup with device list / status info
+        // Popup
         DropdownMenu(
             expanded = showPopup,
             onDismissRequest = { showPopup = false }
         ) {
             when {
                 isAdbAvailable == false -> {
-                    // ADB not found
                     DropdownMenuItem(
                         text = {
                             Row(
@@ -115,20 +132,22 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 Icon(
                                     imageVector = Icons.Default.UsbOff,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.error
                                 )
                                 Column {
                                     Text(
                                         text = "ADB not found",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontFamily = mono,
                                         color = MaterialTheme.colorScheme.error
                                     )
                                     Text(
                                         text = "Install Android SDK Platform Tools",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        fontSize = 10.sp,
+                                        fontFamily = mono,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 }
                             }
@@ -138,7 +157,6 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                 }
 
                 monitorState.devices.isEmpty() -> {
-                    // ADB available but no devices visible
                     DropdownMenuItem(
                         text = {
                             Row(
@@ -148,20 +166,22 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 Icon(
                                     imageVector = Icons.Default.PhoneAndroid,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                 )
                                 Column {
                                     Text(
                                         text = "No devices detected",
-                                        fontSize = 13.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
+                                        fontFamily = mono,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = "Only devices with USB debugging enabled will appear here",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        text = "Connect a device with USB debugging enabled",
+                                        fontSize = 10.sp,
+                                        fontFamily = mono,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 }
                             }
@@ -178,20 +198,22 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MorpheColors.Blue.copy(alpha = 0.7f)
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MorpheColors.Blue.copy(alpha = 0.6f)
                                 )
                                 Column {
                                     Text(
-                                        text = "How to enable USB debugging",
-                                        fontSize = 12.sp,
+                                        text = "Enable USB debugging",
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
+                                        fontFamily = mono,
                                         color = MorpheColors.Blue
                                     )
                                     Text(
-                                        text = "Settings > Developer Options > USB Debugging",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        text = "Settings → Developer Options → USB Debugging",
+                                        fontSize = 10.sp,
+                                        fontFamily = mono,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                 }
                             }
@@ -201,7 +223,6 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                 }
 
                 else -> {
-                    // Device list
                     monitorState.devices.forEach { device ->
                         val isSelected = device.id == selectedDevice?.id
                         DropdownMenuItem(
@@ -210,31 +231,34 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PhoneAndroid,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = when {
-                                            isSelected -> MorpheColors.Teal
-                                            device.isReady -> MorpheColors.Blue
-                                            device.status == DeviceStatus.UNAUTHORIZED -> Color(0xFFFF9800)
-                                            else -> MaterialTheme.colorScheme.error
-                                        }
+                                    // Device status dot
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(
+                                                when {
+                                                    isSelected -> MorpheColors.Teal
+                                                    device.isReady -> MorpheColors.Blue
+                                                    device.status == DeviceStatus.UNAUTHORIZED -> Color(0xFFFF9800)
+                                                    else -> MaterialTheme.colorScheme.error
+                                                },
+                                                RoundedCornerShape(1.dp)
+                                            )
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = device.displayName,
-                                            fontSize = 13.sp,
-                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            fontFamily = mono
                                         )
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                             device.architecture?.let { arch ->
                                                 Text(
                                                     text = arch,
-                                                    fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    fontSize = 10.sp,
+                                                    fontFamily = mono,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                                 )
                                             }
                                             Text(
@@ -244,7 +268,8 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                                     DeviceStatus.OFFLINE -> "Offline"
                                                     DeviceStatus.UNKNOWN -> "Unknown"
                                                 },
-                                                fontSize = 11.sp,
+                                                fontSize = 10.sp,
+                                                fontFamily = mono,
                                                 color = when (device.status) {
                                                     DeviceStatus.DEVICE -> MorpheColors.Teal
                                                     DeviceStatus.UNAUTHORIZED -> Color(0xFFFF9800)
@@ -264,7 +289,6 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                         )
                     }
 
-                    // USB debugging hint
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     DropdownMenuItem(
                         text = {
@@ -275,19 +299,21 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                 )
                                 Column {
                                     Text(
-                                        text = "Device connected but not listed?",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = "Device not listed?",
+                                        fontSize = 11.sp,
+                                        fontFamily = mono,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                     )
                                     Text(
                                         text = "Enable USB Debugging in Developer Options",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        fontSize = 10.sp,
+                                        fontFamily = mono,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                                     )
                                 }
                             }

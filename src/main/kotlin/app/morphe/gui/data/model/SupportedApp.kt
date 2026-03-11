@@ -18,16 +18,57 @@ data class SupportedApp(
          * Derive display name from package name.
          */
         fun getDisplayName(packageName: String): String {
-            return when (packageName) {
-                "com.google.android.youtube" -> "YouTube"
-                "com.google.android.apps.youtube.music" -> "YouTube Music"
-                "com.reddit.frontpage" -> "Reddit"
-                else -> {
-                    // Fallback: Extract last part of package name and capitalize
-                    packageName.substringAfterLast(".")
-                        .replaceFirstChar { it.uppercase() }
-                }
-            }
+            // Well-known package name mappings
+            val knownNames = mapOf(
+                "com.google.android.youtube" to "YouTube",
+                "com.google.android.apps.youtube.music" to "YouTube Music",
+                "com.reddit.frontpage" to "Reddit",
+                "com.duolingo" to "Duolingo",
+                "com.myfitnesspal.android" to "MyFitnessPal",
+                "com.pandora.android" to "Pandora",
+                "ch.protonvpn.android" to "ProtonVPN",
+                "com.amazon.avod.thirdpartyclient" to "Prime Video",
+                "com.getmimo" to "Mimo",
+                "com.zombodroid.MemeGenerator" to "Meme Generator",
+                "com.sofascore.results" to "SofaScore",
+                "pl.solidexplorer2" to "Solid Explorer",
+                "com.bambuna.podcastaddict" to "Podcast Addict",
+                "com.wallpaperscraft.wallpaper" to "WallpapersCraft",
+                "cn.wps.moffice_eng" to "WPS Office",
+                "com.merriamwebster" to "Merriam-Webster",
+                "com.busuu.android.enc" to "Busuu",
+                "jp.ne.ibis.ibispaintx.app" to "ibisPaint X",
+                "com.laurencedawson.reddit_sync" to "Sync for Reddit",
+                "com.laurencedawson.reddit_sync.pro" to "Sync for Reddit Pro",
+                "com.laurencedawson.reddit_sync.dev" to "Sync for Reddit Dev",
+                "com.andrewshu.android.reddit" to "Reddit is Fun",
+                "free.reddit.news" to "Relay for Reddit",
+                "reddit.news" to "Relay for Reddit Pro",
+                "com.rubenmayayo.reddit" to "Boost for Reddit",
+                "o.o.joey" to "Joey for Reddit",
+                "o.o.joey.pro" to "Joey for Reddit Pro",
+                "o.o.joey.dev" to "Joey for Reddit Dev",
+                "com.onelouder.baconreader" to "BaconReader",
+                "com.onelouder.baconreader.premium" to "BaconReader Premium",
+                "me.edgan.redditslide" to "Slide for Reddit",
+                "io.syncapps.lemmy_sync" to "Sync for Lemmy",
+                "org.cygnusx1.continuum" to "Continuum for Reddit",
+            )
+            knownNames[packageName]?.let { return it }
+
+            // Smart fallback: use the most meaningful part of the package name
+            val parts = packageName.split(".")
+            // Skip common prefixes: com, org, net, android, app, etc.
+            val skipParts = setOf("com", "org", "net", "io", "me", "app", "android", "apps", "free")
+            val meaningful = parts.filter { it.lowercase() !in skipParts && it.length > 1 }
+            // Use the last meaningful part, or the full last segment
+            val name = meaningful.lastOrNull() ?: parts.last()
+            // Split camelCase and underscores, capitalize
+            return name
+                .replace("_", " ")
+                .replace(Regex("([a-z])([A-Z])")) { "${it.groupValues[1]} ${it.groupValues[2]}" }
+                .split(" ")
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
         }
 
         /**

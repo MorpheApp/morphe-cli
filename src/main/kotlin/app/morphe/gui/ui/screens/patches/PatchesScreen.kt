@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -135,26 +136,38 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Channel selector (hidden when offline)
-            if (!uiState.isOffline) {
-                ChannelSelector(
-                    selectedChannel = uiState.selectedChannel,
-                    onChannelSelected = { viewModel.setChannel(it) },
-                    stableCount = uiState.stableReleases.size,
-                    devCount = uiState.devReleases.size,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            // Local source: show simple file info, no release list
+            if (uiState.isLocalSource) {
+                LocalSourceBanner(
+                    patchFile = uiState.downloadedPatchFile,
+                    modifier = Modifier.padding(16.dp)
                 )
-            }
+            } else {
+                // Channel selector (hidden when offline)
+                if (!uiState.isOffline) {
+                    ChannelSelector(
+                        selectedChannel = uiState.selectedChannel,
+                        onChannelSelected = { viewModel.setChannel(it) },
+                        stableCount = uiState.stableReleases.size,
+                        devCount = uiState.devReleases.size,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
-            // Offline banner
-            if (uiState.isOffline && uiState.currentReleases.isNotEmpty()) {
-                OfflineBanner(
-                    onRetry = { viewModel.loadReleases() },
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp)
-                )
+                // Offline banner
+                if (uiState.isOffline && uiState.currentReleases.isNotEmpty()) {
+                    OfflineBanner(
+                        onRetry = { viewModel.loadReleases() },
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp)
+                    )
+                }
             }
 
             when {
+                uiState.isLocalSource -> {
+                    // Local source: ready, no release list needed
+                    Spacer(modifier = Modifier.weight(1f))
+                }
                 uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -408,16 +421,16 @@ private fun ReleaseCard(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Show .mpp file info if available
-                    release.assets.find { it.isMpp() }?.let { mppAsset ->
+                    // Show patch file info if available (.mpp or .jar)
+                    release.assets.find { it.isPatchFile() }?.let { patchAsset ->
                         Text(
-                            text = "${mppAsset.name} (${mppAsset.getFormattedSize()})",
+                            text = "${patchAsset.name} (${patchAsset.getFormattedSize()})",
                             fontSize = 13.sp,
                             color = subtitleColor
                         )
                     }
 
-                    val formattedDate = formatDate(release.publishedAt)
+                    val formattedDate = release.publishedAt?.let { formatDate(it) } ?: ""
                     if (formattedDate.isNotEmpty()) {
                         Text(
                             text = "${if (isOffline) "Cached:" else "Published:"} $formattedDate",
@@ -675,6 +688,47 @@ private fun BottomActionBar(
                 }
             }
 
+        }
+    }
+}
+
+@Composable
+private fun LocalSourceBanner(
+    patchFile: File?,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MorpheColors.Blue.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MorpheColors.Blue.copy(alpha = 0.2f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.FolderOpen,
+                contentDescription = null,
+                tint = MorpheColors.Blue,
+                modifier = Modifier.size(24.dp)
+            )
+            Column {
+                Text(
+                    text = "Local Patch File",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (patchFile != null) {
+                    Text(
+                        text = patchFile.name,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

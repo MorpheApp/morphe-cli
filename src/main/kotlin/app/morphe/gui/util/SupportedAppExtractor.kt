@@ -3,6 +3,7 @@ package app.morphe.gui.util
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.SupportedApp
 
+
 /**
  * Extracts supported apps from parsed patch data.
  * This allows the app to dynamically determine which apps are supported

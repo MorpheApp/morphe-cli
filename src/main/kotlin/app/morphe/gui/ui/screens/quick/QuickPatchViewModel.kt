@@ -8,10 +8,12 @@ import app.morphe.gui.data.model.PatchConfig
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.gui.data.repository.PatchSourceManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import net.dongliu.apk.parser.ApkFile
 import app.morphe.gui.util.ChecksumStatus
@@ -25,15 +27,20 @@ import java.io.File
  * ViewModel for Quick Patch mode - handles the entire flow in one screen.
  */
 class QuickPatchViewModel(
-    private val patchRepository: PatchRepository,
+    private val patchSourceManager: PatchSourceManager,
     private val patchService: PatchService,
     private val configRepository: ConfigRepository
 ) : ScreenModel {
 
-    private val _uiState = MutableStateFlow(QuickPatchUiState())
+    private var patchRepository: PatchRepository = patchSourceManager.getActiveRepositorySync()
+    private var localPatchFilePath: String? = patchSourceManager.getLocalFilePath()
+    private var isDefaultSource: Boolean = patchSourceManager.isDefaultSource()
+
+    private val _uiState = MutableStateFlow(QuickPatchUiState(isDefaultSource = isDefaultSource))
     val uiState: StateFlow<QuickPatchUiState> = _uiState.asStateFlow()
 
     private var patchingJob: Job? = null
+    private var loadJob: Job? = null
 
     // Cached dynamic data from patches
     private var cachedPatches: List<Patch> = emptyList()
@@ -43,14 +50,44 @@ class QuickPatchViewModel(
     init {
         // Load patches on startup to get dynamic app info
         loadPatchesAndSupportedApps()
+
+        // Observe source changes
+        screenModelScope.launch {
+            patchSourceManager.sourceVersion.drop(1).collect {
+                Logger.info("QuickVM: Source changed, reloading patches...")
+                patchRepository = patchSourceManager.getActiveRepositorySync()
+                localPatchFilePath = patchSourceManager.getLocalFilePath()
+                isDefaultSource = patchSourceManager.isDefaultSource()
+                cachedPatchesFile = null
+                cachedPatches = emptyList()
+                cachedSupportedApps = emptyList()
+                _uiState.value = QuickPatchUiState(isDefaultSource = isDefaultSource)
+                loadPatchesAndSupportedApps()
+            }
+        }
     }
 
     /**
      * Load patches from GitHub and extract supported apps dynamically.
      */
     private fun loadPatchesAndSupportedApps() {
-        screenModelScope.launch {
+        loadJob?.cancel()
+        loadJob = screenModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingPatches = true, patchLoadError = null)
+
+            // LOCAL source: skip GitHub entirely, load directly from the .mpp file
+            if (localPatchFilePath != null) {
+                val localFile = File(localPatchFilePath)
+                if (localFile.exists()) {
+                    loadPatchesFromFile(localFile, localFile.nameWithoutExtension, isOffline = false)
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPatches = false,
+                        patchLoadError = "Local patch file not found: ${localFile.name}"
+                    )
+                }
+                return@launch
+            }
 
             try {
                 // Fetch releases
@@ -136,20 +173,22 @@ class QuickPatchViewModel(
 
     /**
      * Find any cached .mpp file when offline.
+     * Searches the per-source cache directory.
      */
     private fun findCachedPatchFile(savedVersion: String?): File? {
-        val patchesDir = FileUtils.getPatchesDir()
-        val mppFiles = patchesDir.listFiles { file -> file.extension.equals("mpp", ignoreCase = true) }
-            ?.filter { it.length() > 0 }
-            ?: return null
+        val patchesDir = patchRepository.getCacheDir()
+        val patchFiles = patchesDir.listFiles { file ->
+            val ext = file.extension.lowercase()
+            ext == "mpp" || ext == "jar"
+        }?.filter { it.length() > 0 } ?: return null
 
-        if (mppFiles.isEmpty()) return null
+        if (patchFiles.isEmpty()) return null
 
         return if (savedVersion != null) {
-            mppFiles.firstOrNull { it.name.contains(savedVersion, ignoreCase = true) }
-                ?: mppFiles.maxByOrNull { it.lastModified() }
+            patchFiles.firstOrNull { it.name.contains(savedVersion, ignoreCase = true) }
+                ?: patchFiles.maxByOrNull { it.lastModified() }
         } else {
-            mppFiles.maxByOrNull { it.lastModified() }
+            patchFiles.maxByOrNull { it.lastModified() }
         }
     }
 
@@ -162,7 +201,7 @@ class QuickPatchViewModel(
     /**
      * Load patches from a local .mpp file (offline fallback).
      */
-    private suspend fun loadPatchesFromFile(patchFile: File, version: String) {
+    private suspend fun loadPatchesFromFile(patchFile: File, version: String, isOffline: Boolean = true) {
         cachedPatchesFile = patchFile
 
         val patchesResult = patchService.listPatches(patchFile.absolutePath)
@@ -171,7 +210,7 @@ class QuickPatchViewModel(
         if (patches.isNullOrEmpty()) {
             _uiState.value = _uiState.value.copy(
                 isLoadingPatches = false,
-                patchLoadError = "Could not load cached patches: ${patchesResult.exceptionOrNull()?.message}"
+                patchLoadError = "Could not load patches: ${patchesResult.exceptionOrNull()?.message}"
             )
             return
         }
@@ -179,14 +218,14 @@ class QuickPatchViewModel(
         cachedPatches = patches
         val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
         cachedSupportedApps = supportedApps
-        Logger.info("Quick mode: Loaded ${supportedApps.size} supported apps from cached patches: ${patchFile.name}")
+        Logger.info("Quick mode: Loaded ${supportedApps.size} supported apps from ${if (isOffline) "cached" else "local"} patches: ${patchFile.name}")
 
         _uiState.value = _uiState.value.copy(
             isLoadingPatches = false,
             supportedApps = supportedApps,
             patchesVersion = version,
             patchLoadError = null,
-            isOffline = true
+            isOffline = isOffline
         )
     }
 
@@ -467,6 +506,7 @@ class QuickPatchViewModel(
         patchingJob = null
         _uiState.value = QuickPatchUiState(
             // Preserve already-loaded patches data
+            isDefaultSource = isDefaultSource,
             isLoadingPatches = false,
             supportedApps = cachedSupportedApps,
             patchesVersion = _uiState.value.patchesVersion
@@ -526,6 +566,7 @@ data class QuickApkInfo(
  */
 data class QuickPatchUiState(
     val phase: QuickPatchPhase = QuickPatchPhase.IDLE,
+    val isDefaultSource: Boolean = true,
     val apkFile: File? = null,
     val apkInfo: QuickApkInfo? = null,
     val error: String? = null,
