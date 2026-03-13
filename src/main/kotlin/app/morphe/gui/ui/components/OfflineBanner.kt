@@ -18,17 +18,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.morphe.gui.ui.theme.JetBrainsMono
+import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalMorpheCorners
 
 @Composable
 fun OfflineBanner(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val mono = JetBrainsMono
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val shape = RoundedCornerShape(2.dp)
+    val shape = RoundedCornerShape(corners.medium)
 
     Surface(
         modifier = modifier
@@ -58,7 +60,7 @@ fun OfflineBanner(
             OutlinedButton(
                 onClick = onRetry,
                 modifier = Modifier.hoverable(interactionSource).height(28.dp),
-                shape = RoundedCornerShape(2.dp),
+                shape = RoundedCornerShape(corners.small),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,

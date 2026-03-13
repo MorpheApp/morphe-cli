@@ -1,10 +1,15 @@
 package app.morphe.gui
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.unit.dp
+import app.morphe.gui.ui.components.LottieAnimation
+import app.morphe.gui.ui.components.SakuraPetals
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.SlideTransition
 import app.morphe.gui.data.repository.ConfigRepository
@@ -110,20 +115,62 @@ private fun AppContent(initialSimplifiedMode: Boolean) {
             LocalModeState provides modeState
         ) {
             Surface(modifier = Modifier.fillMaxSize()) {
-                if (!isLoading) {
-                    // ViewModels observe PatchSourceManager.sourceVersion internally
-                    // and reload when the active source changes — no Navigator recreation needed.
-                    val patchService: PatchService = koinInject()
-                    val quickViewModel = remember {
-                        QuickPatchViewModel(patchSourceManager, patchService, configRepository)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (!isLoading) {
+                        val patchService: PatchService = koinInject()
+                        val quickViewModel = remember {
+                            QuickPatchViewModel(patchSourceManager, patchService, configRepository)
+                        }
+
+                        Crossfade(targetState = isSimplifiedMode) { simplified ->
+                            if (simplified) {
+                                QuickPatchContent(quickViewModel)
+                            } else {
+                                Navigator(HomeScreen()) { navigator ->
+                                    SlideTransition(navigator)
+                                }
+                            }
+                        }
                     }
 
-                    Crossfade(targetState = isSimplifiedMode) { simplified ->
-                        if (simplified) {
-                            QuickPatchContent(quickViewModel)
-                        } else {
-                            Navigator(HomeScreen()) { navigator ->
-                                SlideTransition(navigator)
+                    // Falling petals — on top of everything (Sakura)
+                    SakuraPetals(
+                        enabled = themePreference == ThemePreference.SAKURA
+                    )
+
+                    // Matcha cat — top-right corner
+                    if (themePreference == ThemePreference.MATCHA) {
+                        val catJson = remember {
+                            try {
+                                object {}.javaClass.getResourceAsStream("/cat2333s.json")
+                                    ?.bufferedReader()?.readText()
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        catJson?.let { json ->
+                            // 1080px canvas, rendered at 350dp (1dp ≈ 3.086 canvas px).
+                            // Ears ~y385 → 125dp, bar bottom ~y576 → 187dp.
+                            // Body shrunk to 85% so it hides behind bar.
+                            // Clip from 120dp to 192dp (72dp visible) — ears to just past bar.
+                            val renderSize = 350.dp
+                            val clipTop = 120.dp   // just above ears
+                            val clipHeight = 72.dp  // ears → just past bar bottom
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 24.dp, end = 16.dp)
+                                    .requiredWidth(renderSize)
+                                    .requiredHeight(clipHeight)
+                                    .clipToBounds()
+                            ) {
+                                LottieAnimation(
+                                    jsonString = json,
+                                    modifier = Modifier
+                                        .requiredSize(renderSize)
+                                        .offset(y = -clipTop),
+                                    alpha = 0.28f
+                                )
                             }
                         }
                     }

@@ -28,7 +28,8 @@ import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
-import app.morphe.gui.ui.theme.JetBrainsMono
+import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.util.FileUtils
@@ -56,7 +57,8 @@ fun SettingsDialog(
     onEditPatchSource: (PatchSource) -> Unit = {},
     onRemovePatchSource: (String) -> Unit = {}
 ) {
-    val mono = JetBrainsMono
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
 
     var showClearCacheConfirm by remember { mutableStateOf(false) }
@@ -67,7 +69,7 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(2.dp),
+        shape = RoundedCornerShape(corners.medium),
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
@@ -89,38 +91,51 @@ fun SettingsDialog(
                 // ── Theme ──
                 SectionLabel("THEME", mono)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     ThemePreference.entries.forEach { theme ->
                         val isSelected = currentTheme == theme
+                        val themeAccent = theme.accentColor()
                         val hoverInteraction = remember { MutableInteractionSource() }
                         val isHovered by hoverInteraction.collectIsHoveredAsState()
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(2.dp))
+                                .clip(RoundedCornerShape(corners.small))
                                 .border(
                                     1.dp,
                                     when {
-                                        isSelected -> MorpheColors.Blue.copy(alpha = 0.5f)
+                                        isSelected -> themeAccent.copy(alpha = 0.5f)
                                         isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                         else -> borderColor
                                     },
-                                    RoundedCornerShape(2.dp)
+                                    RoundedCornerShape(corners.small)
                                 )
                                 .background(
-                                    if (isSelected) MorpheColors.Blue.copy(alpha = 0.08f)
+                                    if (isSelected) themeAccent.copy(alpha = 0.08f)
                                     else Color.Transparent
                                 )
                                 .hoverable(hoverInteraction)
                                 .clickable { onThemeChange(theme) }
-                                .padding(horizontal = 14.dp, vertical = 7.dp)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            // Themed icon
+                            Text(
+                                text = theme.iconSymbol(),
+                                fontSize = 11.sp,
+                                color = themeAccent
+                            )
                             Text(
                                 text = theme.toDisplayName().uppercase(),
                                 fontSize = 10.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontFamily = mono,
                                 letterSpacing = 0.5.sp,
-                                color = if (isSelected) MorpheColors.Blue
+                                color = if (isSelected) themeAccent
                                         else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -258,7 +273,7 @@ fun SettingsDialog(
         confirmButton = {
             OutlinedButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(2.dp),
+                shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor)
             ) {
                 Text(
@@ -277,7 +292,7 @@ fun SettingsDialog(
     if (showClearCacheConfirm) {
         AlertDialog(
             onDismissRequest = { showClearCacheConfirm = false },
-            shape = RoundedCornerShape(2.dp),
+            shape = RoundedCornerShape(corners.medium),
             containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text(
@@ -308,7 +323,7 @@ fun SettingsDialog(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(2.dp)
+                    shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(
                         "CLEAR",
@@ -430,6 +445,7 @@ private fun ActionButton(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val corners = LocalMorpheCorners.current
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
 
@@ -437,7 +453,7 @@ private fun ActionButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.fillMaxWidth().hoverable(hoverInteraction),
-        shape = RoundedCornerShape(2.dp),
+        shape = RoundedCornerShape(corners.small),
         border = BorderStroke(
             1.dp,
             if (isHovered && enabled) contentColor.copy(alpha = 0.3f)
@@ -479,6 +495,7 @@ private fun PatchSourcesSection(
     mono: androidx.compose.ui.text.font.FontFamily,
     borderColor: Color
 ) {
+    val corners = LocalMorpheCorners.current
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         SectionLabel("PATCH SOURCES", mono)
         Spacer(Modifier.height(2.dp))
@@ -499,7 +516,7 @@ private fun PatchSourcesSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(corners.medium))
                     .border(
                         1.dp,
                         when {
@@ -507,7 +524,7 @@ private fun PatchSourcesSection(
                             isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                             else -> borderColor
                         },
-                        RoundedCornerShape(2.dp)
+                        RoundedCornerShape(corners.medium)
                     )
                     .background(
                         if (isActive) MorpheColors.Blue.copy(alpha = 0.05f)
@@ -585,7 +602,7 @@ private fun PatchSourcesSection(
         OutlinedButton(
             onClick = onAddClick,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(2.dp),
+            shape = RoundedCornerShape(corners.small),
             border = BorderStroke(1.dp, borderColor),
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
         ) {
@@ -613,7 +630,8 @@ private fun AddPatchSourceDialog(
     onDismiss: () -> Unit,
     onAdd: (PatchSource) -> Unit
 ) {
-    val mono = JetBrainsMono
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
     var name by remember { mutableStateOf("") }
     var sourceType by remember { mutableStateOf(PatchSourceType.GITHUB) }
     var url by remember { mutableStateOf("") }
@@ -622,7 +640,7 @@ private fun AddPatchSourceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(2.dp),
+        shape = RoundedCornerShape(corners.medium),
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
@@ -644,12 +662,12 @@ private fun AddPatchSourceDialog(
                         val isSelected = sourceType == type
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(2.dp))
+                                .clip(RoundedCornerShape(corners.small))
                                 .border(
                                     1.dp,
                                     if (isSelected) MorpheColors.Blue.copy(alpha = 0.5f)
                                     else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-                                    RoundedCornerShape(2.dp)
+                                    RoundedCornerShape(corners.small)
                                 )
                                 .background(
                                     if (isSelected) MorpheColors.Blue.copy(alpha = 0.08f)
@@ -683,7 +701,7 @@ private fun AddPatchSourceDialog(
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(2.dp)
+                    shape = RoundedCornerShape(corners.small)
                 )
 
                 when (sourceType) {
@@ -692,11 +710,11 @@ private fun AddPatchSourceDialog(
                             value = url,
                             onValueChange = { url = it; error = null },
                             label = { Text("Repository URL", fontFamily = mono, fontSize = 11.sp) },
-                            placeholder = { Text("https://github.com/owner/repo", fontFamily = mono, fontSize = 11.sp) },
+                            placeholder = { Text("github.com/owner/repo or morphe.software link", fontFamily = mono, fontSize = 10.sp) },
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(2.dp)
+                            shape = RoundedCornerShape(corners.small)
                         )
                     }
                     PatchSourceType.LOCAL -> {
@@ -712,7 +730,7 @@ private fun AddPatchSourceDialog(
                                 singleLine = true,
                                 textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(2.dp),
+                                shape = RoundedCornerShape(corners.small),
                                 readOnly = true
                             )
                             OutlinedButton(
@@ -727,7 +745,7 @@ private fun AddPatchSourceDialog(
                                         error = null
                                     }
                                 },
-                                shape = RoundedCornerShape(2.dp)
+                                shape = RoundedCornerShape(corners.small)
                             ) {
                                 Text(
                                     "BROWSE",
@@ -758,9 +776,19 @@ private fun AddPatchSourceDialog(
                     if (name.isBlank()) { error = "Name is required"; return@Button }
                     when (sourceType) {
                         PatchSourceType.GITHUB -> {
-                            if (url.isBlank() || !url.contains("github.com/")) {
-                                error = "Enter a valid GitHub repository URL"; return@Button
+                            val trimmedUrl = url.trim()
+                            val resolvedUrl = resolveGitHubUrl(trimmedUrl)
+                            if (resolvedUrl == null) {
+                                error = "Enter a valid GitHub URL or Morphe source link"; return@Button
                             }
+                            onAdd(PatchSource(
+                                id = UUID.randomUUID().toString(),
+                                name = name.trim(),
+                                type = sourceType,
+                                url = resolvedUrl,
+                                deletable = true
+                            ))
+                            return@Button
                         }
                         PatchSourceType.LOCAL -> {
                             if (filePath.isBlank() || !File(filePath).exists()) {
@@ -773,13 +801,13 @@ private fun AddPatchSourceDialog(
                         id = UUID.randomUUID().toString(),
                         name = name.trim(),
                         type = sourceType,
-                        url = if (sourceType == PatchSourceType.GITHUB) url.trim() else null,
+                        url = null,
                         filePath = if (sourceType == PatchSourceType.LOCAL) filePath.trim() else null,
                         deletable = true
                     ))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
-                shape = RoundedCornerShape(2.dp)
+                shape = RoundedCornerShape(corners.small)
             ) {
                 Text(
                     "ADD",
@@ -810,7 +838,8 @@ private fun EditPatchSourceDialog(
     onDismiss: () -> Unit,
     onSave: (PatchSource) -> Unit
 ) {
-    val mono = JetBrainsMono
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
     var name by remember { mutableStateOf(source.name) }
     var url by remember { mutableStateOf(source.url ?: "") }
     var filePath by remember { mutableStateOf(source.filePath ?: "") }
@@ -818,7 +847,7 @@ private fun EditPatchSourceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(2.dp),
+        shape = RoundedCornerShape(corners.medium),
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
@@ -855,7 +884,7 @@ private fun EditPatchSourceDialog(
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(2.dp)
+                    shape = RoundedCornerShape(corners.small)
                 )
 
                 when (source.type) {
@@ -867,7 +896,7 @@ private fun EditPatchSourceDialog(
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(2.dp)
+                            shape = RoundedCornerShape(corners.small)
                         )
                     }
                     PatchSourceType.LOCAL -> {
@@ -883,7 +912,7 @@ private fun EditPatchSourceDialog(
                                 singleLine = true,
                                 textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(2.dp),
+                                shape = RoundedCornerShape(corners.small),
                                 readOnly = true
                             )
                             OutlinedButton(
@@ -897,7 +926,7 @@ private fun EditPatchSourceDialog(
                                         error = null
                                     }
                                 },
-                                shape = RoundedCornerShape(2.dp)
+                                shape = RoundedCornerShape(corners.small)
                             ) {
                                 Text(
                                     "BROWSE",
@@ -923,9 +952,15 @@ private fun EditPatchSourceDialog(
                     if (name.isBlank()) { error = "Name is required"; return@Button }
                     when (source.type) {
                         PatchSourceType.GITHUB -> {
-                            if (url.isBlank() || !url.contains("github.com/")) {
-                                error = "Enter a valid GitHub repository URL"; return@Button
+                            val resolvedUrl = resolveGitHubUrl(url.trim())
+                            if (resolvedUrl == null) {
+                                error = "Enter a valid GitHub URL or Morphe source link"; return@Button
                             }
+                            onSave(source.copy(
+                                name = name.trim(),
+                                url = resolvedUrl
+                            ))
+                            return@Button
                         }
                         PatchSourceType.LOCAL -> {
                             if (filePath.isBlank() || !File(filePath).exists()) {
@@ -936,12 +971,11 @@ private fun EditPatchSourceDialog(
                     }
                     onSave(source.copy(
                         name = name.trim(),
-                        url = if (source.type == PatchSourceType.GITHUB) url.trim() else source.url,
                         filePath = if (source.type == PatchSourceType.LOCAL) filePath.trim() else source.filePath
                     ))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
-                shape = RoundedCornerShape(2.dp)
+                shape = RoundedCornerShape(corners.small)
             ) {
                 Text(
                     "SAVE",
@@ -971,7 +1005,37 @@ private fun ThemePreference.toDisplayName(): String {
         ThemePreference.LIGHT -> "Light"
         ThemePreference.DARK -> "Dark"
         ThemePreference.AMOLED -> "AMOLED"
+        ThemePreference.NORD -> "Nord"
+        ThemePreference.CATPPUCCIN -> "Catppuccin"
+        ThemePreference.SAKURA -> "Sakura"
+        ThemePreference.MATCHA -> "Matcha"
         ThemePreference.SYSTEM -> "System"
+    }
+}
+
+private fun ThemePreference.iconSymbol(): String {
+    return when (this) {
+        ThemePreference.LIGHT -> "☀"
+        ThemePreference.DARK -> "☾"
+        ThemePreference.AMOLED -> "◆"
+        ThemePreference.NORD -> "❄"
+        ThemePreference.CATPPUCCIN -> "🐱"
+        ThemePreference.SAKURA -> "🌸"
+        ThemePreference.MATCHA -> "🍵"
+        ThemePreference.SYSTEM -> "⚙"
+    }
+}
+
+private fun ThemePreference.accentColor(): Color {
+    return when (this) {
+        ThemePreference.LIGHT -> MorpheColors.Blue
+        ThemePreference.DARK -> MorpheColors.Blue
+        ThemePreference.AMOLED -> MorpheColors.Cyan
+        ThemePreference.NORD -> Color(0xFF88C0D0)
+        ThemePreference.CATPPUCCIN -> Color(0xFFCBA6F7)
+        ThemePreference.SAKURA -> Color(0xFFE8729A)
+        ThemePreference.MATCHA -> Color(0xFF6DAF5C)
+        ThemePreference.SYSTEM -> MorpheColors.Blue
     }
 }
 
@@ -1010,4 +1074,43 @@ private fun clearAllCache(): Boolean {
         Logger.error("Failed to clear cache", e)
         false
     }
+}
+
+/**
+ * Resolves a URL to a GitHub repository URL.
+ * Supports:
+ * - Direct GitHub URLs: https://github.com/owner/repo
+ * - Morphe source links: https://morphe.software/add-source?github=owner/repo
+ * - Short form: owner/repo (assumed GitHub)
+ * Returns a normalized https://github.com/owner/repo URL, or null if invalid.
+ */
+private fun resolveGitHubUrl(input: String): String? {
+    val trimmed = input.trim()
+    if (trimmed.isBlank()) return null
+
+    // Morphe source link: morphe.software/add-source?github=owner/repo
+    if (trimmed.contains("morphe.software/add-source")) {
+        val match = Regex("[?&]github=([^&]+)").find(trimmed)
+        val repoPath = match?.groupValues?.get(1) ?: return null
+        val clean = repoPath.trimEnd('/')
+        return if (clean.contains('/') && clean.split('/').size == 2) {
+            "https://github.com/$clean"
+        } else null
+    }
+
+    // Direct GitHub URL: https://github.com/owner/repo
+    if (trimmed.contains("github.com/")) {
+        // Extract owner/repo from full URL
+        val match = Regex("github\\.com/([^/]+/[^/]+)").find(trimmed)
+        return if (match != null) {
+            "https://github.com/${match.groupValues[1].trimEnd('/')}"
+        } else null
+    }
+
+    // Short form: owner/repo
+    if (trimmed.matches(Regex("[\\w.-]+/[\\w.-]+"))) {
+        return "https://github.com/$trimmed"
+    }
+
+    return null
 }

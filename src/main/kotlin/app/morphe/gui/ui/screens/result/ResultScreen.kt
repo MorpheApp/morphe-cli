@@ -121,7 +121,6 @@ fun ResultScreenContent(outputPath: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize()

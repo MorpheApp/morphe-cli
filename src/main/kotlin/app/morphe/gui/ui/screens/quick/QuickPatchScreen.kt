@@ -127,7 +127,6 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .dragAndDropTarget(
                 shouldStartDragAndDrop = { true },
                 target = dragAndDropTarget
@@ -144,9 +143,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
                 val themeState = LocalThemeState.current
                 val isDark = when (themeState.current) {
-                    ThemePreference.DARK, ThemePreference.AMOLED -> true
-                    ThemePreference.LIGHT -> false
                     ThemePreference.SYSTEM -> isSystemInDarkTheme()
+                    else -> themeState.current.isDark()
                 }
                 Image(
                     painter = painterResource(if (isDark) Res.drawable.morphe_dark else Res.drawable.morphe_light),

@@ -23,14 +23,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.morphe.gui.ui.theme.JetBrainsMono
+import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.DeviceStatus
 
 @Composable
 fun DeviceIndicator(modifier: Modifier = Modifier) {
-    val mono = JetBrainsMono
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
     val monitorState by DeviceMonitor.state.collectAsState()
 
     val isAdbAvailable = monitorState.isAdbAvailable
@@ -62,11 +64,11 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
     Box(modifier = modifier) {
         Surface(
             onClick = { showPopup = !showPopup },
-            shape = RoundedCornerShape(2.dp),
+            shape = RoundedCornerShape(corners.small),
             color = Color.Transparent,
             modifier = Modifier
                 .hoverable(hoverInteraction)
-                .border(1.dp, borderColor, RoundedCornerShape(2.dp))
+                .border(1.dp, borderColor, RoundedCornerShape(corners.small))
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),

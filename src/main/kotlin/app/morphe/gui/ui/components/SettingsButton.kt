@@ -30,6 +30,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalThemeState
 
 @Composable
@@ -37,6 +38,7 @@ fun SettingsButton(
     modifier: Modifier = Modifier,
     allowCacheClear: Boolean = true
 ) {
+    val corners = LocalMorpheCorners.current
     val themeState = LocalThemeState.current
     val modeState = LocalModeState.current
     val configRepository: ConfigRepository = koinInject()
@@ -70,8 +72,8 @@ fun SettingsButton(
         modifier = modifier
             .size(34.dp)
             .hoverable(hoverInteraction)
-            .border(1.dp, borderColor, RoundedCornerShape(2.dp))
-            .background(Color.Transparent, RoundedCornerShape(2.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+            .background(Color.Transparent, RoundedCornerShape(corners.small))
     ) {
         Icon(
             imageVector = Icons.Default.Settings,
@@ -145,9 +147,11 @@ fun TopBarRow(
     modifier: Modifier = Modifier,
     allowCacheClear: Boolean = true,
 ) {
+    val corners = LocalMorpheCorners.current
+    val isSoft = corners.small >= 8.dp
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isSoft) 12.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         DeviceIndicator()

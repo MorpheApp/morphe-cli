@@ -1,11 +1,17 @@
 package app.morphe.gui.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 // Morphe Brand Colors
 object MorpheColors {
@@ -18,6 +24,32 @@ object MorpheColors {
     val TextLight = Color(0xFFE3E3E3)
     val TextDark = Color(0xFF1C1C1C)
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  CORNER / SHAPE STYLE SYSTEM
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Defines the corner radius style for the current theme.
+ * Sharp themes use 2dp, soft/cute themes use larger radii.
+ */
+data class MorpheCornerStyle(
+    val small: Dp = 2.dp,
+    val medium: Dp = 2.dp,
+    val large: Dp = 2.dp,
+)
+
+val LocalMorpheCorners = compositionLocalOf { MorpheCornerStyle() }
+
+/** Sharp corners for cyberdeck/dev themes. */
+private val SharpCorners = MorpheCornerStyle(small = 2.dp, medium = 2.dp, large = 2.dp)
+
+/** Soft rounded corners for cute/warm themes. */
+private val SoftCorners = MorpheCornerStyle(small = 10.dp, medium = 14.dp, large = 18.dp)
+
+// ════════════════════════════════════════════════════════════════════
+//  COLOR SCHEMES
+// ════════════════════════════════════════════════════════════════════
 
 private val MorpheDarkColorScheme = darkColorScheme(
     primary = MorpheColors.Blue,
@@ -70,12 +102,113 @@ private val MorpheLightColorScheme = lightColorScheme(
     onError = Color.White
 )
 
+// ── Nord ──
+// Arctic, cool-toned dark theme inspired by nordtheme.com
+private val NordColorScheme = darkColorScheme(
+    primary = Color(0xFF88C0D0),       // Frost
+    secondary = Color(0xFFA3BE8C),     // Aurora Green
+    tertiary = Color(0xFF81A1C1),      // Frost Blue
+    background = Color(0xFF2E3440),    // Polar Night
+    surface = Color(0xFF3B4252),       // Polar Night lighter
+    surfaceVariant = Color(0xFF434C5E),
+    onPrimary = Color(0xFF2E3440),
+    onSecondary = Color(0xFF2E3440),
+    onTertiary = Color(0xFF2E3440),
+    onBackground = Color(0xFFECEFF4), // Snow Storm
+    onSurface = Color(0xFFECEFF4),
+    onSurfaceVariant = Color(0xFFD8DEE9),
+    error = Color(0xFFBF616A),         // Aurora Red
+    onError = Color(0xFFECEFF4)
+)
+
+// ── Catppuccin Mocha ──
+// Warm, soothing pastel dark theme
+private val CatppuccinMochaColorScheme = darkColorScheme(
+    primary = Color(0xFFCBA6F7),       // Mauve
+    secondary = Color(0xFFF5C2E7),     // Pink
+    tertiary = Color(0xFF89B4FA),      // Blue
+    background = Color(0xFF1E1E2E),    // Base
+    surface = Color(0xFF313244),       // Surface0
+    surfaceVariant = Color(0xFF45475A), // Surface1
+    onPrimary = Color(0xFF1E1E2E),
+    onSecondary = Color(0xFF1E1E2E),
+    onTertiary = Color(0xFF1E1E2E),
+    onBackground = Color(0xFFCDD6F4), // Text
+    onSurface = Color(0xFFCDD6F4),
+    onSurfaceVariant = Color(0xFFBAC2DE), // Subtext1
+    error = Color(0xFFF38BA8),         // Red
+    onError = Color(0xFF1E1E2E)
+)
+
+// ── Sakura ──
+// Soft pink, cute aesthetic — light theme with warm blush tones
+private val SakuraColorScheme = lightColorScheme(
+    primary = Color(0xFFE8729A),       // Rose pink
+    secondary = Color(0xFFC75088),     // Deeper rose
+    tertiary = Color(0xFFF5A0C0),      // Soft pink
+    background = Color(0xFFFFF5F7),    // Blush white
+    surface = Color(0xFFFFE8EE),       // Petal
+    surfaceVariant = Color(0xFFFFD6E0),
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color(0xFF5A1A30),
+    onBackground = Color(0xFF4A2030),  // Deep plum
+    onSurface = Color(0xFF4A2030),
+    onSurfaceVariant = Color(0xFF8A506A),
+    error = Color(0xFFD03050),
+    onError = Color.White
+)
+
+// ── Matcha ──
+// Pista green, cute aesthetic — light theme with fresh green tones
+private val MatchaColorScheme = lightColorScheme(
+    primary = Color(0xFF6DAF5C),       // Pista green
+    secondary = Color(0xFF8BC77E),     // Fresh green
+    tertiary = Color(0xFFA3D99B),      // Light mint
+    background = Color(0xFFF4F9F0),    // Green-tinted white
+    surface = Color(0xFFE5F0DC),       // Soft green
+    surfaceVariant = Color(0xFFD4E5C8),
+    onPrimary = Color.White,
+    onSecondary = Color(0xFF1E3318),
+    onTertiary = Color(0xFF1E3318),
+    onBackground = Color(0xFF1E3318),  // Deep forest
+    onSurface = Color(0xFF1E3318),
+    onSurfaceVariant = Color(0xFF4A6B3D),
+    error = Color(0xFFC04040),
+    onError = Color.White
+)
+
+// ════════════════════════════════════════════════════════════════════
+//  THEME PREFERENCE
+// ════════════════════════════════════════════════════════════════════
+
 enum class ThemePreference {
     LIGHT,
     DARK,
     AMOLED,
-    SYSTEM
+    NORD,
+    CATPPUCCIN,
+    SAKURA,
+    MATCHA,
+    SYSTEM;
+
+    /** Whether this theme uses dark color scheme (for resource qualifiers). */
+    fun isDark(): Boolean = when (this) {
+        DARK, AMOLED, NORD, CATPPUCCIN -> true
+        LIGHT, SAKURA, MATCHA -> false
+        SYSTEM -> false // caller should check isSystemInDarkTheme()
+    }
+
+    /** Whether this theme uses soft/rounded corners. */
+    fun isSoft(): Boolean = when (this) {
+        SAKURA, MATCHA -> true
+        else -> false
+    }
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  THEME COMPOSABLE
+// ════════════════════════════════════════════════════════════════════
 
 @Composable
 fun MorpheTheme(
@@ -86,13 +219,25 @@ fun MorpheTheme(
         ThemePreference.DARK -> MorpheDarkColorScheme
         ThemePreference.AMOLED -> MorpheAmoledColorScheme
         ThemePreference.LIGHT -> MorpheLightColorScheme
+        ThemePreference.NORD -> NordColorScheme
+        ThemePreference.CATPPUCCIN -> CatppuccinMochaColorScheme
+        ThemePreference.SAKURA -> SakuraColorScheme
+        ThemePreference.MATCHA -> MatchaColorScheme
         ThemePreference.SYSTEM -> {
             if (isSystemInDarkTheme()) MorpheDarkColorScheme else MorpheLightColorScheme
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+    val corners = if (themePreference.isSoft()) SoftCorners else SharpCorners
+    val font = if (themePreference.isSoft()) Nunito else JetBrainsMono
+
+    CompositionLocalProvider(
+        LocalMorpheCorners provides corners,
+        LocalMorpheFont provides font
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
 }

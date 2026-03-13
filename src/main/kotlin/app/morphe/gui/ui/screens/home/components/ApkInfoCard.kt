@@ -25,7 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.ui.screens.home.ApkInfo
 import app.morphe.gui.ui.screens.home.VersionStatus
-import app.morphe.gui.ui.theme.JetBrainsMono
+import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.ChecksumStatus
 
@@ -35,9 +36,10 @@ fun ApkInfoCard(
     onClearClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val mono = JetBrainsMono
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
     val accentColor = statusAccentColor(apkInfo)
-    val cardShape = RoundedCornerShape(2.dp)
+    val cardShape = RoundedCornerShape(corners.medium)
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
 
     Box(
@@ -72,7 +74,7 @@ fun ApkInfoCard(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                         .background(accentColor.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -127,8 +129,8 @@ fun ApkInfoCard(
                     modifier = Modifier
                         .size(30.dp)
                         .hoverable(closeHover)
-                        .background(closeBg, RoundedCornerShape(2.dp))
-                        .border(1.dp, closeBorder, RoundedCornerShape(2.dp))
+                        .background(closeBg, RoundedCornerShape(corners.small))
+                        .border(1.dp, closeBorder, RoundedCornerShape(corners.small))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -209,7 +211,7 @@ fun ApkInfoCard(
                                 .border(
                                     1.dp,
                                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
-                                    RoundedCornerShape(2.dp)
+                                    RoundedCornerShape(corners.small)
                                 )
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
