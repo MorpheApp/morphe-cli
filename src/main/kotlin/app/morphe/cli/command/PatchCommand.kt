@@ -478,29 +478,70 @@ internal object PatchCommand : Callable<Int> {
                     val jsonPatchNames = patchOptionsBundle.patches.keys.map { it.lowercase() }.toSet()
 
                     val newPatches = compatiblePatchNames - jsonPatchNames
+                    val oldPatches = jsonPatchNames - compatiblePatchNames
                     val removedPatches = jsonPatchNames - allMppPatchNames
 
-                    // Check for new option keys within existing patches
-                    var patchesWithNewOptions = 0
-                    for ((patchName, snapshotEntry) in patchesSnapshot.patches) {
+                    // Check for new option keys within existing patches. For better messaging, store it as a map and show users which patch is outdated instead of just a number.
+                    val patchesWithNewOptions = mutableMapOf<String, Set<String>>()
+                    val patchesWithOldOptions = mutableMapOf<String, Set<String>>()
+
+                    for ((patchName, _) in patchesSnapshot.patches) {
                         if (patchName.lowercase() !in compatiblePatchNames) continue
                         val jsonEntry = patchOptionsBundle.patches.entries
                             .firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
                             ?: continue
-                        val newOptionKeys = snapshotEntry.options.keys - jsonEntry.options.keys
-                        if (newOptionKeys.isNotEmpty()) patchesWithNewOptions++
+
+                        // We compare from the patches list instead of the snapshot making it much better and accurate.
+                        // Snapshot keeps merging all patches with same names but different options making it a problem.
+                        val actualPatch = patches.find {
+                            it.name.equals(patchName, ignoreCase = true) &&
+                            (it.compatiblePackages == null || it.compatiblePackages!!.any {
+                                (name, _) -> name == packageName
+                            })
+                        }
+                        val actualOptionKeys = actualPatch?.options?.keys ?: emptySet()
+
+                        // This is for new keys that are introduced in the new patch
+                        val newOptionKeys = actualOptionKeys - jsonEntry.options.keys
+                        if (newOptionKeys.isNotEmpty()) patchesWithNewOptions[patchName] = newOptionKeys
+
+                        // This is for the old option keys that are not present in the new file
+                        val oldOptionKeys = jsonEntry.options.keys - actualOptionKeys
+                        if (oldOptionKeys.isNotEmpty()) patchesWithOldOptions[patchName] = oldOptionKeys
                     }
 
-                    if (newPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions > 0) {
+                    if (newPatches.isNotEmpty() || oldPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions.isNotEmpty() || patchesWithOldOptions.isNotEmpty()) {
                         logger.warning("Your options file is out of date with the current patches:")
                         if (newPatches.isNotEmpty()) {
-                            logger.warning("  ${newPatches.size} new patches not in your options file, default patch values will be applied")
+                            logger.warning("  ${newPatches.size} new patches not in your options file, default patch values will be applied. New patches are:")
+                            newPatches.forEach {
+                                logger.warning("    - $it")
+                            }
                         }
+
                         if (removedPatches.isNotEmpty()) {
                             logger.warning("  ${removedPatches.size} patches in your options file no longer exist and will be ignored")
                         }
-                        if (patchesWithNewOptions > 0) {
-                            logger.warning("  $patchesWithNewOptions patches have new options not in your file, default patch values will be applied")
+
+                        if (oldPatches.isNotEmpty()) {
+                            logger.warning("  ${oldPatches.size} patches in your options file are not compatible with the app:")
+                            oldPatches.forEach {
+                                logger.warning("    - $it")
+                            }
+                        }
+
+                        if (patchesWithNewOptions.isNotEmpty()) {
+                            patchesWithNewOptions.forEach {
+                                (patch, key) ->
+                                logger.warning(" \"$patch\" has new options: ${key.joinToString(", ")}")
+                            }
+                        }
+
+                        if (patchesWithOldOptions.isNotEmpty()) {
+                            patchesWithOldOptions.forEach {
+                                    (patch, key) ->
+                                logger.warning(" \"$patch\" has old options: ${key.joinToString(", ")} that were removed.")
+                            }
                         }
                         logger.warning("  Use --options-update parameter to sync, or use 'options-create' command to regenerate.")
                     }
