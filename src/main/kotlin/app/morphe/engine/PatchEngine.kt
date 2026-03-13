@@ -8,14 +8,14 @@
 
 package app.morphe.engine
 
-import app.morphe.patcher.apk.ApkUtils
-import app.morphe.patcher.apk.ApkUtils.applyTo
-import app.morphe.patcher.patch.setOptions
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
+import app.morphe.patcher.apk.ApkMerger
+import app.morphe.patcher.apk.ApkUtils
+import app.morphe.patcher.apk.ApkUtils.applyTo
+import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
-import com.reandroid.apkeditor.merge.Merger
-import com.reandroid.apkeditor.merge.MergerOptions
+import app.morphe.patcher.patch.setOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -24,7 +24,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.nio.file.Files
-import kotlin.coroutines.coroutineContext
+import java.util.logging.Logger
 
 /**
  * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
@@ -67,6 +67,8 @@ object PatchEngine {
 
     data class FailedPatch(val name: String, val error: String)
 
+    private val logger = Logger.getLogger(this::class.java.name)
+
     /**
      * The single patching pipeline.
      * CLI wraps with runBlocking, GUI calls from coroutine scope.
@@ -88,12 +90,11 @@ object PatchEngine {
             val actualInputApk = if (config.inputApk.extension.equals("apkm", ignoreCase = true)) {
                 onProgress("Converting APKM to APK...")
                 val mergedApk = File(tempDir, "${config.inputApk.nameWithoutExtension}-merged.apk")
-                val mergerOptions = MergerOptions().apply {
-                    inputFile = config.inputApk
-                    outputFile = mergedApk
-                    cleanMeta = true
-                }
-                Merger(mergerOptions).run()
+                ApkMerger(logger.toMorpheLogger()).merge(
+                    inputFile = config.inputApk,
+                    outputFile = mergedApk,
+                    cleanMetaInf = true
+                )
                 mergedApkToCleanup = mergedApk
                 mergedApk
             } else {
