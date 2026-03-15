@@ -5,10 +5,15 @@ import app.morphe.patcher.patch.VersionMap
 import app.morphe.patcher.patch.loadPatchesFromJar
 import app.morphe.patcher.patch.mostCommonCompatibleVersions
 import picocli.CommandLine
+import picocli.CommandLine.Command
+import picocli.CommandLine.Help.Visibility.ALWAYS
+import picocli.CommandLine.Model.CommandSpec
+import picocli.CommandLine.Option
+import picocli.CommandLine.Spec
 import java.io.File
 import java.util.logging.Logger
 
-@CommandLine.Command(
+@Command(
     name = "list-versions",
     description = [
         "List the most common compatible versions of apps that are compatible " +
@@ -18,24 +23,46 @@ import java.util.logging.Logger
 internal class ListCompatibleVersions : Runnable {
     private val logger = Logger.getLogger(this::class.java.name)
 
-    @CommandLine.Parameters(
-        description = ["Paths to MPP files."],
+    @Option(
+        names = ["--patches"],
+        description = ["Path to a MPP file or a GitHub repo url such as https://github.com/MorpheApp/morphe-patches"],
         arity = "1..*",
+        required = true
     )
-    private lateinit var patchesFiles: Set<File>
+    @Suppress("unused")
+    private fun setPatchesFile(patchesFiles: Set<File>) {
+        this.patchesFiles = checkFileExistsOrIsUrl(patchesFiles, spec)
+    }
+    private var patchesFiles = emptySet<File>()
 
-    @CommandLine.Option(
+    @Option(
+        names = ["--prerelease"],
+        description = ["Fetch the latest dev pre-release instead of the stable main release from the repo provided in --patches."],
+        showDefaultValue = ALWAYS,
+    )
+    private var prerelease: Boolean = false
+
+    @Option(
         names = ["-f", "--filter-package-names"],
         description = ["Filter patches by package name."],
     )
     private var packageNames: Set<String>? = null
 
-    @CommandLine.Option(
+    @Option(
         names = ["-u", "--count-unused-patches"],
         description = ["Count patches that are not used by default."],
-        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
+        showDefaultValue = ALWAYS,
     )
     private var countUnusedPatches: Boolean = false
+
+    @Option(
+        names = ["-t", "--temporary-files-path"],
+        description = ["Path to store temporary files."],
+    )
+    private var temporaryFilesPath: File? = null
+
+    @Spec
+    private lateinit var spec: CommandSpec
 
     override fun run() {
         fun VersionMap.buildVersionsString(): String {
@@ -55,6 +82,21 @@ internal class ListCompatibleVersions : Runnable {
                 appendLine("Most common compatible versions:")
                 appendLine(versions.buildVersionsString().prependIndent("\t"))
             }
+
+        val temporaryFilesPath = temporaryFilesPath ?: File("").absoluteFile.resolve("morphe-temporary-files")
+
+        try {
+            patchesFiles = PatchFileResolver.resolve(
+                patchesFiles,
+                prerelease,
+                temporaryFilesPath
+            )
+        } catch (e: IllegalArgumentException) {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                e.message ?: "Failed to resolve patch URL"
+            )
+        }
 
         val patches = loadPatchesFromJar(patchesFiles)
 

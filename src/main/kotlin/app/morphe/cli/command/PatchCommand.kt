@@ -3,7 +3,7 @@
  * https://github.com/MorpheApp/morphe-cli
  *
  * Original hard forked code:
- * https://github.com/revanced/revanced-cli
+ * https://github.com/ReVanced/revanced-cli/tree/731865e167ee449be15fff3dde7a476faea0c2de
  */
 
 package app.morphe.cli.command
@@ -45,6 +45,7 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.concurrent.Callable
 import java.util.logging.Logger
+import kotlin.collections.plus
 
 @OptIn(ExperimentalSerializationApi::class)
 @VisibleForTesting
@@ -244,18 +245,22 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["-p", "--patches"],
-        description = ["One or more path to MPP files."],
+        description = ["Path to a MPP file or a GitHub repo url such as https://github.com/MorpheApp/morphe-patches"],
         required = true,
     )
     @Suppress("unused")
     private fun setPatchesFile(patchesFiles: Set<File>) {
-        patchesFiles.firstOrNull { !it.exists() }?.let {
-            throw CommandLine.ParameterException(spec.commandLine(), "${it.name} can't be found")
-        }
-        this.patchesFiles = patchesFiles
+        this.patchesFiles = checkFileExistsOrIsUrl(patchesFiles, spec)
     }
 
     private var patchesFiles = emptySet<File>()
+
+    @CommandLine.Option(
+        names = ["--prerelease"],
+        description = ["Fetch the latest dev pre-release instead of the stable main release from the repo provided in --patches."],
+        showDefaultValue = ALWAYS,
+    )
+    private var prerelease: Boolean = false
 
     @CommandLine.Option(
         names = ["--custom-aapt2-binary"],
@@ -326,9 +331,7 @@ internal object PatchCommand : Callable<Int> {
             )
 
         val temporaryFilesPath =
-            temporaryFilesPath ?: outputFilePath.parentFile.resolve(
-                "${outputFilePath.nameWithoutExtension}-temporary-files",
-            )
+            temporaryFilesPath ?: File("").absoluteFile.resolve("morphe-temporary-files")
 
         val keystoreFilePath =
             keyStoreFilePath ?: outputFilePath.parentFile
@@ -371,6 +374,15 @@ internal object PatchCommand : Callable<Int> {
         // Lightweight snapshot of current bundle metadata for use in finally block (auto-update).
         // The heavy Patch objects hold DEX classloaders and must not leak into finally.
         var patchesSnapshot: PatchBundle? = null
+
+        try {
+            patchesFiles = PatchFileResolver.resolve(patchesFiles, prerelease, temporaryFilesPath)
+        } catch (e: IllegalArgumentException) {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                e.message ?: "Failed to resolve patch URL"
+            )
+        }
 
         try {
             logger.info("Loading patches")
