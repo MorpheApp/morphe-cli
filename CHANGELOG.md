@@ -1,3 +1,52 @@
+# [1.6.0-dev.4](https://github.com/MorpheApp/morphe-cli/compare/v1.6.0-dev.3...v1.6.0-dev.4) (2026-03-15)
+
+
+### Bug Fixes
+
+* Update to latest patcher dev ([fb8a4ff](https://github.com/MorpheApp/morphe-cli/commit/fb8a4ffe70ae24c74c497608b9eb9aa2d76f2a8a))
+
+# [1.6.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.6.0-dev.2...v1.6.0-dev.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* Update to latest patcher dev ([1551c8e](https://github.com/MorpheApp/morphe-cli/commit/1551c8ef81bd4d267833c1dc543d13c1d1def29f))
+
+# [1.6.0-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.6.0-dev.1...v1.6.0-dev.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* Dispatch error when launching app ([#79](https://github.com/MorpheApp/morphe-cli/issues/79)) ([989e72a](https://github.com/MorpheApp/morphe-cli/commit/989e72a04c9ea1b512d556ff8db48b99a4817d98))
+
+# [1.6.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.5.1-dev.3...v1.6.0-dev.1) (2026-03-14)
+
+
+### Features
+
+* Add desktop GUI ([#42](https://github.com/MorpheApp/morphe-cli/issues/42)) ([cd627e6](https://github.com/MorpheApp/morphe-cli/commit/cd627e6a4320084403beacd414278b3b75f469da))
+
+## [1.5.1-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.5.1-dev.2...v1.5.1-dev.3) (2026-03-13)
+
+
+### Bug Fixes
+
+* Use more logging verbosity when updating options.json ([#72](https://github.com/MorpheApp/morphe-cli/issues/72)) ([4d223f2](https://github.com/MorpheApp/morphe-cli/commit/4d223f299b690c100ff74ece7e4415f562c6ac96))
+
+## [1.5.1-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.5.1-dev.1...v1.5.1-dev.2) (2026-03-13)
+
+
+### Bug Fixes
+
+* Bump arsclib version, remove APKEditor ([412847e](https://github.com/MorpheApp/morphe-cli/commit/412847e5a0b990321b7443fe774f7420189035d6))
+
+## [1.5.1-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.5.0...v1.5.1-dev.1) (2026-03-13)
+
+
+### Bug Fixes
+
+* Update to Patcher 1.3.0 ([19c0846](https://github.com/MorpheApp/morphe-cli/commit/19c084612310cb590c90b809403450abf6a81560))
+
 # [1.5.0](https://github.com/MorpheApp/morphe-cli/compare/v1.4.0...v1.5.0) (2026-03-07)
 
 

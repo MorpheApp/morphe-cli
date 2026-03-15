@@ -1,8 +1,10 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.kotlin)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.compose)
     alias(libs.plugins.shadow)
     application
     `maven-publish`
@@ -11,10 +13,33 @@ plugins {
 
 group = "app.morphe"
 
-application {
-    mainClass = "app.morphe.cli.command.MainCommandKt"
+// ============================================================================
+// JVM / Kotlin Configuration
+// ============================================================================
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+        vendor.set(JvmVendorSpec.ADOPTIUM)
+    }
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
+// ============================================================================
+// Application Entry Point
+// ============================================================================
+// Shadow JAR reads this for Main-Class manifest attribute.
+//
+//   No args / double-click  →  GUI (Compose Desktop)
+//   With args (terminal)    →  CLI (PicoCLI)
+application {
+    mainClass.set("app.morphe.MorpheLauncherKt")
+}
+
+// ============================================================================
+// Repositories
+// ============================================================================
 repositories {
     mavenLocal()
     mavenCentral()
@@ -32,49 +57,71 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
-val apkEditorLib by configurations.creating
-
-val strippedApkEditorLib by tasks.registering(org.gradle.jvm.tasks.Jar::class) {
-    archiveFileName.set("APKEditor-cli.jar")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    doFirst {
-        from(apkEditorLib.resolve().map { zipTree(it) })
-    }
-    exclude(
-        "org/xmlpull/**",
-        "antlr/**",
-        "org/antlr/**",
-        "com/beust/jcommander/**",
-        "javax/annotation/**",
-        "smali.properties",
-        "baksmali.properties"
-    )
-}
-
 dependencies {
     api(libs.morphe.patcher)
+    implementation(libs.arsclib)
     implementation(libs.morphe.library)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.picocli)
-    apkEditorLib(files("$rootDir/libs/APKEditor-1.4.7.jar"))
-    implementation(files(strippedApkEditorLib))
 
+    // -- Compose Desktop ---------------------------------------------------
+    // Platform-independent: single JAR runs on all supported OSes.
+    // Skiko auto-detects the OS at runtime and loads the correct native library.
+    implementation(compose.desktop.macos_arm64)
+    implementation(compose.desktop.macos_x64)
+    implementation(compose.desktop.linux_x64)
+    implementation(compose.desktop.linux_arm64)
+    implementation(compose.desktop.windows_x64)
+    implementation(compose.components.resources)
+    @Suppress("DEPRECATION")
+    implementation(compose.material3)
+    implementation(compose.materialIconsExtended)
+
+    // -- Async / Serialization ---------------------------------------------
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.swing)
+    implementation(libs.kotlinx.serialization.json)
+//    testImplementation(libs.kotlin.test)
+//}
+
+    // -- Networking (GUI) --------------------------------------------------
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
+
+    // -- DI / Navigation (GUI) ---------------------------------------------
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.core)
+    implementation(libs.koin.compose)
+
+    implementation(libs.voyager.navigator)
+    implementation(libs.voyager.screenmodel)
+    implementation(libs.voyager.koin)
+    implementation(libs.voyager.transitions)
+
+    // -- APK Parsing (GUI) -------------------------------------------------
+    implementation(libs.apk.parser)
+
+    // -- Testing -----------------------------------------------------------
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.params)
+    testImplementation(libs.mockk)
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
-    }
-}
-
-java {
-    targetCompatibility = JavaVersion.VERSION_11
-}
-
+// ============================================================================
+// Tasks
+// ============================================================================
 tasks {
+    jar {
+        manifest {
+            attributes(
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to project.version
+            )
+        }
+    }
+
     test {
         useJUnitPlatform()
         testLogging {
@@ -83,9 +130,15 @@ tasks {
     }
 
     processResources {
-        expand("projectVersion" to project.version)
+        // Only expand properties files, not binary files like PNG/ICO
+        filesMatching("**/*.properties") {
+            expand("projectVersion" to project.version)
+        }
     }
 
+    // -------------------------------------------------------------------------
+    // Shadow JAR — the only distribution artifact
+    // -------------------------------------------------------------------------
     shadowJar {
         exclude(
             "/prebuilt/linux/aapt",
@@ -95,7 +148,23 @@ tasks {
         minimize {
             exclude(dependency("org.bouncycastle:.*"))
             exclude(dependency("app.morphe:morphe-patcher"))
+            // Ktor uses ServiceLoader
+            exclude(dependency("io.ktor:.*"))
+            // Koin uses reflection
+            exclude(dependency("io.insert-koin:.*"))
+            // Coroutines Swing provides Dispatchers.Main via ServiceLoader
+            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-swing"))
         }
+
+        mergeServiceFiles()
+    }
+
+    distTar {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
+    distZip {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
     publish {
@@ -103,6 +172,9 @@ tasks {
     }
 }
 
+// ============================================================================
+// Publishing / Signing
+// ============================================================================
 // Needed by gradle-semantic-release-plugin.
 // Tracking: https://github.com/KengoTODA/gradle-semantic-release-plugin/issues/435
 

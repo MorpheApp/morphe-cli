@@ -23,6 +23,9 @@ misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
 
+# Kotlin
+.kotlin/
+
 # Keystore files
 *.jks
 *.keystore
@@ -33,5 +36,7 @@ google-services.json
 # Android Profiling
 *.hprof
 
+# Mac files
+.DS_Store
 # NPM modules
 node_modules/
