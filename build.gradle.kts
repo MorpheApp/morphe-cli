@@ -152,6 +152,8 @@ tasks {
             exclude(dependency("io.ktor:.*"))
             // Koin uses reflection
             exclude(dependency("io.insert-koin:.*"))
+            // Coroutines Swing provides Dispatchers.Main via ServiceLoader
+            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-swing"))
         }
 
         mergeServiceFiles()
