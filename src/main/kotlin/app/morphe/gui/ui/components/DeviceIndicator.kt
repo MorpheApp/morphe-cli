@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -18,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,16 +64,18 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
     )
 
     Box(modifier = modifier) {
-        Surface(
-            onClick = { showPopup = !showPopup },
-            shape = RoundedCornerShape(corners.small),
-            color = Color.Transparent,
+        Box(
             modifier = Modifier
+                .height(34.dp)
                 .hoverable(hoverInteraction)
+                .clip(RoundedCornerShape(corners.small))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+                .clickable { showPopup = !showPopup }
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {

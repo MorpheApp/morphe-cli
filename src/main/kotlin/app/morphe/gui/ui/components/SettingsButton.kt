@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -13,10 +14,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,13 +69,14 @@ fun SettingsButton(
         animationSpec = tween(150)
     )
 
-    IconButton(
-        onClick = { showSettingsDialog = true },
+    Box(
         modifier = modifier
             .size(34.dp)
             .hoverable(hoverInteraction)
+            .clip(RoundedCornerShape(corners.small))
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
-            .background(Color.Transparent, RoundedCornerShape(corners.small))
+            .clickable { showSettingsDialog = true },
+        contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.Settings,

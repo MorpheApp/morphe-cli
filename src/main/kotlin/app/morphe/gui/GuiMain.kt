@@ -55,10 +55,14 @@ fun launchGui(args: Array<String>) = application {
         onCloseRequest = ::exitApplication,
         title = "Morphe",
         state = windowState,
-        icon = appIcon
+        icon = appIcon,
+        undecorated = true
     ) {
         window.minimumSize = java.awt.Dimension(600, 400)
-        App(initialSimplifiedMode = initialSimplifiedMode)
+        App(
+            initialSimplifiedMode = initialSimplifiedMode,
+            frameWindowScope = this
+        )
     }
 }
 

@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -124,20 +125,22 @@ fun ApkInfoCard(
                     animationSpec = tween(150)
                 )
 
-                IconButton(
-                    onClick = onClearClick,
+                Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(44.dp)
                         .hoverable(closeHover)
+                        .clip(RoundedCornerShape(corners.small))
                         .background(closeBg, RoundedCornerShape(corners.small))
                         .border(1.dp, closeBorder, RoundedCornerShape(corners.small))
+                        .clickable(onClick = onClearClick),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Remove APK",
                         tint = if (isCloseHovered) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

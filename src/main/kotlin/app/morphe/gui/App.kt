@@ -8,6 +8,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.FrameWindowScope
+import app.morphe.gui.ui.components.CustomTitleBar
 import app.morphe.gui.ui.components.LottieAnimation
 import app.morphe.gui.ui.components.SakuraPetals
 import cafe.adriel.voyager.navigator.Navigator
@@ -42,7 +44,7 @@ val LocalModeState = staticCompositionLocalOf<ModeState> {
 }
 
 @Composable
-fun App(initialSimplifiedMode: Boolean = true) {
+fun App(initialSimplifiedMode: Boolean = true, frameWindowScope: FrameWindowScope? = null) {
     LaunchedEffect(Unit) {
         Logger.init()
     }
@@ -50,12 +52,12 @@ fun App(initialSimplifiedMode: Boolean = true) {
     KoinApplication(application = {
         modules(appModule)
     }) {
-        AppContent(initialSimplifiedMode)
+        AppContent(initialSimplifiedMode, frameWindowScope)
     }
 }
 
 @Composable
-private fun AppContent(initialSimplifiedMode: Boolean) {
+private fun AppContent(initialSimplifiedMode: Boolean, frameWindowScope: FrameWindowScope? = null) {
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
     val scope = rememberCoroutineScope()
@@ -115,8 +117,16 @@ private fun AppContent(initialSimplifiedMode: Boolean) {
             LocalModeState provides modeState
         ) {
             Surface(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (!isLoading) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Custom title bar (replaces native window chrome)
+                    if (frameWindowScope != null) {
+                        with(frameWindowScope) {
+                            CustomTitleBar()
+                        }
+                    }
+
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        if (!isLoading) {
                         val patchService: PatchService = koinInject()
                         val quickViewModel = remember {
                             QuickPatchViewModel(patchSourceManager, patchService, configRepository)
@@ -174,6 +184,7 @@ private fun AppContent(initialSimplifiedMode: Boolean) {
                             }
                         }
                     }
+                }
                 }
             }
         }

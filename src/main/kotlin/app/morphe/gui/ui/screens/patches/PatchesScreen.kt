@@ -121,12 +121,14 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                 animationSpec = tween(150)
             )
 
-            IconButton(
-                onClick = { navigator.pop() },
+            Box(
                 modifier = Modifier
                     .size(34.dp)
                     .hoverable(backHover)
+                    .clip(RoundedCornerShape(corners.small))
                     .border(1.dp, backBorder, RoundedCornerShape(corners.small))
+                    .clickable { navigator.pop() },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -171,13 +173,17 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             )
 
             if (!uiState.isLocalSource) {
-                IconButton(
-                    onClick = { viewModel.loadReleases() },
-                    enabled = !uiState.isLoading,
+                Box(
                     modifier = Modifier
                         .size(34.dp)
                         .hoverable(refreshHover)
+                        .clip(RoundedCornerShape(corners.small))
                         .border(1.dp, refreshBorder, RoundedCornerShape(corners.small))
+                        .then(
+                            if (!uiState.isLoading) Modifier.clickable { viewModel.loadReleases() }
+                            else Modifier
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,

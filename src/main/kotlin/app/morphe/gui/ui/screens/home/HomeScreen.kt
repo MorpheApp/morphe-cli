@@ -365,12 +365,13 @@ private fun PatchesVersionInline(
 
     Row(
         modifier = Modifier
+            .height(34.dp)
             .clip(RoundedCornerShape(corners.small))
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
             .background(MaterialTheme.colorScheme.surface)
             .hoverable(hoverInteraction)
             .clickable(onClick = onChangePatchesClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

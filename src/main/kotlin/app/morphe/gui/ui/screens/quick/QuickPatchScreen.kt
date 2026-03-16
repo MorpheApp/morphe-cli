@@ -1,29 +1,23 @@
 package app.morphe.gui.ui.screens.quick
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draganddrop.DragAndDropEvent
-import androidx.compose.ui.draganddrop.DragAndDropTarget
-import androidx.compose.ui.draganddrop.awtTransferable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,106 +25,56 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
-import androidx.compose.foundation.isSystemInDarkTheme
 import app.morphe.morphe_cli.generated.resources.Res
 import app.morphe.morphe_cli.generated.resources.morphe_dark
 import app.morphe.morphe_cli.generated.resources.morphe_light
-import app.morphe.gui.ui.theme.LocalThemeState
-import app.morphe.gui.ui.theme.ThemePreference
+import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
-import app.morphe.gui.util.PatchService
-import org.jetbrains.compose.resources.painterResource
-import org.koin.compose.koinInject
 import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.components.TopBarRow
-import app.morphe.gui.ui.theme.MorpheColors
-import androidx.compose.runtime.rememberCoroutineScope
+import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
+import app.morphe.gui.ui.theme.*
+import app.morphe.gui.util.ChecksumStatus
+import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
+import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.AdbManager
 import app.morphe.gui.util.DeviceMonitor
 import kotlinx.coroutines.launch
-import app.morphe.gui.util.ChecksumStatus
-import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
+import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
 import java.awt.Desktop
-import java.awt.datatransfer.DataFlavor
-import java.io.File
 import java.awt.FileDialog
 import java.awt.Frame
+import java.io.File
 
-/**
- * Quick Patch Mode - Single screen simplified patching.
- */
 class QuickPatchScreen : Screen {
     @Composable
     override fun Content() {
         val patchSourceManager: PatchSourceManager = koinInject()
         val patchService: PatchService = koinInject()
         val configRepository: ConfigRepository = koinInject()
-
         val viewModel = remember {
             QuickPatchViewModel(patchSourceManager, patchService, configRepository)
         }
-
         QuickPatchContent(viewModel)
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val uriHandler = LocalUriHandler.current
 
-    // Compose drag and drop target
-    val dragAndDropTarget = remember {
-        object : DragAndDropTarget {
-            override fun onStarted(event: DragAndDropEvent) {
-                viewModel.setDragHover(true)
-            }
-
-            override fun onEnded(event: DragAndDropEvent) {
-                viewModel.setDragHover(false)
-            }
-
-            override fun onExited(event: DragAndDropEvent) {
-                viewModel.setDragHover(false)
-            }
-
-            override fun onEntered(event: DragAndDropEvent) {
-                viewModel.setDragHover(true)
-            }
-
-            override fun onDrop(event: DragAndDropEvent): Boolean {
-                viewModel.setDragHover(false)
-                val transferable = event.awtTransferable
-                return try {
-                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                        @Suppress("UNCHECKED_CAST")
-                        val files = transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
-                        val apkFile = files.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) || it.name.endsWith(".apkm", ignoreCase = true) }
-                        if (apkFile != null) {
-                            viewModel.onFileSelected(apkFile)
-                            true
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                } catch (e: Exception) {
-                    false
-                }
-            }
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .dragAndDropTarget(
-                shouldStartDragAndDrop = { true },
-                target = dragAndDropTarget
-            )
+    FullScreenDropZone(
+        isDragHovering = uiState.isDragHovering,
+        onDragHoverChange = { viewModel.setDragHover(it) },
+        onFilesDropped = { files ->
+            files.firstOrNull {
+                it.name.endsWith(".apk", ignoreCase = true) ||
+                it.name.endsWith(".apkm", ignoreCase = true)
+            }?.let { viewModel.onFileSelected(it) }
+        },
+        enabled = uiState.phase != QuickPatchPhase.ANALYZING
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -139,23 +83,9 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Branding
+                // ── Branding ──
                 Spacer(modifier = Modifier.height(8.dp))
-                val themeState = LocalThemeState.current
-                val isDark = when (themeState.current) {
-                    ThemePreference.SYSTEM -> isSystemInDarkTheme()
-                    else -> themeState.current.isDark()
-                }
-                Image(
-                    painter = painterResource(if (isDark) Res.drawable.morphe_dark else Res.drawable.morphe_light),
-                    contentDescription = "Morphe Logo",
-                    modifier = Modifier.height(48.dp)
-                )
-                Text(
-                    text = "Quick Patch",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                BrandingHeader(patchesVersion = uiState.patchesVersion, isLoading = uiState.isLoadingPatches)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -167,36 +97,32 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                     )
                 }
 
-                // Main content based on phase
-                // Remember last valid data for safe animation transitions
+                // ── Main content ──
                 val lastApkInfo = remember(uiState.apkInfo) { uiState.apkInfo }
                 val lastOutputPath = remember(uiState.outputPath) { uiState.outputPath }
 
                 AnimatedContent(
                     targetState = uiState.phase,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    transitionSpec = {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                    }
                 ) { phase ->
                     when (phase) {
                         QuickPatchPhase.IDLE, QuickPatchPhase.ANALYZING -> {
                             IdleContent(
                                 isAnalyzing = phase == QuickPatchPhase.ANALYZING,
                                 isDragHovering = uiState.isDragHovering,
-                                error = uiState.error,
-                                onFileSelected = { viewModel.onFileSelected(it) },
-                                onDragHover = { viewModel.setDragHover(it) },
-                                onClearError = { viewModel.clearError() }
+                                onBrowse = { openFilePicker()?.let { viewModel.onFileSelected(it) } }
                             )
                         }
                         QuickPatchPhase.READY -> {
-                            // Use current or last known apkInfo to prevent crash during animation
-                            val apkInfo = uiState.apkInfo ?: lastApkInfo
-                            if (apkInfo != null) {
+                            val info = uiState.apkInfo ?: lastApkInfo
+                            if (info != null) {
                                 ReadyContent(
-                                    apkInfo = apkInfo,
-                                    error = uiState.error,
+                                    apkInfo = info,
                                     onPatch = { viewModel.startPatching() },
-                                    onClear = { viewModel.reset() },
-                                    onClearError = { viewModel.clearError() }
+                                    onClear = { viewModel.reset() }
                                 )
                             }
                         }
@@ -208,12 +134,12 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                             )
                         }
                         QuickPatchPhase.COMPLETED -> {
-                            val apkInfo = uiState.apkInfo ?: lastApkInfo
-                            val outputPath = uiState.outputPath ?: lastOutputPath
-                            if (apkInfo != null && outputPath != null) {
+                            val info = uiState.apkInfo ?: lastApkInfo
+                            val output = uiState.outputPath ?: lastOutputPath
+                            if (info != null && output != null) {
                                 CompletedContent(
-                                    outputPath = outputPath,
-                                    apkInfo = apkInfo,
+                                    outputPath = output,
+                                    apkInfo = info,
                                     onPatchAnother = { viewModel.reset() }
                                 )
                             }
@@ -221,31 +147,30 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                     }
                 }
 
-                // Bottom app cards (only show in IDLE phase)
+                // ── Supported apps (idle only) ──
                 if (uiState.phase == QuickPatchPhase.IDLE) {
                     Spacer(modifier = Modifier.height(16.dp))
                     SupportedAppsRow(
                         supportedApps = uiState.supportedApps,
                         isLoading = uiState.isLoadingPatches,
                         loadError = uiState.patchLoadError,
-                        patchesVersion = uiState.patchesVersion,
                         isDefaultSource = uiState.isDefaultSource,
-                        onOpenUrl = { url ->
-                            openUrlAndFollowRedirects(url) { urlResolved ->
-                                uriHandler.openUri(urlResolved)
-                            }
-                        },
                         onRetry = { viewModel.retryLoadPatches() }
                     )
                 }
             }
 
-            // Top bar (device indicator + settings) in top-right corner
+            // Top-right: device indicator + settings
             TopBarRow(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(24.dp)
             )
+
+            // Drag overlay
+            if (uiState.isDragHovering) {
+                DragOverlay()
+            }
 
             // Error snackbar
             uiState.error?.let { error ->
@@ -259,7 +184,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = RoundedCornerShape(LocalMorpheCorners.current.small)
                 ) {
                     Text(error)
                 }
@@ -268,95 +194,165 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     }
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  BRANDING — Logo + patches version badge
+// ════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun BrandingHeader(patchesVersion: String?, isLoading: Boolean) {
+    val themeState = LocalThemeState.current
+    val isDark = when (themeState.current) {
+        ThemePreference.SYSTEM -> isSystemInDarkTheme()
+        else -> themeState.current.isDark()
+    }
+
+    Image(
+        painter = painterResource(if (isDark) Res.drawable.morphe_dark else Res.drawable.morphe_light),
+        contentDescription = "Morphe Logo",
+        modifier = Modifier.height(48.dp)
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    if (isLoading) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(12.dp),
+                strokeWidth = 1.5.dp,
+                color = MorpheColors.Blue
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Loading patches…",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
+    } else if (patchesVersion != null) {
+        Text(
+            text = "Patches $patchesVersion",
+            fontSize = 12.sp,
+            color = MorpheColors.Blue.copy(alpha = 0.8f),
+            fontWeight = FontWeight.Medium
+        )
+    } else {
+        Text(
+            text = "Quick Patch",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  IDLE — Simple drop zone
+// ════════════════════════════════════════════════════════════════════
+
 @Composable
 private fun IdleContent(
     isAnalyzing: Boolean,
     isDragHovering: Boolean,
-    error: String?,
-    onFileSelected: (File) -> Unit,
-    onDragHover: (Boolean) -> Unit,
-    onClearError: () -> Unit
+    onBrowse: () -> Unit
 ) {
-    val dropZoneColor = when {
-        isDragHovering -> MorpheColors.Blue.copy(alpha = 0.2f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    }
-
-    val borderColor = when {
-        isDragHovering -> MorpheColors.Blue
-        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    }
+    val corners = LocalMorpheCorners.current
+    val bracketColor = if (isDragHovering) MorpheColors.Blue.copy(alpha = 0.7f)
+        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(16.dp))
-            .background(dropZoneColor)
-            .border(2.dp, borderColor, RoundedCornerShape(16.dp))
-            .clickable(enabled = !isAnalyzing) {
-                openFilePicker()?.let { onFileSelected(it) }
+            .clickable(enabled = !isAnalyzing) { onBrowse() }
+            .drawBehind {
+                val strokeWidth = 2f
+                val len = 32.dp.toPx()
+                val inset = 0f
+
+                // Top-left
+                drawLine(bracketColor, Offset(inset, inset), Offset(inset + len, inset), strokeWidth)
+                drawLine(bracketColor, Offset(inset, inset), Offset(inset, inset + len), strokeWidth)
+                // Top-right
+                drawLine(bracketColor, Offset(size.width - inset, inset), Offset(size.width - inset - len, inset), strokeWidth)
+                drawLine(bracketColor, Offset(size.width - inset, inset), Offset(size.width - inset, inset + len), strokeWidth)
+                // Bottom-left
+                drawLine(bracketColor, Offset(inset, size.height - inset), Offset(inset + len, size.height - inset), strokeWidth)
+                drawLine(bracketColor, Offset(inset, size.height - inset), Offset(inset, size.height - inset - len), strokeWidth)
+                // Bottom-right
+                drawLine(bracketColor, Offset(size.width - inset, size.height - inset), Offset(size.width - inset - len, size.height - inset), strokeWidth)
+                drawLine(bracketColor, Offset(size.width - inset, size.height - inset), Offset(size.width - inset, size.height - inset - len), strokeWidth)
             },
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (isAnalyzing) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(40.dp),
                     color = MorpheColors.Blue,
                     strokeWidth = 3.dp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Analyzing APK...",
-                    fontSize = 16.sp,
+                    text = "Analyzing APK…",
+                    fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.CloudUpload,
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = if (isDragHovering) MorpheColors.Blue else MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(44.dp),
+                    tint = if (isDragHovering) MorpheColors.Blue
+                           else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Drop APK here",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isDragHovering) MorpheColors.Blue
+                           else MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "or click to browse",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = ".apk  ·  .apkm",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 )
             }
         }
     }
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  READY — Compact APK card + patch button
+// ════════════════════════════════════════════════════════════════════
+
 @Composable
 private fun ReadyContent(
     apkInfo: QuickApkInfo,
-    error: String?,
     onPatch: () -> Unit,
-    onClear: () -> Unit,
-    onClearError: () -> Unit
+    onClear: () -> Unit
 ) {
+    val corners = LocalMorpheCorners.current
+
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // APK Info Card
-        Card(
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Simple APK info card
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(corners.medium),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
         ) {
             Row(
                 modifier = Modifier
@@ -364,54 +360,56 @@ private fun ReadyContent(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // App icon: first letter of display name
+                // App initial
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(corners.small))
+                        .background(MorpheColors.Blue.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = apkInfo.displayName.first().toString(),
-                        fontSize = 20.sp,
+                        text = apkInfo.displayName.first().uppercase(),
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MorpheColors.Blue
                     )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = apkInfo.displayName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "v${apkInfo.versionName} • ${apkInfo.formattedSize}",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "v${apkInfo.versionName} · ${apkInfo.formattedSize}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
 
-                // Checksum status
+                // Checksum badge
                 when (apkInfo.checksumStatus) {
                     is ChecksumStatus.Verified -> {
                         Icon(
                             imageVector = Icons.Default.VerifiedUser,
                             contentDescription = "Verified",
                             tint = MorpheColors.Teal,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     is ChecksumStatus.Mismatch -> {
                         Icon(
                             imageVector = Icons.Default.Warning,
-                            contentDescription = "Checksum mismatch",
+                            contentDescription = "Mismatch",
                             tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     else -> {}
@@ -419,38 +417,57 @@ private fun ReadyContent(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                IconButton(onClick = onClear) {
+                IconButton(onClick = onClear, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Clear",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // Version status (only if noteworthy)
+        val statusText = when {
+            apkInfo.checksumStatus is ChecksumStatus.Verified ->
+                "Recommended version · Verified"
+            apkInfo.checksumStatus is ChecksumStatus.Mismatch ->
+                "Checksum mismatch — re-download from APKMirror"
+            !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null ->
+                "Recommended: v${apkInfo.recommendedVersion}"
+            apkInfo.isRecommendedVersion ->
+                "Recommended version"
+            else -> null
+        }
+        val statusColor = when {
+            apkInfo.checksumStatus is ChecksumStatus.Verified -> MorpheColors.Teal
+            apkInfo.checksumStatus is ChecksumStatus.Mismatch -> MaterialTheme.colorScheme.error
+            !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null -> Color(0xFFFF9800)
+            else -> MorpheColors.Teal
+        }
 
-        // Verification status banner
-        VerificationStatusBanner(
-            checksumStatus = apkInfo.checksumStatus,
-            isRecommendedVersion = apkInfo.isRecommendedVersion,
-            currentVersion = apkInfo.versionName,
-            suggestedVersion = apkInfo.recommendedVersion ?: "Unknown"
-        )
+        if (statusText != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = statusText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = statusColor,
+                textAlign = TextAlign.Center
+            )
+        }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Patch button
         Button(
             onClick = onPatch,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MorpheColors.Blue
-            ),
-            shape = RoundedCornerShape(12.dp)
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
+            shape = RoundedCornerShape(corners.medium)
         ) {
             Icon(
                 imageVector = Icons.Default.AutoFixHigh,
@@ -460,21 +477,27 @@ private fun ReadyContent(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Patch with Defaults",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = "Uses latest patches with recommended settings",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             textAlign = TextAlign.Center
         )
+
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  PATCHING — Progress
+// ════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun PatchingContent(
@@ -488,8 +511,8 @@ private fun PatchingContent(
         verticalArrangement = Arrangement.Center
     ) {
         CircularProgressIndicator(
-            modifier = Modifier.size(64.dp),
-            strokeWidth = 4.dp,
+            modifier = Modifier.size(56.dp),
+            strokeWidth = 3.dp,
             color = MorpheColors.Teal
         )
 
@@ -497,12 +520,12 @@ private fun PatchingContent(
 
         Text(
             text = when (phase) {
-                QuickPatchPhase.DOWNLOADING -> "Preparing..."
-                QuickPatchPhase.PATCHING -> "Patching..."
+                QuickPatchPhase.DOWNLOADING -> "Preparing…"
+                QuickPatchPhase.PATCHING -> "Patching…"
                 else -> ""
             },
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
 
@@ -510,11 +533,12 @@ private fun PatchingContent(
 
         Text(
             text = statusMessage,
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -525,12 +549,17 @@ private fun PatchingContent(
     }
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  COMPLETED — Success
+// ════════════════════════════════════════════════════════════════════
+
 @Composable
 private fun CompletedContent(
     outputPath: String,
     apkInfo: QuickApkInfo,
     onPatchAnother: () -> Unit
 ) {
+    val corners = LocalMorpheCorners.current
     val outputFile = File(outputPath)
     val scope = rememberCoroutineScope()
     val adbManager = remember { AdbManager() }
@@ -550,14 +579,14 @@ private fun CompletedContent(
             imageVector = Icons.Default.CheckCircle,
             contentDescription = "Success",
             tint = MorpheColors.Teal,
-            modifier = Modifier.size(64.dp)
+            modifier = Modifier.size(56.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Patching Complete!",
-            fontSize = 22.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -566,15 +595,19 @@ private fun CompletedContent(
 
         Text(
             text = outputFile.name,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
         if (outputFile.exists()) {
             Text(
                 text = formatFileSize(outputFile.length()),
                 fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
                 color = MorpheColors.Teal
             )
         }
@@ -582,9 +615,7 @@ private fun CompletedContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Action buttons
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
                 onClick = {
                     try {
@@ -592,30 +623,25 @@ private fun CompletedContent(
                         if (folder != null && Desktop.isDesktopSupported()) {
                             Desktop.getDesktop().open(folder)
                         }
-                    } catch (e: Exception) { }
+                    } catch (_: Exception) {}
                 },
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(corners.small)
             ) {
-                Icon(
-                    imageVector = Icons.Default.FolderOpen,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Open Folder")
             }
 
             Button(
                 onClick = onPatchAnother,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MorpheColors.Blue
-                ),
-                shape = RoundedCornerShape(8.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
+                shape = RoundedCornerShape(corners.small)
             ) {
                 Text("Patch Another")
             }
         }
 
+        // ADB install
         if (monitorState.isAdbAvailable == true) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -625,7 +651,7 @@ private fun CompletedContent(
             if (installSuccess) {
                 Surface(
                     color = MorpheColors.Teal.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(
                         text = "Installed successfully!",
@@ -647,7 +673,7 @@ private fun CompletedContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Installing...",
+                        text = "Installing…",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -671,13 +697,9 @@ private fun CompletedContent(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Teal),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(corners.small)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PhoneAndroid,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Icon(Icons.Default.PhoneAndroid, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Install on ${device.displayName}")
                 }
@@ -685,7 +707,7 @@ private fun CompletedContent(
                 Text(
                     text = "Connect your device via USB to install with ADB",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
 
@@ -702,19 +724,24 @@ private fun CompletedContent(
     }
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  SUPPORTED APPS — Simple row at the bottom
+// ════════════════════════════════════════════════════════════════════
+
 @Composable
 private fun SupportedAppsRow(
-    supportedApps: List<app.morphe.gui.data.model.SupportedApp>,
+    supportedApps: List<SupportedApp>,
     isLoading: Boolean,
     loadError: String? = null,
-    patchesVersion: String?,
     isDefaultSource: Boolean = true,
-    onOpenUrl: (String) -> Unit,
     onRetry: () -> Unit = {}
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    val corners = LocalMorpheCorners.current
+    val uriHandler = LocalUriHandler.current
+    val focusManager = LocalFocusManager.current
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -723,207 +750,174 @@ private fun SupportedAppsRow(
             Text(
                 text = if (isDefaultSource) "Download original APK" else "Supported apps",
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
-            if (patchesVersion != null) {
-                Text(
-                    text = "Patches: $patchesVersion",
-                    fontSize = 11.sp,
-                    color = MorpheColors.Blue.copy(alpha = 0.8f)
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (isLoading) {
-            // Loading state
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MorpheColors.Blue
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Loading supported apps...",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else if (loadError != null || supportedApps.isEmpty()) {
-            // Error or no apps loaded
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = loadError ?: "Could not load supported apps",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = onRetry,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+        when {
+            isLoading -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Retry", fontSize = 12.sp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MorpheColors.Blue
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Loading supported apps…",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
                 }
             }
-        } else {
-            // Search bar for many apps
-            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-            var searchQuery by remember { mutableStateOf("") }
-            val filteredApps = if (searchQuery.isBlank()) supportedApps
-            else supportedApps.filter {
-                it.displayName.contains(searchQuery, ignoreCase = true) ||
-                it.packageName.contains(searchQuery, ignoreCase = true)
-            }
-
-            if (supportedApps.size > 4) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = {
-                        Text(
-                            "Search apps...",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = "Clear",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodySmall,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MorpheColors.Blue,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                    )
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            if (isDefaultSource) {
-                // Default source: show clickable download cards with fixed width
+            loadError != null || supportedApps.isEmpty() -> {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .height(IntrinsicSize.Max)
-                        .clickable(
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            indication = null
-                        ) { focusManager.clearFocus() },
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    filteredApps.forEach { app ->
-                        val url = app.apkDownloadUrl
-                        if (url != null) {
-                            OutlinedCard(
-                                onClick = { onOpenUrl(url) },
-                                modifier = Modifier.width(180.dp).fillMaxHeight(),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = app.displayName,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        app.recommendedVersion?.let { version ->
-                                            Text(
-                                                text = "v$version",
-                                                fontSize = 10.sp,
-                                                color = MorpheColors.Teal
-                                            )
-                                        }
-                                    }
+                    Text(
+                        text = loadError ?: "Could not load supported apps",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedButton(
+                        onClick = onRetry,
+                        shape = RoundedCornerShape(corners.small),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text("Retry", fontSize = 12.sp)
+                    }
+                }
+            }
+            else -> {
+                // Search bar for many apps
+                var searchQuery by remember { mutableStateOf("") }
+                val filteredApps = if (searchQuery.isBlank()) supportedApps
+                else supportedApps.filter {
+                    it.displayName.contains(searchQuery, ignoreCase = true) ||
+                    it.packageName.contains(searchQuery, ignoreCase = true)
+                }
+
+                if (supportedApps.size > 4) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = {
+                            Text("Search apps…", style = MaterialTheme.typography.bodySmall)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search, null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                        contentDescription = "Open",
+                                        Icons.Default.Clear, "Clear",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(14.dp)
                                     )
                                 }
                             }
-                        }
-                    }
+                        },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        shape = RoundedCornerShape(corners.small),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MorpheColors.Blue,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-            } else {
-                // Custom source: show app names and versions in a scrollable row
+
+                // Horizontal scrolling cards
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
                         .height(IntrinsicSize.Max)
                         .clickable(
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) { focusManager.clearFocus() },
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     filteredApps.forEach { app ->
-                        OutlinedCard(
-                            modifier = Modifier.width(160.dp).fillMaxHeight(),
-                            shape = RoundedCornerShape(8.dp)
+                        val url = app.apkDownloadUrl
+                        val hoverInteraction = remember { MutableInteractionSource() }
+                        val isHovered by hoverInteraction.collectIsHoveredAsState()
+                        val borderColor by animateColorAsState(
+                            if (isHovered) MorpheColors.Blue.copy(alpha = 0.4f)
+                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+                            animationSpec = tween(200)
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .width(170.dp)
+                                .fillMaxHeight()
+                                .hoverable(hoverInteraction)
+                                .then(
+                                    if (isDefaultSource && url != null) {
+                                        Modifier.clickable {
+                                            openUrlAndFollowRedirects(url) { resolved ->
+                                                uriHandler.openUri(resolved)
+                                            }
+                                        }
+                                    } else Modifier
+                                ),
+                            shape = RoundedCornerShape(corners.small),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, borderColor)
                         ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp)
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
                                     text = app.displayName,
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = app.packageName,
-                                    fontSize = 9.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                app.recommendedVersion?.let { version ->
+                                if (app.recommendedVersion != null) {
                                     Text(
-                                        text = "v$version",
+                                        text = "v${app.recommendedVersion}",
+                                        fontSize = 11.sp,
+                                        color = MorpheColors.Teal,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Any version",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                                if (isDefaultSource && url != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Download ↗",
                                         fontSize = 10.sp,
-                                        color = MorpheColors.Teal
+                                        color = MorpheColors.Blue.copy(alpha = 0.7f),
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
                             }
@@ -935,199 +929,54 @@ private fun SupportedAppsRow(
     }
 }
 
-/**
- * Shows verification status (version + checksum) in a compact banner.
- */
+// ════════════════════════════════════════════════════════════════════
+//  DRAG OVERLAY
+// ════════════════════════════════════════════════════════════════════
+
 @Composable
-private fun VerificationStatusBanner(
-    checksumStatus: ChecksumStatus,
-    isRecommendedVersion: Boolean,
-    currentVersion: String,
-    suggestedVersion: String
-) {
-    when {
-        // Recommended version with verified checksum
-        checksumStatus is ChecksumStatus.Verified -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MorpheColors.Teal.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.VerifiedUser,
-                        contentDescription = null,
-                        tint = MorpheColors.Teal,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "Recommended version • Verified",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MorpheColors.Teal
-                        )
-                        Text(
-                            text = "Checksum matches APKMirror",
-                            fontSize = 11.sp,
-                            color = MorpheColors.Teal.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Checksum mismatch - warning
-        checksumStatus is ChecksumStatus.Mismatch -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "Checksum mismatch",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "File may be corrupted. Re-download from APKMirror.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Recommended version but no checksum configured
-        isRecommendedVersion && checksumStatus is ChecksumStatus.NotConfigured -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MorpheColors.Teal.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MorpheColors.Teal,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Using recommended version",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MorpheColors.Teal
-                    )
-                }
-            }
-        }
-
-        // Non-recommended version (older or newer)
-        !isRecommendedVersion -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFFF9800).copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "Version $currentVersion",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFFFF9800)
-                        )
-                        Text(
-                            text = "Recommended: v$suggestedVersion. Patching may have issues.",
-                            fontSize = 11.sp,
-                            color = Color(0xFFFF9800).copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Checksum error
-        checksumStatus is ChecksumStatus.Error -> {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFFF9800).copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Recommended version (checksum unavailable)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFFF9800)
-                    )
-                }
-            }
+private fun DragOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f))
+            .border(
+                width = 2.dp,
+                color = MorpheColors.Blue.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(0.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.CloudUpload,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MorpheColors.Blue
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Drop APK here",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MorpheColors.Blue
+            )
         }
     }
 }
 
-/**
- * Open native file picker.
- */
+// ════════════════════════════════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════════════════════════════════
+
 private fun openFilePicker(): File? {
     val fileDialog = FileDialog(null as Frame?, "Select APK", FileDialog.LOAD).apply {
         isMultipleMode = false
         setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") } }
         isVisible = true
     }
-
     val directory = fileDialog.directory
     val file = fileDialog.file
-
-    return if (directory != null && file != null) {
-        File(directory, file)
-    } else null
+    return if (directory != null && file != null) File(directory, file) else null
 }
 
 private fun formatFileSize(bytes: Long): String {
