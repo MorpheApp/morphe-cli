@@ -37,6 +37,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Release
 import org.koin.core.parameter.parametersOf
 import cafe.adriel.voyager.koin.koinScreenModel
+import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.SettingsButton
@@ -106,10 +107,16 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             .fillMaxSize()
     ) {
         // ── Header bar ──
+        val titleInsets = LocalTitleBarInsets.current
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(
+                    start = 16.dp + titleInsets.start,
+                    end = 16.dp,
+                    top = 12.dp + titleInsets.top,
+                    bottom = 12.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button

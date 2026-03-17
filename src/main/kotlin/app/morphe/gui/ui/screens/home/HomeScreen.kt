@@ -49,6 +49,8 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.SupportedApp
+import app.morphe.gui.ui.components.DraggableHeaderArea
+import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
@@ -249,10 +251,14 @@ fun HomeScreenContent(
 
                 // Top bar — only floated when not using horizontal header
                 if (!useHorizontalHeader) {
+                    val titleInsets = LocalTitleBarInsets.current
                     TopBarRow(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(padding),
+                            .padding(
+                                top = padding + titleInsets.top,
+                                end = padding
+                            ),
                         allowCacheClear = true
                     )
                 }
@@ -308,39 +314,47 @@ private fun HeaderBar(
     onRetry: () -> Unit
 ) {
     val mono = LocalMorpheFont.current
+    val titleInsets = LocalTitleBarInsets.current
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = padding, vertical = if (isSmall) 12.dp else 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Logo — left-aligned, compact
-        BrandingSection(isCompact = true)
+    DraggableHeaderArea {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = padding + titleInsets.start,
+                    end = padding,
+                    top = (if (isSmall) 8.dp else 10.dp) + titleInsets.top,
+                    bottom = if (isSmall) 8.dp else 10.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Logo — left-aligned, compact
+            BrandingSection(isCompact = true)
 
-        Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-        // Patches version inline
-        if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
-            PatchesVersionInline(
-                patchesVersion = uiState.patchesVersion!!,
-                isLatest = uiState.isUsingLatestPatches,
-                onChangePatchesClick = onChangePatchesClick
-            )
-        } else if (uiState.isLoadingPatches) {
-            PatchesLoadingIndicator()
+            // Patches version inline
+            if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
+                PatchesVersionInline(
+                    patchesVersion = uiState.patchesVersion!!,
+                    isLatest = uiState.isUsingLatestPatches,
+                    onChangePatchesClick = onChangePatchesClick
+                )
+            } else if (uiState.isLoadingPatches) {
+                PatchesLoadingIndicator()
+            }
+
+            // Offline badge
+            if (uiState.isOffline && !uiState.isLoadingPatches) {
+                Spacer(modifier = Modifier.width(12.dp))
+                OfflineBadge(onRetry = onRetry)
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Device indicator + settings — inline in the header
+            TopBarRow(allowCacheClear = true)
         }
-
-        // Offline badge
-        if (uiState.isOffline && !uiState.isLoadingPatches) {
-            Spacer(modifier = Modifier.width(12.dp))
-            OfflineBadge(onRetry = onRetry)
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Device indicator + settings — inline in the header
-        TopBarRow(allowCacheClear = true)
     }
 }
 

@@ -8,10 +8,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.FrameWindowScope
-import app.morphe.gui.ui.components.CustomTitleBar
+import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.LottieAnimation
 import app.morphe.gui.ui.components.SakuraPetals
+import app.morphe.gui.ui.components.TitleBarInsets
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.SlideTransition
 import app.morphe.gui.data.repository.ConfigRepository
@@ -44,7 +44,7 @@ val LocalModeState = staticCompositionLocalOf<ModeState> {
 }
 
 @Composable
-fun App(initialSimplifiedMode: Boolean = true, frameWindowScope: FrameWindowScope? = null) {
+fun App(initialSimplifiedMode: Boolean = true) {
     LaunchedEffect(Unit) {
         Logger.init()
     }
@@ -52,12 +52,12 @@ fun App(initialSimplifiedMode: Boolean = true, frameWindowScope: FrameWindowScop
     KoinApplication(application = {
         modules(appModule)
     }) {
-        AppContent(initialSimplifiedMode, frameWindowScope)
+        AppContent(initialSimplifiedMode)
     }
 }
 
 @Composable
-private fun AppContent(initialSimplifiedMode: Boolean, frameWindowScope: FrameWindowScope? = null) {
+private fun AppContent(initialSimplifiedMode: Boolean) {
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
     val scope = rememberCoroutineScope()
@@ -111,22 +111,21 @@ private fun AppContent(initialSimplifiedMode: Boolean, frameWindowScope: FrameWi
         }
     }
 
+    val titleBarInsets = remember {
+        val isMac = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+        if (isMac) TitleBarInsets(start = 80.dp, top = 0.dp)
+        else TitleBarInsets()
+    }
+
     MorpheTheme(themePreference = themePreference) {
         CompositionLocalProvider(
             LocalThemeState provides themeState,
-            LocalModeState provides modeState
+            LocalModeState provides modeState,
+            LocalTitleBarInsets provides titleBarInsets
         ) {
             Surface(modifier = Modifier.fillMaxSize()) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Custom title bar (replaces native window chrome)
-                    if (frameWindowScope != null) {
-                        with(frameWindowScope) {
-                            CustomTitleBar()
-                        }
-                    }
-
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        if (!isLoading) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (!isLoading) {
                         val patchService: PatchService = koinInject()
                         val quickViewModel = remember {
                             QuickPatchViewModel(patchSourceManager, patchService, configRepository)
@@ -184,7 +183,6 @@ private fun AppContent(initialSimplifiedMode: Boolean, frameWindowScope: FrameWi
                             }
                         }
                     }
-                }
                 }
             }
         }

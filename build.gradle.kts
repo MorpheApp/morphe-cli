@@ -19,7 +19,7 @@ group = "app.morphe"
 kotlin {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
-        vendor.set(JvmVendorSpec.ADOPTIUM)
+        vendor.set(JvmVendorSpec.JETBRAINS)
     }
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
@@ -124,6 +124,9 @@ dependencies {
     implementation(libs.voyager.screenmodel)
     implementation(libs.voyager.koin)
     implementation(libs.voyager.transitions)
+
+    // -- JBR API (macOS title bar customization) ----------------------------
+    implementation(libs.jbr.api)
 
     // -- APK Parsing (GUI) -------------------------------------------------
     implementation(libs.apk.parser)

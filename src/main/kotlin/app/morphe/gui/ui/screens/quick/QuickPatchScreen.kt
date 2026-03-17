@@ -32,6 +32,7 @@ import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.ui.components.OfflineBanner
+import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.theme.*
@@ -161,10 +162,14 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
             }
 
             // Top-right: device indicator + settings
+            val titleInsets = LocalTitleBarInsets.current
             TopBarRow(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(24.dp)
+                    .padding(
+                        top = 24.dp + titleInsets.top,
+                        end = 24.dp
+                    )
             )
 
             // Drag overlay

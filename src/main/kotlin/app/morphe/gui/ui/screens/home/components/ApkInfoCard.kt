@@ -30,6 +30,7 @@ import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.ChecksumStatus
+import app.morphe.gui.util.DeviceMonitor
 
 @Composable
 fun ApkInfoCard(
@@ -182,8 +183,14 @@ fun ApkInfoCard(
                 }
             }
 
-            // ── Architectures — shown as individual tags, never truncated ──
+            // ── Architectures — shown as individual tags, device arch highlighted ──
             if (apkInfo.architectures.isNotEmpty()) {
+                val deviceState by DeviceMonitor.state.collectAsState()
+                val deviceArch = deviceState.selectedDevice?.architecture
+                val hasMultipleArchs = apkInfo.architectures.size > 1
+                // Highlight the device's arch when connected and APK has multiple archs
+                val highlightArch = if (hasMultipleArchs && deviceArch != null) deviceArch else null
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -209,23 +216,41 @@ fun ApkInfoCard(
                     )
                     Spacer(Modifier.width(4.dp))
                     apkInfo.architectures.forEach { arch ->
+                        val isDeviceArch = highlightArch != null && arch == highlightArch
+                        val tagBorder = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+                        val tagBg = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.08f)
+                            else Color.Transparent
+                        val tagColor = if (isDeviceArch) MorpheColors.Blue
+                            else MaterialTheme.colorScheme.onSurface
+                        val dimmed = highlightArch != null && !isDeviceArch
+
                         Box(
                             modifier = Modifier
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
-                                    RoundedCornerShape(corners.small)
-                                )
+                                .border(1.dp, tagBorder, RoundedCornerShape(corners.small))
+                                .background(tagBg, RoundedCornerShape(corners.small))
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
                                 text = arch,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = if (isDeviceArch) FontWeight.Bold else FontWeight.Medium,
                                 fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = if (dimmed) tagColor.copy(alpha = 0.35f) else tagColor
                             )
                         }
+                    }
+                    // Hint text when device arch is highlighted
+                    if (highlightArch != null) {
+                        Spacer(Modifier.width(2.dp))
+                        Text(
+                            text = "DEVICE",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = mono,
+                            color = MorpheColors.Blue.copy(alpha = 0.5f),
+                            letterSpacing = 1.sp
+                        )
                     }
                 }
             }

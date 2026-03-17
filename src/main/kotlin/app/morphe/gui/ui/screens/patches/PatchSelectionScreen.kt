@@ -48,6 +48,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Patch
 import org.koin.core.parameter.parametersOf
+import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.SettingsButton
@@ -125,10 +126,16 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ── Header bar ──
+        val titleInsets = LocalTitleBarInsets.current
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(
+                    start = 16.dp + titleInsets.start,
+                    end = 16.dp,
+                    top = 12.dp + titleInsets.top,
+                    bottom = 12.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
@@ -1241,7 +1248,7 @@ private fun ArchitectureSelectorCard(
         if (deviceArch != null) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Your device: $deviceArch",
+                text = "Your device's CPU architecture: $deviceArch",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = mono,

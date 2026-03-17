@@ -1,8 +1,10 @@
 package app.morphe.gui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import app.morphe.gui.ui.components.LocalFrameWindowScope
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -55,14 +57,39 @@ fun launchGui(args: Array<String>) = application {
         onCloseRequest = ::exitApplication,
         title = "Morphe",
         state = windowState,
-        icon = appIcon,
-        undecorated = true
+        icon = appIcon
     ) {
         window.minimumSize = java.awt.Dimension(600, 400)
-        App(
-            initialSimplifiedMode = initialSimplifiedMode,
-            frameWindowScope = this
-        )
+
+        // macOS: transparent title bar with expanded height so traffic lights
+        // align with our header row content. Uses JetBrains Runtime custom title bar API.
+        // Other OS: standard decorated window (no-op).
+        remember {
+            val isMac = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+            if (isMac) {
+                window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
+                window.rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
+                window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
+
+                // JBR: expand the title bar so traffic lights center with our header row.
+                // Height ~= header top padding (26dp) + half content height (~20dp) + buffer
+                // → traffic lights center vertically with our header icons/text.
+                try {
+                    val decorations = com.jetbrains.JBR.getWindowDecorations()
+                    val titleBar = decorations.createCustomTitleBar()
+                    titleBar.height = 56f
+                    titleBar.putProperty("controls.visible", true)
+                    decorations.setCustomTitleBar(window, titleBar)
+                } catch (_: Exception) {
+                    // Not running on JBR — traffic lights stay at default position
+                }
+            }
+            true
+        }
+
+        CompositionLocalProvider(LocalFrameWindowScope provides this) {
+            App(initialSimplifiedMode = initialSimplifiedMode)
+        }
     }
 }
 
