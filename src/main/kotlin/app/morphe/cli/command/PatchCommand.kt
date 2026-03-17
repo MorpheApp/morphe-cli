@@ -20,6 +20,7 @@ import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.cli.command.model.withUpdatedBundle
 import app.morphe.engine.ApkLibraryStripper
+import app.morphe.engine.UpdateChecker
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
@@ -318,6 +319,9 @@ internal object PatchCommand : Callable<Int> {
     private var updateOptions: Boolean = false
 
     override fun call(): Int {
+        // Check for any newer version
+        UpdateChecker.check()?.let { logger.info(it) }
+
         // region Setup
 
         val outputFilePath =
