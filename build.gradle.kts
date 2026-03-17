@@ -102,6 +102,7 @@ dependencies {
 
     // -- APK Parsing (GUI) -------------------------------------------------
     implementation(libs.apk.parser)
+    implementation(libs.apkzlib)
 
     // -- Testing -----------------------------------------------------------
     testImplementation(libs.kotlin.test)

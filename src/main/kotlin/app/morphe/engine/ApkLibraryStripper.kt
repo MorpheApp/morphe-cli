@@ -7,14 +7,31 @@ package app.morphe.engine
 
 import java.io.File
 import java.util.logging.Logger
-import java.util.zip.ZipFile
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
+import com.android.tools.build.apkzlib.zip.ZFile
+import com.android.tools.build.apkzlib.zip.ZFileOptions
+import com.android.tools.build.apkzlib.zip.AlignmentRules
+import com.android.tools.build.apkzlib.zip.StoredEntry
 
 /**
  * Strips native libraries from an APK, keeping only specified architectures.
  */
 object ApkLibraryStripper {
+
+    // Alignment for native libraries (4KB boundary). We no longer just write it ourselves.
+    private val LIBRARY_EXTENSION = ".so"
+    private val LIBRARY_ALIGNMENT = 4096
+    private val DEFAULT_ALIGNMENT = 4
+
+    /*
+    Alignment rules matching morphe-patcher's ApkUtils to ensure resources.arsc stays
+    4-byte aligned (required by Android 11+) and .so files stay 4KB aligned.
+     */
+    private val zFileOptions = ZFileOptions().setAlignmentRule(
+        AlignmentRules.compose(
+            AlignmentRules.constantForSuffix(LIBRARY_EXTENSION, LIBRARY_ALIGNMENT),
+            AlignmentRules.constant(DEFAULT_ALIGNMENT),
+        )
+    )
 
     private val VALID_ARCHITECTURES = setOf(
         "armeabi-v7a",
@@ -56,46 +73,26 @@ object ApkLibraryStripper {
      * @param onProgress Optional callback for progress updates.
      */
     fun stripLibraries(apkFile: File, architecturesToKeep: List<String>, onProgress: (String) -> Unit = {}) {
+
         validateArchitectures(architecturesToKeep)
 
         val keepSet = architecturesToKeep.toSet()
-        val tempFile = File(apkFile.parentFile, "${apkFile.name}.tmp")
 
         var strippedCount = 0
 
-        ZipFile(apkFile).use { zip ->
-            ZipOutputStream(tempFile.outputStream().buffered()).use { zos ->
-                val entries = zip.entries()
-                while (entries.hasMoreElements()) {
-                    val entry = entries.nextElement()
-
-                    if (shouldStripEntry(entry.name, keepSet)) {
-                        strippedCount++
-                        continue
-                    }
-
-                    val newEntry = ZipEntry(entry.name).apply {
-                        if (entry.method == ZipEntry.STORED) {
-                            method = ZipEntry.STORED
-                            size = entry.size
-                            compressedSize = entry.compressedSize
-                            crc = entry.crc
-                        }
-                        entry.extra?.let { extra = it }
-                    }
-
-                    zos.putNextEntry(newEntry)
-                    zip.getInputStream(entry).use { it.copyTo(zos) }
-                    zos.closeEntry()
+        // Open APK in-place with alignment rules, delete unwanted lib entries, and realign.
+        // Need to do this to preserve 4 byte alignment.
+        ZFile.openReadWrite(apkFile, zFileOptions).use { zFile ->
+            zFile.entries().forEach { entry ->
+                if (shouldStripEntry(entry.centralDirectoryHeader.name, keepSet)){
+                    entry.delete()
+                    strippedCount++
                 }
             }
+            zFile.realign()
         }
 
         onProgress("Kept $architecturesToKeep, stripped $strippedCount native library files")
-
-        // Replace original with stripped version
-        apkFile.delete()
-        tempFile.renameTo(apkFile)
     }
 
     /**
