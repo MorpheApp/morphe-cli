@@ -19,7 +19,6 @@ import app.morphe.cli.command.model.mergeWith
 import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.cli.command.model.withUpdatedBundle
-import app.morphe.engine.ApkLibraryStripper
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
@@ -30,6 +29,7 @@ import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
 import app.morphe.patcher.patch.setOptions
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -285,12 +285,22 @@ internal object PatchCommand : Callable<Int> {
     )
     private var unsigned: Boolean = false
 
+    private var keepArchitectures: Set<CpuArchitecture> = emptySet()
     @CommandLine.Option(
         names = ["--striplibs"],
         description = ["Architectures to keep, comma-separated (e.g. arm64-v8a,x86). Strips all other native architectures."],
         split = ",",
     )
-    private var striplibs: List<String> = emptyList()
+    @Suppress("unused")
+    private fun setStripLibs(architectures: List<String>) {
+        this.keepArchitectures = architectures.map { arch ->
+            CpuArchitecture.valueOfOrNull(arch.trim())
+                ?: throw CommandLine.ParameterException(
+                    spec.commandLine(),
+                    "Invalid architecture \"$arch\" in --striplibs. Valid values are: ${CpuArchitecture.entries.joinToString(", ")}",
+                )
+        }.toSet()
+    }
 
     @CommandLine.Option(
         names = ["--continue-on-error"],
@@ -454,6 +464,7 @@ internal object PatchCommand : Callable<Int> {
                     aaptBinaryPath?.path,
                     patcherTemporaryFilesPath.absolutePath,
                     if (aaptBinaryPath != null) { false } else { !forceApktool },
+                    keepArchitectures
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
@@ -640,17 +651,6 @@ internal object PatchCommand : Callable<Int> {
                         patcherResult.applyTo(this)
                     }
                 )
-            }.also { rebuiltApk ->
-                if (striplibs.isNotEmpty()) {
-                    patchingResult.addStepResult(
-                        PatchingStep.STRIPPING_LIBS,
-                        {
-                            ApkLibraryStripper.stripLibraries(rebuiltApk, striplibs) { msg ->
-                                logger.info(msg)
-                            }
-                        }
-                    )
-                }
             }.let { patchedApkFile ->
                 if (!mount && !unsigned) {
                     patchingResult.addStepResult(

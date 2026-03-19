@@ -59,7 +59,7 @@ class PatchingScreenModel(
                 disabledPatches = config.disabledPatches,
                 options = config.patchOptions,
                 exclusiveMode = config.useExclusiveMode,
-                striplibs = config.striplibs,
+                keepArchitectures = config.keepArchitectures,
                 continueOnError = config.continueOnError,
                 onProgress = { message ->
                     parseAndAddLog(message)
