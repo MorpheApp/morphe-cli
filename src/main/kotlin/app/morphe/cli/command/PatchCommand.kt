@@ -297,7 +297,11 @@ internal object PatchCommand : Callable<Int> {
             CpuArchitecture.valueOfOrNull(arch.trim())
                 ?: throw CommandLine.ParameterException(
                     spec.commandLine(),
-                    "Invalid architecture \"$arch\" in --striplibs. Valid values are: ${CpuArchitecture.entries.joinToString(", ")}",
+                    "Invalid architecture \"$arch\" in --striplibs. Valid values are: ${
+                        CpuArchitecture.entries.joinToString(
+                            ", "
+                        ) { it.arch }
+                    }",
                 )
         }.toSet()
     }
