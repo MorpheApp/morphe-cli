@@ -1,3 +1,10 @@
+# [1.6.0-dev.6](https://github.com/MorpheApp/morphe-cli/compare/v1.6.0-dev.5...v1.6.0-dev.6) (2026-03-20)
+
+
+### Features
+
+* Inform user if cli is outdated ([#81](https://github.com/MorpheApp/morphe-cli/issues/81)) ([5bcd4f7](https://github.com/MorpheApp/morphe-cli/commit/5bcd4f7c612ec3aad732e83ea131a019424b3bb8))
+
 # [1.6.0-dev.5](https://github.com/MorpheApp/morphe-cli/compare/v1.6.0-dev.4...v1.6.0-dev.5) (2026-03-16)
 
 
