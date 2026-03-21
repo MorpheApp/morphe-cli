@@ -3,38 +3,59 @@ package app.morphe.engine
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Properties
-
+import java.util.logging.Logger
 
 object UpdateChecker {
-    fun check(): String? {
+    fun check(logger: Logger): String? {
         try {
-            // Try to get the latest version. (TTL IS SET TO 3000)
+            // Current version of this CLI.
             val currentVersion = javaClass.getResourceAsStream("/app/morphe/cli/version.properties")
                 ?.use { stream ->
                     Properties().apply { load(stream) }.getProperty("version")
-                }
-                ?: return null
+                } ?: return null
 
-            val connection = URL("https://api.github.com/repos/MorpheApp/morphe-cli/releases/latest")
-                .openConnection() as HttpURLConnection
+            // Check if the user is using dev or stable release.
+            val isDev = currentVersion.contains("dev")
 
+            val url = if (isDev) {
+                // If on dev and a new stable release is available, then this
+                // ref still is correct because after a stable release dev branch is same as main.
+                "https://raw.githubusercontent.com/MorpheApp/morphe-cli/refs/heads/dev/gradle.properties"
+            } else {
+                "https://raw.githubusercontent.com/MorpheApp/morphe-cli/refs/heads/main/gradle.properties"
+            }
+
+            val connection = URL(url).openConnection() as HttpURLConnection
             connection.connectTimeout = 3000
             connection.readTimeout = 3000
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
 
-            //
             val response = connection.getInputStream().bufferedReader().use { it.readText() }
 
-            val latestVersion = Regex(""""tag_name"\s*:\s*"v?([^"]+)"""").find(response)
-                ?.groupValues?.get(1) ?: return null
+            val latestVersion = Properties().apply {
+                load(response.byteInputStream())
+            }.getProperty("version") ?: return null
 
             if (latestVersion != currentVersion) {
-                return "Update available: v$latestVersion (current: v$currentVersion). Download from https://github.com/MorpheApp/morphe-cli/releases/latest"
+                // Warning message for when the user is to about to move from dev -> stable edge case.
+                val trackChangesMessage = if (isDev && !latestVersion.contains("dev")){
+                    "\nNotice: The latest CLI is a stable release. Updating to that will stop dev " +
+                            "update notifications. To keep receiving dev updates, skip stable update " +
+                            "and wait for the next dev release."
+                } else ""
+
+                val downloadLink = if (isDev) {
+                    "https://github.com/MorpheApp/morphe-cli/releases/"
+                } else {
+                    "https://github.com/MorpheApp/morphe-cli/releases/latest"
+                }
+
+                return "Update available: v$latestVersion (current: v$currentVersion)" +
+                        "$trackChangesMessage\nDownload from $downloadLink"
             }
             return  null
 
-        }catch (e: Exception) {
-            // In case we fail anything, we silently return.
+        } catch (ex: Exception) {
+            logger.fine("Could not check for CLI update: $ex")
             return null
         }
     }
