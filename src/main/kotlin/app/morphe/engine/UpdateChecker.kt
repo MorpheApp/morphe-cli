@@ -38,6 +38,8 @@ object UpdateChecker {
             if (latestVersion != currentVersion) {
                 val currentTag = if (isDev) "[Dev]" else "[Stable]"
                 val latestTag = if (latestVersion.contains("dev")) "[Dev]" else "[Stable]"
+
+                // Warning message for when the user is to about to move from dev -> stable edge case.
                 val trackChangesMessage = if (isDev && !latestVersion.contains("dev")){
                     "\nWarning: This is a stable release. Updating will stop dev update notifications. " +
                             "To keep receiving dev updates, skip this and wait for the next dev release."
