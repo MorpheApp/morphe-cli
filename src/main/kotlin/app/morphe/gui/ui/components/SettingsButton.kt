@@ -38,7 +38,8 @@ import app.morphe.gui.ui.theme.LocalThemeState
 @Composable
 fun SettingsButton(
     modifier: Modifier = Modifier,
-    allowCacheClear: Boolean = true
+    allowCacheClear: Boolean = true,
+    isPatching: Boolean = false
 ) {
     val corners = LocalMorpheCorners.current
     val themeState = LocalThemeState.current
@@ -104,6 +105,7 @@ fun SettingsButton(
             },
             onDismiss = { showSettingsDialog = false },
             allowCacheClear = allowCacheClear,
+            isPatching = isPatching,
             patchSources = patchSources,
             activePatchSourceId = activePatchSourceId,
             onActivePatchSourceChange = { id ->
@@ -140,6 +142,9 @@ fun SettingsButton(
                 scope.launch {
                     configRepository.removePatchSource(id)
                 }
+            },
+            onCacheCleared = {
+                patchSourceManager.notifyCacheCleared()
             }
         )
     }
@@ -149,6 +154,7 @@ fun SettingsButton(
 fun TopBarRow(
     modifier: Modifier = Modifier,
     allowCacheClear: Boolean = true,
+    isPatching: Boolean = false,
 ) {
     val corners = LocalMorpheCorners.current
     val isSoft = corners.small >= 8.dp
@@ -158,6 +164,6 @@ fun TopBarRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         DeviceIndicator()
-        SettingsButton(allowCacheClear = allowCacheClear)
+        SettingsButton(allowCacheClear = allowCacheClear, isPatching = isPatching)
     }
 }

@@ -170,15 +170,8 @@ fun HomeScreenContent(
                         HeaderBar(
                             uiState = uiState,
                             isSmall = isSmall,
-                            padding = padding,
                             onChangePatchesClick = onChangePatchesClick,
                             onRetry = onRetry
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
                         )
                     } else {
                         Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 16.dp))
@@ -198,6 +191,17 @@ fun HomeScreenContent(
                         } else if (uiState.isLoadingPatches) {
                             Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
                             PatchesLoadingIndicator()
+                        } else if (uiState.patchLoadError != null) {
+                            Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
+                            PatchesVersionCard(
+                                patchesVersion = "NOT LOADED",
+                                isLatest = false,
+                                onChangePatchesClick = onChangePatchesClick,
+                                isCompact = isCompact,
+                                modifier = Modifier
+                                    .widthIn(max = 400.dp)
+                                    .padding(horizontal = if (isCompact) 8.dp else 16.dp)
+                            )
                         }
 
                         if (uiState.isOffline && !uiState.isLoadingPatches) {
@@ -309,22 +313,30 @@ private fun handleContinue(
 private fun HeaderBar(
     uiState: HomeUiState,
     isSmall: Boolean,
-    padding: Dp,
     onChangePatchesClick: () -> Unit,
     onRetry: () -> Unit
 ) {
     val mono = LocalMorpheFont.current
     val titleInsets = LocalTitleBarInsets.current
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
 
     DraggableHeaderArea {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .drawBehind {
+                    drawLine(
+                        color = borderColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1f
+                    )
+                }
                 .padding(
-                    start = padding + titleInsets.start,
-                    end = padding,
-                    top = (if (isSmall) 8.dp else 10.dp) + titleInsets.top,
-                    bottom = if (isSmall) 8.dp else 10.dp
+                    start = 12.dp + titleInsets.start,
+                    end = 12.dp,
+                    top = 8.dp + titleInsets.top,
+                    bottom = 8.dp
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -342,6 +354,12 @@ private fun HeaderBar(
                 )
             } else if (uiState.isLoadingPatches) {
                 PatchesLoadingIndicator()
+            } else if (uiState.patchLoadError != null) {
+                PatchesVersionInline(
+                    patchesVersion = "NOT LOADED",
+                    isLatest = false,
+                    onChangePatchesClick = onChangePatchesClick
+                )
             }
 
             // Offline badge

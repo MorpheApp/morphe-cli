@@ -48,6 +48,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Patch
 import org.koin.core.parameter.parametersOf
+import app.morphe.gui.ui.components.DraggableHeaderArea
 import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
@@ -127,14 +128,23 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         // ── Header bar ──
         val titleInsets = LocalTitleBarInsets.current
+        DraggableHeaderArea {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .drawBehind {
+                    drawLine(
+                        color = dividerColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1f
+                    )
+                }
                 .padding(
-                    start = 16.dp + titleInsets.start,
-                    end = 16.dp,
-                    top = 12.dp + titleInsets.top,
-                    bottom = 12.dp
+                    start = 12.dp + titleInsets.start,
+                    end = 12.dp,
+                    top = 8.dp + titleInsets.top,
+                    bottom = 8.dp
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -167,21 +177,26 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             Spacer(modifier = Modifier.width(14.dp))
 
             // Title block
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
                 Text(
                     text = "SELECT PATCHES",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
                     color = MaterialTheme.colorScheme.onSurface,
-                    letterSpacing = 1.5.sp
+                    letterSpacing = 1.5.sp,
+                    lineHeight = 14.sp
                 )
                 Text(
                     text = "${uiState.selectedCount} of ${uiState.totalCount} selected",
                     fontSize = 10.sp,
                     fontFamily = mono,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    letterSpacing = 0.3.sp
+                    letterSpacing = 0.3.sp,
+                    lineHeight = 8.sp
                 )
             }
 
@@ -317,14 +332,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             Spacer(modifier = Modifier.width(6.dp))
             SettingsButton(allowCacheClear = false)
         }
-
-        // Divider
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(dividerColor)
-        )
+        }
 
         // Command preview — collapsible
         if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {

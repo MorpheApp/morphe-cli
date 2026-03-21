@@ -50,12 +50,14 @@ fun SettingsDialog(
     onExpertModeChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     allowCacheClear: Boolean = true,
+    isPatching: Boolean = false,
     patchSources: List<PatchSource> = emptyList(),
     activePatchSourceId: String = "",
     onActivePatchSourceChange: (String) -> Unit = {},
     onAddPatchSource: (PatchSource) -> Unit = {},
     onEditPatchSource: (PatchSource) -> Unit = {},
-    onRemovePatchSource: (String) -> Unit = {}
+    onRemovePatchSource: (String) -> Unit = {},
+    onCacheCleared: () -> Unit = {}
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -151,7 +153,8 @@ fun SettingsDialog(
                     checked = useExpertMode,
                     onCheckedChange = onExpertModeChange,
                     accentColor = MorpheColors.Blue,
-                    mono = mono
+                    mono = mono,
+                    enabled = !isPatching
                 )
 
                 SettingsDivider(borderColor)
@@ -163,7 +166,8 @@ fun SettingsDialog(
                     checked = autoCleanupTempFiles,
                     onCheckedChange = onAutoCleanupChange,
                     accentColor = MorpheColors.Teal,
-                    mono = mono
+                    mono = mono,
+                    enabled = !isPatching
                 )
 
                 SettingsDivider(borderColor)
@@ -180,7 +184,8 @@ fun SettingsDialog(
                     onEdit = { source -> editingSource = source },
                     onAddClick = { showAddSourceDialog = true },
                     mono = mono,
-                    borderColor = borderColor
+                    borderColor = borderColor,
+                    enabled = !isPatching
                 )
 
                 SettingsDivider(borderColor)
@@ -319,6 +324,7 @@ fun SettingsDialog(
                         cacheCleared = success
                         cacheClearFailed = !success
                         showClearCacheConfirm = false
+                        if (success) onCacheCleared()
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
@@ -401,8 +407,10 @@ private fun SettingToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     accentColor: Color,
-    mono: androidx.compose.ui.text.font.FontFamily
+    mono: androidx.compose.ui.text.font.FontFamily,
+    enabled: Boolean = true
 ) {
+    val alpha = if (enabled) 1f else 0.4f
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -413,20 +421,21 @@ private fun SettingToggleRow(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = description,
+                text = if (!enabled) "Disabled while patching" else description,
                 fontSize = 11.sp,
                 fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f * alpha)
             )
         }
         Spacer(Modifier.width(12.dp))
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = accentColor,
                 checkedTrackColor = accentColor.copy(alpha = 0.3f)
@@ -493,14 +502,16 @@ private fun PatchSourcesSection(
     onEdit: (PatchSource) -> Unit,
     onAddClick: () -> Unit,
     mono: androidx.compose.ui.text.font.FontFamily,
-    borderColor: Color
+    borderColor: Color,
+    enabled: Boolean = true
 ) {
     val corners = LocalMorpheCorners.current
+    val alpha = if (enabled) 1f else 0.4f
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         SectionLabel("PATCH SOURCES", mono)
         Spacer(Modifier.height(2.dp))
         Text(
-            text = "Select where patches are loaded from",
+            text = if (!enabled) "Disabled while patching" else "Select where patches are loaded from",
             fontSize = 11.sp,
             fontFamily = mono,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -531,7 +542,7 @@ private fun PatchSourcesSection(
                         else Color.Transparent
                     )
                     .hoverable(hoverInteraction)
-                    .clickable { onActiveChange(source.id) }
+                    .then(if (enabled) Modifier.clickable { onActiveChange(source.id) } else Modifier)
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -568,7 +579,7 @@ private fun PatchSourcesSection(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    if (source.deletable) {
+                    if (source.deletable && enabled) {
                         IconButton(
                             onClick = { onEdit(source) },
                             modifier = Modifier.size(24.dp)
@@ -601,6 +612,7 @@ private fun PatchSourcesSection(
         // Add source
         OutlinedButton(
             onClick = onAddClick,
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(corners.small),
             border = BorderStroke(1.dp, borderColor),
@@ -1055,11 +1067,11 @@ private fun clearAllCache(): Boolean {
     return try {
         var failedCount = 0
         FileUtils.getPatchesDir().listFiles()?.forEach { file ->
-            try { java.nio.file.Files.delete(file.toPath()) }
+            try { if (!file.deleteRecursively()) throw Exception("Could not delete") }
             catch (e: Exception) { failedCount++; Logger.error("Failed to delete ${file.name}: ${e.message}") }
         }
         FileUtils.getLogsDir().listFiles()?.forEach { file ->
-            try { java.nio.file.Files.delete(file.toPath()) }
+            try { if (!file.deleteRecursively()) throw Exception("Could not delete") }
             catch (e: Exception) { failedCount++; Logger.error("Failed to delete log ${file.name}: ${e.message}") }
         }
         FileUtils.cleanupAllTempDirs()

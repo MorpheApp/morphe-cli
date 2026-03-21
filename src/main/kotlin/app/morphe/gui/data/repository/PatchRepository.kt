@@ -216,7 +216,7 @@ class PatchRepository(
             var failedCount = 0
             patchesDir.listFiles()?.forEach { file ->
                 try {
-                    java.nio.file.Files.delete(file.toPath())
+                    if (!file.deleteRecursively()) throw Exception("Could not delete")
                 } catch (e: Exception) {
                     failedCount++
                     Logger.error("Failed to delete ${file.name}: ${e.message}")

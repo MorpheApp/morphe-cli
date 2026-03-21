@@ -37,6 +37,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Release
 import org.koin.core.parameter.parametersOf
 import cafe.adriel.voyager.koin.koinScreenModel
+import app.morphe.gui.ui.components.DraggableHeaderArea
 import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
@@ -108,14 +109,23 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
     ) {
         // ── Header bar ──
         val titleInsets = LocalTitleBarInsets.current
+        DraggableHeaderArea {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .drawBehind {
+                    drawLine(
+                        color = dividerColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1f
+                    )
+                }
                 .padding(
-                    start = 16.dp + titleInsets.start,
-                    end = 16.dp,
-                    top = 12.dp + titleInsets.top,
-                    bottom = 12.dp
+                    start = 12.dp + titleInsets.start,
+                    end = 12.dp,
+                    top = 8.dp + titleInsets.top,
+                    bottom = 8.dp
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -155,7 +165,8 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
                     color = MaterialTheme.colorScheme.onSurface,
-                    letterSpacing = 1.5.sp
+                    letterSpacing = 1.5.sp,
+                    lineHeight = 14.sp
                 )
                 if (viewModel.getApkName().isNotBlank()) {
                     Text(
@@ -165,7 +176,8 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        letterSpacing = 0.3.sp
+                        letterSpacing = 0.3.sp,
+                        lineHeight = 8.sp
                     )
                 }
             }
@@ -207,14 +219,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             Spacer(modifier = Modifier.width(6.dp))
             SettingsButton(allowCacheClear = true)
         }
-
-        // Divider
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(dividerColor)
-        )
+        }
 
         // ── Content area ──
         Column(modifier = Modifier.fillMaxSize()) {

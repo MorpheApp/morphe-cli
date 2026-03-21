@@ -210,7 +210,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                     Spacer(Modifier.width(8.dp))
                 }
 
-                TopBarRow(allowCacheClear = false)
+                TopBarRow(allowCacheClear = false, isPatching = true)
             }
         }
 

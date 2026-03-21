@@ -7,6 +7,8 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.gui.data.model.Release
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.gui.data.repository.PatchSourceManager
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,8 @@ class PatchesViewModel(
     private val apkName: String,
     private val patchRepository: PatchRepository,
     private val configRepository: ConfigRepository,
-    private val localPatchFilePath: String? = null
+    private val localPatchFilePath: String? = null,
+    private val patchSourceManager: PatchSourceManager? = null
 ) : ScreenModel {
 
     private val _uiState = MutableStateFlow(PatchesUiState())
@@ -31,6 +34,17 @@ class PatchesViewModel(
 
     init {
         loadReleases()
+
+        // Observe cache clears / source changes
+        patchSourceManager?.let { psm ->
+            screenModelScope.launch {
+                psm.sourceVersion.drop(1).collect {
+                    Logger.info("PatchesVM: Source changed, reloading...")
+                    _uiState.value = PatchesUiState()
+                    loadReleases()
+                }
+            }
+        }
     }
 
     fun loadReleases() {

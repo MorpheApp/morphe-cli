@@ -157,9 +157,15 @@ class HomeViewModel(
                 val patches = patchesResult.getOrNull()
 
                 if (patches == null || patches.isEmpty()) {
+                    val rawError = patchesResult.exceptionOrNull()?.message ?: "Unknown error"
+                    val friendlyError = if (rawError.contains("zip", ignoreCase = true) || rawError.contains("END header", ignoreCase = true)) {
+                        "Patch file is missing or corrupted. Clear cache and re-download."
+                    } else {
+                        "Could not load patches: $rawError"
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
-                        patchLoadError = "Could not load patches: ${patchesResult.exceptionOrNull()?.message}"
+                        patchLoadError = friendlyError
                     )
                     return@launch
                 }
@@ -245,9 +251,15 @@ class HomeViewModel(
         val patches = patchesResult.getOrNull()
 
         if (patches == null || patches.isEmpty()) {
+            val rawError = patchesResult.exceptionOrNull()?.message ?: "Unknown error"
+            val friendlyError = if (rawError.contains("zip", ignoreCase = true) || rawError.contains("END header", ignoreCase = true)) {
+                "Patch file is missing or corrupted. Clear cache and re-download."
+            } else {
+                "Could not load patches: $rawError"
+            }
             _uiState.value = _uiState.value.copy(
                 isLoadingPatches = false,
-                patchLoadError = "Could not load patches: ${patchesResult.exceptionOrNull()?.message}"
+                patchLoadError = friendlyError
             )
             return
         }

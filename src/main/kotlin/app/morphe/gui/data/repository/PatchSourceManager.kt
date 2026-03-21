@@ -139,4 +139,13 @@ class PatchSourceManager(
     fun clearAll() {
         repositories.clear()
     }
+
+    /**
+     * Notify that cached patch files were deleted (e.g. via "Clear Cache" in settings).
+     * Clears cached repo state and bumps [sourceVersion] so ViewModels reload.
+     */
+    fun notifyCacheCleared() {
+        cachedActiveRepo?.clearCache()
+        _sourceVersion.value++
+    }
 }

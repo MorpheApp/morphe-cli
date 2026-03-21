@@ -240,18 +240,6 @@ fun ApkInfoCard(
                             )
                         }
                     }
-                    // Hint text when device arch is highlighted
-                    if (highlightArch != null) {
-                        Spacer(Modifier.width(2.dp))
-                        Text(
-                            text = "DEVICE",
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = MorpheColors.Blue.copy(alpha = 0.5f),
-                            letterSpacing = 1.sp
-                        )
-                    }
                 }
             }
 
