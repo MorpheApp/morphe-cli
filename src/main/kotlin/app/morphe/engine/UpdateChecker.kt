@@ -15,21 +15,32 @@ object UpdateChecker {
                 }
                 ?: return null
 
-            val connection = URL("https://api.github.com/repos/MorpheApp/morphe-cli/releases/latest")
-                .openConnection() as HttpURLConnection
+            // Check if the user is using dev or stable release here. Then we use this to check the latest dev or stable release.
+            val isDev = currentVersion.contains("dev")
+
+            val url = if (isDev) {
+                "https://raw.githubusercontent.com/MorpheApp/morphe-cli/refs/heads/dev/gradle.properties"
+            } else {
+                "https://raw.githubusercontent.com/MorpheApp/morphe-cli/refs/heads/main/gradle.properties"
+            }
+
+            val connection = URL(url).openConnection() as HttpURLConnection
 
             connection.connectTimeout = 3000
             connection.readTimeout = 3000
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
 
-            //
             val response = connection.getInputStream().bufferedReader().use { it.readText() }
 
-            val latestVersion = Regex(""""tag_name"\s*:\s*"v?([^"]+)"""").find(response)
-                ?.groupValues?.get(1) ?: return null
+            val latestVersion = Properties().apply {
+                load(response.byteInputStream())
+            }.getProperty("version") ?: return null
 
             if (latestVersion != currentVersion) {
-                return "Update available: v$latestVersion (current: v$currentVersion). Download from https://github.com/MorpheApp/morphe-cli/releases/latest"
+                return if (isDev){
+                    "Update available: v$latestVersion (current: v$currentVersion). Download from https://github.com/MorpheApp/morphe-cli/releases/"
+                } else {
+                    "Update available: v$latestVersion (current: v$currentVersion). Download from https://github.com/MorpheApp/morphe-cli/releases/latest"
+                }
             }
             return  null
 
