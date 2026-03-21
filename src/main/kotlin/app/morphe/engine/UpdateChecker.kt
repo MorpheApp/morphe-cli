@@ -36,10 +36,17 @@ object UpdateChecker {
             }.getProperty("version") ?: return null
 
             if (latestVersion != currentVersion) {
+                val currentTag = if (isDev) "[Dev]" else "[Stable]"
+                val latestTag = if (latestVersion.contains("dev")) "[Dev]" else "[Stable]"
+                val trackChangesMessage = if (isDev && !latestVersion.contains("dev")){
+                    "\nWarning: This is a stable release. Updating will stop dev update notifications. " +
+                            "To keep receiving dev updates, skip this and wait for the next dev release."
+                } else ""
+
                 return if (isDev){
-                    "Update available: v$latestVersion (current: v$currentVersion). Download from https://github.com/MorpheApp/morphe-cli/releases/"
+                    "Update available: v$latestVersion $latestTag (current: v$currentVersion $currentTag).$trackChangesMessage\nDownload from https://github.com/MorpheApp/morphe-cli/releases/"
                 } else {
-                    "Update available: v$latestVersion (current: v$currentVersion). Download from https://github.com/MorpheApp/morphe-cli/releases/latest"
+                    "Update available: v$latestVersion $latestTag (current: v$currentVersion $currentTag).$trackChangesMessage\nDownload from https://github.com/MorpheApp/morphe-cli/releases/latest"
                 }
             }
             return  null
