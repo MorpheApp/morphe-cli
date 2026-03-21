@@ -320,7 +320,7 @@ internal object PatchCommand : Callable<Int> {
 
     override fun call(): Int {
         // Check for any newer version
-        UpdateChecker.check()?.let { logger.info(it) }
+        UpdateChecker.check(logger)?.let { logger.info(it) }
 
         // region Setup
 
