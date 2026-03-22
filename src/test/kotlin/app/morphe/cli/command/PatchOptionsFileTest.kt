@@ -96,7 +96,7 @@ class PatchOptionsFileTest {
     @Test
     fun `mergeWithBundle preserves existing settings`(){
         // New patch from .mpp files comes with this default (enabled + light)
-        val patch = rawResourcePatch(name = "Theme", description = "Change Theme", use = true){
+        val patch = rawResourcePatch(name = "Theme", description = "Change Theme", default = true){
             option<String>(key = "colorScheme", default = "light")
         }
 
@@ -120,9 +120,9 @@ class PatchOptionsFileTest {
     @Test
     fun `mergeWithBundle adds new Patch that didn't exist with default settings`(){
         // We add new Patch that didn't exist with default values
-        val themePatch = rawResourcePatch(name = "Theme", description = "Change Theme", use = true) {}
+        val themePatch = rawResourcePatch(name = "Theme", description = "Change Theme", default = true) {}
 
-        val adBlockPatch = rawResourcePatch(name = "AdBlocker", description = "Block Ads", use = true) {}
+        val adBlockPatch = rawResourcePatch(name = "AdBlocker", description = "Block Ads", default = true) {}
 
         val userBundle = PatchBundle(
             meta = PatchBundleMeta(),
@@ -137,7 +137,7 @@ class PatchOptionsFileTest {
     @Test
     fun `mergeWithBundle removes an old patch that no longer exists`(){
         // We remove an old patch that no longer exists
-        val themePatch = rawResourcePatch(name = "Theme", description = "Change Theme", use = true) {}
+        val themePatch = rawResourcePatch(name = "Theme", description = "Change Theme", default = true) {}
 
         val userBundle = PatchBundle(
             meta = PatchBundleMeta(),
