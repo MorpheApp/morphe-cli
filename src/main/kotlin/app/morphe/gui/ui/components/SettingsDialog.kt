@@ -722,11 +722,18 @@ private fun AddPatchSourceDialog(
                             value = url,
                             onValueChange = { url = it; error = null },
                             label = { Text("Repository URL", fontFamily = mono, fontSize = 11.sp) },
-                            placeholder = { Text("github.com/owner/repo or morphe.software link", fontFamily = mono, fontSize = 10.sp) },
+                            placeholder = { Text("github.com/owner/repo", fontFamily = mono, fontSize = 10.sp) },
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(corners.small)
+                        )
+                        Text(
+                            "Accepts GitHub URL or morphe.software/add-source link",
+                            fontFamily = mono,
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            letterSpacing = 0.3.sp
                         )
                     }
                     PatchSourceType.LOCAL -> {

@@ -428,44 +428,52 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
 
             else -> {
                 // Patch list
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Architecture selector
-                    val isApkm = viewModel.getApkPath().endsWith(".apkm", ignoreCase = true)
-                    val showArchSelector = !isApkm &&
-                            uiState.apkArchitectures.size > 1 &&
-                            !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
-                    if (showArchSelector) {
-                        item(key = "arch_selector") {
-                            ArchitectureSelectorCard(
-                                architectures = uiState.apkArchitectures,
-                                selectedArchitectures = uiState.selectedArchitectures,
-                                onToggleArchitecture = { viewModel.toggleArchitecture(it) }
+                val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Architecture selector
+                        val isApkm = viewModel.getApkPath().endsWith(".apkm", ignoreCase = true)
+                        val showArchSelector = !isApkm &&
+                                uiState.apkArchitectures.size > 1 &&
+                                !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
+                        if (showArchSelector) {
+                            item(key = "arch_selector") {
+                                ArchitectureSelectorCard(
+                                    architectures = uiState.apkArchitectures,
+                                    selectedArchitectures = uiState.selectedArchitectures,
+                                    onToggleArchitecture = { viewModel.toggleArchitecture(it) }
+                                )
+                            }
+                        }
+
+                        items(
+                            items = uiState.filteredPatches,
+                            key = { it.uniqueId }
+                        ) { patch ->
+                            PatchListItem(
+                                patch = patch,
+                                isSelected = uiState.selectedPatches.contains(patch.uniqueId),
+                                onToggle = { viewModel.togglePatch(patch.uniqueId) },
+                                getOptionValue = { optionKey, default ->
+                                    viewModel.getOptionValue(patch.name, optionKey, default)
+                                },
+                                onOptionValueChange = { optionKey, value ->
+                                    viewModel.setOptionValue(patch.name, optionKey, value)
+                                }
                             )
                         }
                     }
 
-                    items(
-                        items = uiState.filteredPatches,
-                        key = { it.uniqueId }
-                    ) { patch ->
-                        PatchListItem(
-                            patch = patch,
-                            isSelected = uiState.selectedPatches.contains(patch.uniqueId),
-                            onToggle = { viewModel.togglePatch(patch.uniqueId) },
-                            getOptionValue = { optionKey, default ->
-                                viewModel.getOptionValue(patch.name, optionKey, default)
-                            },
-                            onOptionValueChange = { optionKey, value ->
-                                viewModel.setOptionValue(patch.name, optionKey, value)
-                            }
-                        )
-                    }
+                    androidx.compose.foundation.VerticalScrollbar(
+                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                        adapter = androidx.compose.foundation.rememberScrollbarAdapter(lazyListState)
+                    )
                 }
 
                 // ── Bottom action bar ──
