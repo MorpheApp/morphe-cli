@@ -352,7 +352,7 @@ class HomeViewModel(
             onFileSelected(apkFile)
         } else {
             _uiState.value = _uiState.value.copy(
-                error = "Please drop a valid .apk or .apkm file",
+                error = "Please drop a valid .apk, .apkm, or .xapk file",
                 isReady = false
             )
         }
@@ -389,7 +389,7 @@ class HomeViewModel(
         }
 
         if (!FileUtils.isApkFile(file)) {
-            return ApkValidationResult(false, errorMessage = "File must have .apk or .apkm extension")
+            return ApkValidationResult(false, errorMessage = "File must have .apk, .apkm, or .xapk extension")
         }
 
         if (file.length() < 1024) {
@@ -411,11 +411,11 @@ class HomeViewModel(
      * This works with APKs from any source, not just APKMirror.
      */
     private fun parseApkManifest(file: File): ApkInfo? {
-        // For .apkm files, extract base.apk first
-        val isApkm = file.extension.equals("apkm", ignoreCase = true)
-        val apkToParse = if (isApkm) {
-            FileUtils.extractBaseApkFromApkm(file) ?: run {
-                Logger.error("Failed to extract base.apk from APKM: ${file.name}")
+        // For split APK bundles (.apkm, .xapk), extract base.apk first
+        val isBundleFormat = FileUtils.isBundleFormat(file)
+        val apkToParse = if (isBundleFormat) {
+            FileUtils.extractBaseApkFromBundle(file) ?: run {
+                Logger.error("Failed to extract base APK from bundle: ${file.name}")
                 return null
             }
         } else {
@@ -439,13 +439,13 @@ class HomeViewModel(
                     )
 
                 if (!isSupported) {
-                    Logger.warn("Unsupported package: $packageName")
-                    return null
+                    Logger.warn("Unsupported package: $packageName — no compatible patches found")
                 }
 
-                // Get app display name - prefer dynamic, fallback to hardcoded
+                // Get app display name - prefer dynamic, fallback to hardcoded, then package name
                 val appName = dynamicSupportedApp?.displayName
                     ?: SupportedApp.getDisplayName(packageName)
+                    ?: packageName
 
                 // Get recommended version from dynamic patches data (no hardcoded fallback)
                 val suggestedVersion = dynamicSupportedApp?.recommendedVersion
@@ -458,8 +458,8 @@ class HomeViewModel(
                 }
 
                 // Get supported architectures from native libraries
-                // For .apkm files, scan the original bundle (splits contain the native libs, not base.apk)
-                val architectures = extractArchitectures(if (isApkm) file else apkToParse)
+                // For split bundles, scan the original bundle (splits contain the native libs, not base.apk)
+                val architectures = extractArchitectures(if (isBundleFormat) file else apkToParse)
 
                 // TODO: Re-enable when checksums are provided via .mpp files
                 val checksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured
@@ -478,14 +478,15 @@ class HomeViewModel(
                     minSdk = minSdk,
                     suggestedVersion = suggestedVersion,
                     versionStatus = versionStatus,
-                    checksumStatus = checksumStatus
+                    checksumStatus = checksumStatus,
+                    isUnsupportedApp = !isSupported
                 )
             }
         } catch (e: Exception) {
             Logger.error("Failed to parse APK manifest", e)
             null
         } finally {
-            if (isApkm) apkToParse.delete()
+            if (isBundleFormat) apkToParse.delete()
         }
     }
 
@@ -607,7 +608,8 @@ data class ApkInfo(
     val minSdk: Int? = null,
     val suggestedVersion: String? = null,
     val versionStatus: VersionStatus = VersionStatus.UNKNOWN,
-    val checksumStatus: app.morphe.gui.util.ChecksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured
+    val checksumStatus: app.morphe.gui.util.ChecksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured,
+    val isUnsupportedApp: Boolean = false
 )
 
 enum class VersionStatus {

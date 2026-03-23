@@ -76,9 +76,9 @@ object PatchEngine {
         val failedPatches = mutableListOf<FailedPatch>()
 
         try {
-            // 1. Handle APKM format (split APK bundle)
-            val actualInputApk = if (config.inputApk.extension.equals("apkm", ignoreCase = true)) {
-                onProgress("Converting APKM to APK...")
+            // 1. Handle split APK bundles (APKM, XAPK)
+            val actualInputApk = if (config.inputApk.extension.lowercase() in setOf("apkm", "xapk")) {
+                onProgress("Merging split APK bundle...")
                 val mergedApk = File(tempDir, "${config.inputApk.nameWithoutExtension}-merged.apk")
                 val mergerOptions = MergerOptions().apply {
                     inputFile = config.inputApk

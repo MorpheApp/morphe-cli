@@ -625,7 +625,7 @@ private fun DropPromptSection(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = ".apk  ·  .apkm",
+                    text = ".apk  ·  .apkm  ·  .xapk",
                     fontSize = 10.sp,
                     fontFamily = mono,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
@@ -1481,7 +1481,7 @@ private fun DragOverlay() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = ".apk  ·  .apkm",
+                text = ".apk  ·  .apkm  ·  .xapk",
                 fontSize = 11.sp,
                 fontFamily = mono,
                 color = MorpheColors.Blue.copy(alpha = 0.4f),
@@ -1494,7 +1494,7 @@ private fun DragOverlay() {
 private fun openFilePicker(): File? {
     val fileDialog = FileDialog(null as Frame?, "Select APK File", FileDialog.LOAD).apply {
         isMultipleMode = false
-        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") } }
+        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") || it.endsWith(".xapk") } }
         isVisible = true
     }
 

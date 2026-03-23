@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -142,6 +143,40 @@ fun ApkInfoCard(
                         tint = if (isCloseHovered) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // ── Unsupported app warning ──
+            if (apkInfo.isUnsupportedApp) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawLine(
+                                color = borderColor,
+                                start = Offset(20.dp.toPx(), 0f),
+                                end = Offset(size.width - 20.dp.toPx(), 0f),
+                                strokeWidth = 1f
+                            )
+                        }
+                        .background(Color(0xFFE65100).copy(alpha = 0.08f))
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val warningOrange = Color(0xFFE65100)
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = warningOrange,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "No compatible patches found for this app. You can still proceed, but patching may have no effect.",
+                        fontSize = 11.sp,
+                        color = warningOrange,
+                        lineHeight = 14.sp
                     )
                 }
             }

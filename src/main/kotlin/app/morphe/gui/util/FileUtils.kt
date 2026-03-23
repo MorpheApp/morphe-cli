@@ -142,22 +142,54 @@ object FileUtils {
     }
 
     /**
-     * Check if file is an APK or APKM.
+     * Check if file is an APK or split APK bundle (APKM, XAPK).
      */
     fun isApkFile(file: File): Boolean {
         val ext = getExtension(file)
-        return file.isFile && (ext == "apk" || ext == "apkm")
+        return file.isFile && ext in setOf("apk", "apkm", "xapk")
     }
 
     /**
-     * Extract base.apk from an .apkm file to a temp directory.
+     * Check if file is a split APK bundle (.apkm or .xapk).
+     */
+    fun isBundleFormat(file: File): Boolean {
+        return file.extension.lowercase() in setOf("apkm", "xapk")
+    }
+
+    /**
+     * Extract base.apk from a split APK bundle (.apkm or .xapk) to a temp directory.
+     * For XAPK files, the base APK may not be named "base.apk" — falls back to the
+     * first non-split .apk entry or the largest by compressed size.
      * Returns the extracted base.apk file, or null if extraction fails.
      * Caller is responsible for cleaning up the returned temp file.
      */
-    fun extractBaseApkFromApkm(apkmFile: File): File? {
+    fun extractBaseApkFromBundle(bundleFile: File): File? {
         return try {
-            ZipFile(apkmFile).use { zip ->
-                val baseEntry = zip.getEntry("base.apk") ?: return null
+            ZipFile(bundleFile).use { zip ->
+                val allEntries = zip.entries().asSequence().toList()
+
+                // Try "base.apk" first (APKM format)
+                var baseEntry = zip.getEntry("base.apk")
+
+                // For XAPK: find the base APK among all .apk entries.
+                // Splits are named like "config.arm64_v8a.apk", "split_config.en.apk", etc.
+                // The base APK is typically the package name (e.g., "com.google.android.youtube.apk").
+                if (baseEntry == null) {
+                    val apkEntries = allEntries
+                        .filter { !it.isDirectory && it.name.endsWith(".apk", ignoreCase = true) }
+
+                    val splitPatterns = listOf("split_config", "config.", "split_")
+                    baseEntry = apkEntries
+                        .firstOrNull { entry ->
+                            val name = entry.name.substringAfterLast('/').lowercase()
+                            splitPatterns.none { name.startsWith(it) }
+                        }
+                        // Final fallback: largest .apk by compressed size
+                        ?: apkEntries.maxByOrNull { it.compressedSize }
+                }
+
+                if (baseEntry == null) return null
+
                 val tempFile = File(getTempDir(), "base-${System.currentTimeMillis()}.apk")
                 zip.getInputStream(baseEntry).use { input ->
                     tempFile.outputStream().use { output ->
@@ -170,4 +202,7 @@ object FileUtils {
             null
         }
     }
+
+    @Deprecated("Use extractBaseApkFromBundle instead", ReplaceWith("extractBaseApkFromBundle(apkmFile)"))
+    fun extractBaseApkFromApkm(apkmFile: File): File? = extractBaseApkFromBundle(apkmFile)
 }

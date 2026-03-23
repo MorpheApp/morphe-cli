@@ -78,7 +78,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
         onFilesDropped = { files ->
             files.firstOrNull {
                 it.name.endsWith(".apk", ignoreCase = true) ||
-                it.name.endsWith(".apkm", ignoreCase = true)
+                it.name.endsWith(".apkm", ignoreCase = true) ||
+                it.name.endsWith(".xapk", ignoreCase = true)
             }?.let { viewModel.onFileSelected(it) }
         },
         enabled = uiState.phase != QuickPatchPhase.ANALYZING
@@ -206,22 +207,26 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                 DragOverlay()
             }
 
-            // Error snackbar
+            // Error/warning snackbar
             uiState.error?.let { error ->
+                val mono = LocalMorpheFont.current
+                val isUnsupportedWarning = error.contains("not supported in Quick Patch")
+                val containerColor = if (isUnsupportedWarning) Color(0xFF4A3000) else MaterialTheme.colorScheme.errorContainer
+                val contentColor = if (isUnsupportedWarning) Color(0xFFFFB74D) else MaterialTheme.colorScheme.onErrorContainer
                 Snackbar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(16.dp),
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
                     action = {
                         TextButton(onClick = { viewModel.clearError() }) {
-                            Text("Dismiss", color = MaterialTheme.colorScheme.inversePrimary)
+                            Text("Dismiss", color = contentColor.copy(alpha = 0.8f), fontFamily = mono, fontSize = 12.sp)
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    containerColor = containerColor,
+                    contentColor = contentColor,
                     shape = RoundedCornerShape(corners.small)
                 ) {
-                    Text(error)
+                    Text(error, fontFamily = mono, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
                 }
             }
         }
@@ -359,7 +364,7 @@ private fun IdleContent(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = ".apk  ·  .apkm",
+                    text = ".apk  ·  .apkm  ·  .xapk",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 )
@@ -1249,7 +1254,7 @@ private fun DragOverlay() {
 private fun openFilePicker(): File? {
     val fileDialog = FileDialog(null as Frame?, "Select APK", FileDialog.LOAD).apply {
         isMultipleMode = false
-        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") } }
+        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") || it.endsWith(".xapk") } }
         isVisible = true
     }
     val directory = fileDialog.directory

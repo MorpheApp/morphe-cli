@@ -266,16 +266,16 @@ class QuickPatchViewModel(
      * Analyze the APK file using dynamic data from patches.
      */
     private suspend fun analyzeApk(file: File): QuickApkInfo? {
-        if (!file.exists() || !(file.name.endsWith(".apk", ignoreCase = true) || file.name.endsWith(".apkm", ignoreCase = true))) {
-            _uiState.value = _uiState.value.copy(error = "Please drop a valid .apk or .apkm file")
+        if (!file.exists() || !FileUtils.isApkFile(file)) {
+            _uiState.value = _uiState.value.copy(error = "Please drop a valid .apk, .apkm, or .xapk file")
             return null
         }
 
-        // For .apkm files, extract base.apk first
-        val isApkm = file.extension.equals("apkm", ignoreCase = true)
-        val apkToParse = if (isApkm) {
-            FileUtils.extractBaseApkFromApkm(file) ?: run {
-                _uiState.value = _uiState.value.copy(error = "Failed to extract base.apk from APKM bundle")
+        // For split APK bundles (.apkm, .xapk), extract base.apk first
+        val isBundleFormat = FileUtils.isBundleFormat(file)
+        val apkToParse = if (isBundleFormat) {
+            FileUtils.extractBaseApkFromBundle(file) ?: run {
+                _uiState.value = _uiState.value.copy(error = "Failed to extract base APK from bundle")
                 return null
             }
         } else {
@@ -304,8 +304,13 @@ class QuickPatchViewModel(
                     }
 
                     if (packageName !in supportedPackages) {
+                        val appName = SupportedApp.getDisplayName(packageName)
+                        val supportedNames = cachedSupportedApps.map { it.displayName }
+                            .ifEmpty { listOf("YouTube", "YouTube Music", "Reddit") }
+                            .joinToString(", ")
                         _uiState.value = _uiState.value.copy(
-                            error = "Unsupported app: $packageName\n\nSupported apps: ${cachedSupportedApps.map { it.displayName }.ifEmpty { listOf("YouTube", "YouTube Music", "Reddit") }.joinToString(", ")}"
+                            error = "$appName is not supported in Quick Patch mode. Supported apps: $supportedNames. Use Normal mode for unsupported apps.",
+                            phase = QuickPatchPhase.IDLE
                         )
                         return null
                     }
@@ -345,7 +350,7 @@ class QuickPatchViewModel(
             _uiState.value = _uiState.value.copy(error = "Failed to read APK: ${e.message}")
             null
         } finally {
-            if (isApkm) apkToParse.delete()
+            if (isBundleFormat) apkToParse.delete()
         }
     }
 

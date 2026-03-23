@@ -437,9 +437,9 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // Architecture selector
-                        val isApkm = viewModel.getApkPath().endsWith(".apkm", ignoreCase = true)
-                        val showArchSelector = !isApkm &&
+                        // Architecture selector — disabled for split APK bundles
+                        val isBundleFormat = viewModel.getApkPath().lowercase().let { it.endsWith(".apkm") || it.endsWith(".xapk") }
+                        val showArchSelector = !isBundleFormat &&
                                 uiState.apkArchitectures.size > 1 &&
                                 !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
                         if (showArchSelector) {
