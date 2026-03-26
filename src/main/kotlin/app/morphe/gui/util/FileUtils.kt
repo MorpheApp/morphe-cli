@@ -142,22 +142,22 @@ object FileUtils {
     }
 
     /**
-     * Check if file is an APK or split APK bundle (APKM, XAPK).
+     * Check if file is an APK or split APK bundle (APKM, XAPK, APKS).
      */
     fun isApkFile(file: File): Boolean {
         val ext = getExtension(file)
-        return file.isFile && ext in setOf("apk", "apkm", "xapk")
+        return file.isFile && ext in setOf("apk", "apkm", "xapk", "apks")
     }
 
     /**
-     * Check if file is a split APK bundle (.apkm or .xapk).
+     * Check if file is a split APK bundle (.apkm, .xapk, or .apks).
      */
     fun isBundleFormat(file: File): Boolean {
-        return file.extension.lowercase() in setOf("apkm", "xapk")
+        return file.extension.lowercase() in setOf("apkm", "xapk", "apks")
     }
 
     /**
-     * Extract base.apk from a split APK bundle (.apkm or .xapk) to a temp directory.
+     * Extract base.apk from a split APK bundle (.apkm, .xapk, or .apks) to a temp directory.
      * For XAPK files, the base APK may not be named "base.apk" — falls back to the
      * first non-split .apk entry or the largest by compressed size.
      * Returns the extracted base.apk file, or null if extraction fails.

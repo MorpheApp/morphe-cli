@@ -352,7 +352,7 @@ class HomeViewModel(
             onFileSelected(apkFile)
         } else {
             _uiState.value = _uiState.value.copy(
-                error = "Please drop a valid .apk, .apkm, or .xapk file",
+                error = "Please drop a valid .apk, .apkm, .xapk, or .apks file",
                 isReady = false
             )
         }
@@ -389,7 +389,7 @@ class HomeViewModel(
         }
 
         if (!FileUtils.isApkFile(file)) {
-            return ApkValidationResult(false, errorMessage = "File must have .apk, .apkm, or .xapk extension")
+            return ApkValidationResult(false, errorMessage = "File must have .apk, .apkm, .xapk, or .apks extension")
         }
 
         if (file.length() < 1024) {
@@ -411,7 +411,7 @@ class HomeViewModel(
      * This works with APKs from any source, not just APKMirror.
      */
     private fun parseApkManifest(file: File): ApkInfo? {
-        // For split APK bundles (.apkm, .xapk), extract base.apk first
+        // For split APK bundles (.apkm, .xapk, .apks), extract base.apk first
         val isBundleFormat = FileUtils.isBundleFormat(file)
         val apkToParse = if (isBundleFormat) {
             FileUtils.extractBaseApkFromBundle(file) ?: run {

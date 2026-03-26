@@ -79,7 +79,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
             files.firstOrNull {
                 it.name.endsWith(".apk", ignoreCase = true) ||
                 it.name.endsWith(".apkm", ignoreCase = true) ||
-                it.name.endsWith(".xapk", ignoreCase = true)
+                it.name.endsWith(".xapk", ignoreCase = true) ||
+                it.name.endsWith(".apks", ignoreCase = true)
             }?.let { viewModel.onFileSelected(it) }
         },
         enabled = uiState.phase != QuickPatchPhase.ANALYZING
@@ -364,7 +365,7 @@ private fun IdleContent(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = ".apk  ·  .apkm  ·  .xapk",
+                    text = ".apk  ·  .apkm  ·  .xapk  ·  .apks",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 )
@@ -1254,7 +1255,7 @@ private fun DragOverlay() {
 private fun openFilePicker(): File? {
     val fileDialog = FileDialog(null as Frame?, "Select APK", FileDialog.LOAD).apply {
         isMultipleMode = false
-        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") || it.endsWith(".xapk") } }
+        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") || it.endsWith(".xapk") || it.endsWith(".apks") } }
         isVisible = true
     }
     val directory = fileDialog.directory

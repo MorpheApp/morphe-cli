@@ -438,7 +438,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         // Architecture selector — disabled for split APK bundles
-                        val isBundleFormat = viewModel.getApkPath().lowercase().let { it.endsWith(".apkm") || it.endsWith(".xapk") }
+                        val isBundleFormat = viewModel.getApkPath().lowercase().let { it.endsWith(".apkm") || it.endsWith(".xapk") || it.endsWith(".apks") }
                         val showArchSelector = !isBundleFormat &&
                                 uiState.apkArchitectures.size > 1 &&
                                 !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")

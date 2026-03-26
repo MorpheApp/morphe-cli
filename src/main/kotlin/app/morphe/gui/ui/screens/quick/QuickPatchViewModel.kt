@@ -267,11 +267,11 @@ class QuickPatchViewModel(
      */
     private suspend fun analyzeApk(file: File): QuickApkInfo? {
         if (!file.exists() || !FileUtils.isApkFile(file)) {
-            _uiState.value = _uiState.value.copy(error = "Please drop a valid .apk, .apkm, or .xapk file")
+            _uiState.value = _uiState.value.copy(error = "Please drop a valid .apk, .apkm, .xapk, or .apks file")
             return null
         }
 
-        // For split APK bundles (.apkm, .xapk), extract base.apk first
+        // For split APK bundles (.apkm, .xapk, .apks), extract base.apk first
         val isBundleFormat = FileUtils.isBundleFormat(file)
         val apkToParse = if (isBundleFormat) {
             FileUtils.extractBaseApkFromBundle(file) ?: run {
