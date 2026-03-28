@@ -196,13 +196,13 @@ internal object PatchCommand : Callable<Int> {
         description = ["Alias of the private key and certificate pair keystore entry."],
         showDefaultValue = ALWAYS,
     )
-    private var keyStoreEntryAlias = "Morphe Key"
+    private var keyStoreEntryAlias = "Morphe" // Default now matches Manager
 
     @CommandLine.Option(
         names = ["--keystore-entry-password"],
         description = ["Password of the keystore entry."],
     )
-    private var keyStoreEntryPassword = "" // Empty password by default
+    private var keyStoreEntryPassword = "Morphe" // Default now matches Manager
 
     @CommandLine.Option(
         names = ["--signer"],

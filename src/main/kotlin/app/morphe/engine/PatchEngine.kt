@@ -26,7 +26,7 @@ import java.io.StringWriter
 import java.nio.file.Files
 import java.util.logging.Logger
 
-/**
+/*
  * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
  */
 object PatchEngine {
@@ -231,8 +231,8 @@ object PatchEngine {
                         val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
                             File(tempDir, "morphe.keystore"),
                             null,
-                            "Morphe Key",
-                            "",
+                            "Morphe",
+                            "Morphe",
                         )
                         ApkUtils.signApk(
                             rebuiltApk,
