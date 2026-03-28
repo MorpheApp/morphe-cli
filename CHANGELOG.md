@@ -1,3 +1,10 @@
+## [1.6.3-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.6.3-dev.2...v1.6.3-dev.3) (2026-03-28)
+
+
+### Bug Fixes
+
+* Handle running CLI in headless environment ([#95](https://github.com/MorpheApp/morphe-cli/issues/95)) ([70f2952](https://github.com/MorpheApp/morphe-cli/commit/70f2952b09de57ad7c06bd92365025d38164ed26))
+
 ## [1.6.3-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.6.3-dev.1...v1.6.3-dev.2) (2026-03-24)
 
 
