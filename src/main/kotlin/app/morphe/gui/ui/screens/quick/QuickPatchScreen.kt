@@ -39,6 +39,7 @@ import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.theme.*
 import app.morphe.gui.util.ChecksumStatus
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
+import app.morphe.gui.util.VersionStatus
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.AdbManager
 import app.morphe.gui.util.DeviceMonitor
@@ -242,6 +243,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
 private fun BrandingHeader(patchesVersion: String?, isLoading: Boolean) {
     val themeState = LocalThemeState.current
     val mono = LocalMorpheFont.current
+    val corners = LocalMorpheCorners.current
     val isDark = when (themeState.current) {
         ThemePreference.SYSTEM -> isSystemInDarkTheme()
         else -> themeState.current.isDark()
@@ -257,26 +259,75 @@ private fun BrandingHeader(patchesVersion: String?, isLoading: Boolean) {
         Spacer(modifier = Modifier.width(12.dp))
 
         if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(12.dp),
-                strokeWidth = 1.5.dp,
-                color = MorpheColors.Blue
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "Loading patches…",
-                fontSize = 11.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
+            Row(
+                modifier = Modifier
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(corners.small))
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    strokeWidth = 1.5.dp,
+                    color = MorpheColors.Blue
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "LOADING…",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    letterSpacing = 1.sp
+                )
+            }
         } else if (patchesVersion != null) {
-            Text(
-                text = "Patches $patchesVersion",
-                fontSize = 11.sp,
-                fontFamily = mono,
-                color = MorpheColors.Blue.copy(alpha = 0.8f),
-                fontWeight = FontWeight.Medium
-            )
+            // Matches expert mode PatchesVersionInline — but not clickable
+            Row(
+                modifier = Modifier
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(corners.small))
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "PATCHES",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = patchesVersion,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = mono,
+                    color = MorpheColors.Blue
+                )
+                // Quick mode always uses latest, so show LATEST badge
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .background(MorpheColors.Teal.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                        .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = "LATEST",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = mono,
+                        color = MorpheColors.Teal,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
         } else {
             Text(
                 text = "QUICK PATCH",
@@ -391,12 +442,14 @@ private fun ReadyContent(
     val accentColor = when {
         apkInfo.checksumStatus is ChecksumStatus.Mismatch -> MaterialTheme.colorScheme.error
         apkInfo.isRecommendedVersion -> MorpheColors.Teal
+        apkInfo.versionStatus == VersionStatus.NEWER_VERSION -> MaterialTheme.colorScheme.error
+        apkInfo.versionStatus == VersionStatus.OLDER_VERSION -> Color(0xFFFF9800)
         !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null -> Color(0xFFFF9800)
         else -> MorpheColors.Blue
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -410,15 +463,21 @@ private fun ReadyContent(
                 .clip(RoundedCornerShape(corners.medium))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
                 .background(MaterialTheme.colorScheme.surface)
+                .drawBehind{
+                    drawRect(
+                        color = accentColor,
+                        size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
+                    )
+                }
         ) {
             // Left accent stripe
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .fillMaxHeight()
-                    .background(accentColor)
-                    .align(Alignment.CenterStart)
-            )
+//            Box(
+//                modifier = Modifier
+//                    .width(3.dp)
+//                    .fillMaxHeight()
+//                    .background(accentColor)
+//                    .align(Alignment.CenterStart)
+//            )
 
             Column(
                 modifier = Modifier
@@ -502,13 +561,19 @@ private fun ReadyContent(
                 val statusText = when {
                     apkInfo.checksumStatus is ChecksumStatus.Verified -> "VERIFIED"
                     apkInfo.checksumStatus is ChecksumStatus.Mismatch -> "CHECKSUM MISMATCH"
-                    !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null -> "OUTDATED"
+                    apkInfo.versionStatus == VersionStatus.NEWER_VERSION -> "NEWER THAN RECOMMENDED"
+                    apkInfo.versionStatus == VersionStatus.OLDER_VERSION -> "OLDER THAN RECOMMENDED"
+                    !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null -> "VERSION MISMATCH"
                     apkInfo.isRecommendedVersion -> "RECOMMENDED VERSION"
                     else -> null
                 }
                 val statusDetail = when {
                     apkInfo.checksumStatus is ChecksumStatus.Verified -> "Checksum matches APKMirror"
                     apkInfo.checksumStatus is ChecksumStatus.Mismatch -> "Re-download from APKMirror"
+                    apkInfo.versionStatus == VersionStatus.NEWER_VERSION ->
+                        "Patches target v${apkInfo.recommendedVersion} — may not be compatible"
+                    apkInfo.versionStatus == VersionStatus.OLDER_VERSION ->
+                        "Patches target v${apkInfo.recommendedVersion}"
                     !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null ->
                         "Patches target v${apkInfo.recommendedVersion}"
                     else -> null
@@ -551,7 +616,7 @@ private fun ReadyContent(
                                 fontSize = 11.sp,
                                 fontFamily = mono,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                maxLines = 1,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -1129,10 +1194,11 @@ private fun SupportedAppsRow(
                 }
 
                 // Horizontal scrolling cards
+                val useScrolling = filteredApps.size > 4
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
+                        .then(if (useScrolling) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
                         .height(IntrinsicSize.Max)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -1152,7 +1218,10 @@ private fun SupportedAppsRow(
 
                         Surface(
                             modifier = Modifier
-                                .width(170.dp)
+                                .then(
+                                    if (useScrolling) Modifier.width(170.dp)
+                                    else Modifier.weight(1f)
+                                )
                                 .fillMaxHeight()
                                 .hoverable(hoverInteraction)
                                 .then(

@@ -20,6 +20,8 @@ import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.SupportedAppExtractor
+import app.morphe.gui.util.VersionStatus
+import app.morphe.gui.util.compareVersions
 import java.io.File
 
 class HomeViewModel(
@@ -549,31 +551,7 @@ class HomeViewModel(
         }
     }
 
-    /**
-     * Compares two version strings (e.g., "19.16.39" vs "20.40.45")
-     * Returns the version status of the current version relative to suggested.
-     */
-    private fun compareVersions(current: String, suggested: String): VersionStatus {
-        return try {
-            val currentParts = current.split(".").map { it.toInt() }
-            val suggestedParts = suggested.split(".").map { it.toInt() }
-
-            // Compare each part
-            for (i in 0 until maxOf(currentParts.size, suggestedParts.size)) {
-                val currentPart = currentParts.getOrElse(i) { 0 }
-                val suggestedPart = suggestedParts.getOrElse(i) { 0 }
-
-                when {
-                    currentPart > suggestedPart -> return VersionStatus.NEWER_VERSION
-                    currentPart < suggestedPart -> return VersionStatus.OLDER_VERSION
-                }
-            }
-            VersionStatus.EXACT_MATCH
-        } catch (e: Exception) {
-            Logger.warn("Failed to compare versions: $current vs $suggested")
-            VersionStatus.UNKNOWN
-        }
-    }
+    // compareVersions and VersionStatus moved to app.morphe.gui.util.VersionUtils
 }
 
 data class HomeUiState(
@@ -611,13 +589,6 @@ data class ApkInfo(
     val checksumStatus: app.morphe.gui.util.ChecksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured,
     val isUnsupportedApp: Boolean = false
 )
-
-enum class VersionStatus {
-    EXACT_MATCH,      // Using the suggested version
-    OLDER_VERSION,    // Using an older version (newer patches available)
-    NEWER_VERSION,    // Using a newer version (might have issues)
-    UNKNOWN           // Could not determine
-}
 
 data class ApkValidationResult(
     val isValid: Boolean,

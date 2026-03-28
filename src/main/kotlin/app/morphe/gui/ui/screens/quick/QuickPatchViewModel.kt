@@ -21,6 +21,8 @@ import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.SupportedAppExtractor
+import app.morphe.gui.util.VersionStatus
+import app.morphe.gui.util.compareVersions
 import java.io.File
 
 /**
@@ -324,14 +326,23 @@ class QuickPatchViewModel(
 
                 // Version check
                 val isRecommendedVersion = recommendedVersion != null && versionName == recommendedVersion
+                val versionStatus = if (recommendedVersion != null) {
+                    compareVersions(versionName, recommendedVersion)
+                } else {
+                    VersionStatus.UNKNOWN
+                }
                 val versionWarning = if (!isRecommendedVersion && recommendedVersion != null) {
-                    "Version $versionName may have compatibility issues. Recommended: $recommendedVersion"
+                    when (versionStatus) {
+                        VersionStatus.NEWER_VERSION -> "Version $versionName is newer than recommended $recommendedVersion — patches may not be compatible"
+                        VersionStatus.OLDER_VERSION -> "Version $versionName is older than recommended $recommendedVersion"
+                        else -> "Version $versionName may have compatibility issues. Recommended: $recommendedVersion"
+                    }
                 } else null
 
                 // TODO: Re-enable when checksums are provided via .mpp files
                 val checksumStatus = ChecksumStatus.NotConfigured
 
-                Logger.info("Quick mode: Analyzed $displayName v$versionName (recommended: $recommendedVersion)")
+                Logger.info("Quick mode: Analyzed $displayName v$versionName (recommended: $recommendedVersion, status: $versionStatus)")
 
                 QuickApkInfo(
                     fileName = file.name,
@@ -341,6 +352,7 @@ class QuickPatchViewModel(
                     displayName = displayName,
                     recommendedVersion = recommendedVersion,
                     isRecommendedVersion = isRecommendedVersion,
+                    versionStatus = versionStatus,
                     versionWarning = versionWarning,
                     checksumStatus = checksumStatus
                 )
@@ -554,6 +566,7 @@ data class QuickApkInfo(
     val displayName: String,
     val recommendedVersion: String?,
     val isRecommendedVersion: Boolean,
+    val versionStatus: VersionStatus = VersionStatus.UNKNOWN,
     val versionWarning: String?,
     val checksumStatus: ChecksumStatus
 ) {
