@@ -662,17 +662,38 @@ internal object PatchCommand : Callable<Int> {
                     patchingResult.addStepResult(
                         PatchingStep.SIGNING,
                         {
-                            ApkUtils.signApk(
-                                patchedApkFile,
-                                outputFilePath,
-                                signer,
-                                ApkUtils.KeyStoreDetails(
-                                    keystoreFilePath,
-                                    keyStorePassword,
-                                    keyStoreEntryAlias,
-                                    keyStoreEntryPassword,
-                                ),
-                            )
+                            try {
+                                ApkUtils.signApk(
+                                    patchedApkFile,
+                                    outputFilePath,
+                                    signer,
+                                    ApkUtils.KeyStoreDetails(
+                                        keystoreFilePath,
+                                        keyStorePassword,
+                                        keyStoreEntryAlias,
+                                        keyStoreEntryPassword,
+                                    ),
+                                )
+                            } catch (e: Exception){
+                                // We retry with legacy keystore defaults here. Need to move to new defaults eventually!
+                                if (keyStoreEntryAlias == "Morphe" && keyStoreEntryPassword == "Morphe" && keystoreFilePath.exists()){
+                                    logger.info("Retrying with legacy keystore credentials...")
+
+                                    ApkUtils.signApk(
+                                        patchedApkFile,
+                                        outputFilePath,
+                                        signer,
+                                        ApkUtils.KeyStoreDetails(
+                                            keystoreFilePath,
+                                            keyStorePassword,
+                                            "Morphe Key",
+                                            "",
+                                        )
+                                    )
+                                } else {
+                                    throw e
+                                }
+                            }
                         }
                     )
                 } else {

@@ -234,12 +234,35 @@ object PatchEngine {
                             "Morphe",
                             "Morphe",
                         )
-                        ApkUtils.signApk(
-                            rebuiltApk,
-                            tempOutput,
-                            config.signerName,
-                            keystoreDetails,
-                        )
+                        try {
+                            ApkUtils.signApk(
+                                rebuiltApk,
+                                tempOutput,
+                                config.signerName,
+                                keystoreDetails,
+                            )
+                        } catch (e: Exception){
+                            // We retry with legacy keystore defaults here. Need to move to new defaults eventually!
+                            if (config.keystoreDetails == null && keystoreDetails.keyStore.exists()){
+                                onProgress("Retrying with legacy keystore credentials...")
+
+                                val legacyKeystoreDetails = ApkUtils.KeyStoreDetails(
+                                    keystoreDetails.keyStore,
+                                    null,
+                                    "Morphe Key",
+                                    "",
+                                )
+
+                                ApkUtils.signApk(
+                                    rebuiltApk,
+                                    tempOutput,
+                                    config.signerName,
+                                    legacyKeystoreDetails,
+                                )
+                            } else {
+                                throw e
+                            }
+                        }
                         stepResults.add(StepResult(PatchStep.SIGNING, true))
                     } catch (e: Exception) {
                         stepResults.add(StepResult(PatchStep.SIGNING, false, e.toString()))
