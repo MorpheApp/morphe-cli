@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.PlaylistRemove
 import androidx.compose.material.icons.filled.Terminal
@@ -60,8 +61,10 @@ import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DeviceMonitor
+import java.awt.FileDialog
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.io.File
 
 /**
  * Screen for selecting which patches to apply.
@@ -699,6 +702,7 @@ private fun PatchListItem(
     )
 
     var showOptions by remember { mutableStateOf(false) }
+    val hasOptions = patch.options.isNotEmpty()
 
     Column(
         modifier = Modifier
@@ -749,31 +753,24 @@ private fun PatchListItem(
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = patch.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                if (patch.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(3.dp))
+                // Name + app chips on same line
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        text = patch.description,
-                        fontSize = 11.sp,
+                        text = patch.name,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
                         fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                }
 
-                // Compatible packages
-                if (patch.compatiblePackages.isNotEmpty()) {
-                    val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (patch.compatiblePackages.isNotEmpty()) {
+                        val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")
                         patch.compatiblePackages.take(2).forEach { pkg ->
                             val meaningful = pkg.name.split(".").filter { it !in genericSegments }
                             val displayName = meaningful.takeLast(2).joinToString(" ")
@@ -800,51 +797,89 @@ private fun PatchListItem(
                     }
                 }
 
-                // Options indicator
-                if (patch.options.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                if (patch.description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
-                        text = "${patch.options.size} option${if (patch.options.size > 1) "s" else ""} ${if (showOptions) "▲" else "▼"}",
-                        fontSize = 9.sp,
+                        text = patch.description,
+                        fontSize = 11.sp,
                         fontFamily = mono,
-                        fontWeight = FontWeight.Medium,
-                        color = MorpheColors.Teal.copy(alpha = 0.7f),
-                        letterSpacing = 0.5.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
+                }
+            }
+
+            // Gear button for options
+            if (hasOptions) {
+                val gearHover = remember { MutableInteractionSource() }
+                val isGearHovered by gearHover.collectIsHoveredAsState()
+                val gearBorder by animateColorAsState(
+                    when {
+                        showOptions -> MorpheColors.Teal.copy(alpha = 0.5f)
+                        isGearHovered -> MorpheColors.Teal.copy(alpha = 0.3f)
+                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                    },
+                    animationSpec = tween(150)
+                )
+                val gearBg by animateColorAsState(
+                    if (showOptions) MorpheColors.Teal.copy(alpha = 0.08f)
+                    else Color.Transparent,
+                    animationSpec = tween(150)
+                )
+
+                // Wrapper box — no clip, allows badge to overflow
+                Box(
+                    modifier = Modifier.size(48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Gear button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .hoverable(gearHover)
+                            .clip(RoundedCornerShape(corners.small))
+                            .border(1.dp, gearBorder, RoundedCornerShape(corners.small))
+                            .background(gearBg, RoundedCornerShape(corners.small))
+                            .clickable { showOptions = !showOptions },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Configure options",
+                            tint = when {
+                                showOptions -> MorpheColors.Teal
+                                isGearHovered -> MorpheColors.Teal.copy(alpha = 0.7f)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            },
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    // Options count badge — outside clip
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 3.dp, y = (-3).dp)
+                            .size(18.dp)
+                            .background(MorpheColors.Teal, RoundedCornerShape(9.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${patch.options.size}",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = mono,
+                            color = Color.White,
+                            lineHeight = 9.sp
+                        )
+                    }
                 }
             }
         }
 
-        // Options section
-        if (patch.options.isNotEmpty()) {
+        // Expandable options section
+        if (hasOptions) {
             val optionDivider = MaterialTheme.colorScheme.outline.copy(alpha = 0.06f)
-
-            if (!showOptions) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .drawBehind {
-                            drawLine(
-                                color = optionDivider,
-                                start = Offset(14.dp.toPx(), 0f),
-                                end = Offset(size.width - 14.dp.toPx(), 0f),
-                                strokeWidth = 1f
-                            )
-                        }
-                        .clickable { showOptions = true }
-                        .background(MorpheColors.Teal.copy(alpha = 0.03f))
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "CONFIGURE OPTIONS",
-                        fontSize = 9.sp,
-                        fontFamily = mono,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MorpheColors.Teal.copy(alpha = 0.5f),
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
 
             AnimatedVisibility(
                 visible = showOptions,
@@ -861,28 +896,9 @@ private fun PatchListItem(
                                 strokeWidth = 1f
                             )
                         }
-                        .padding(start = 14.dp, end = 14.dp, bottom = 12.dp, top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(start = 14.dp, end = 14.dp, bottom = 10.dp, top = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Collapse button
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(corners.small))
-                            .background(MorpheColors.Teal.copy(alpha = 0.04f))
-                            .clickable { showOptions = false }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "HIDE OPTIONS ▲",
-                            fontSize = 9.sp,
-                            fontFamily = mono,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MorpheColors.Teal.copy(alpha = 0.5f),
-                            letterSpacing = 1.sp
-                        )
-                    }
-
                     patch.options.forEach { option ->
                         PatchOptionEditor(
                             option = option,
@@ -967,38 +983,171 @@ private fun PatchOptionEditor(
                     )
                 }
             }
+            app.morphe.gui.data.model.PatchOptionType.FILE -> {
+                var localPath by remember(option.key) { mutableStateOf(value) }
+                LaunchedEffect(value) {
+                    if (localPath != value) localPath = value
+                }
+
+                // Detect if this is an image file option from key/title
+                val keyLower = option.key.lowercase() + " " + option.title.lowercase()
+                val isImage = keyLower.contains("icon") || keyLower.contains("image") ||
+                    keyLower.contains("logo") || keyLower.contains("banner") ||
+                    keyLower.contains("png") || keyLower.contains("jpg")
+                val fileFilterDesc = if (isImage) "Image files" else "All files"
+                val fileExtensions = if (isImage) "png,jpg,jpeg,webp" else "*"
+
+                val fieldFocused = remember { mutableStateOf(false) }
+                val fieldBorder by animateColorAsState(
+                    if (fieldFocused.value) MorpheColors.Teal.copy(alpha = 0.6f)
+                    else MorpheColors.Teal.copy(alpha = 0.2f),
+                    animationSpec = tween(150)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(32.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Path text field
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(corners.small))
+                            .border(1.dp, fieldBorder, RoundedCornerShape(corners.small))
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (localPath.isEmpty()) {
+                                Text(
+                                    text = if (isImage) "Select image…" else "Select file…",
+                                    fontSize = 11.sp,
+                                    fontFamily = mono,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                )
+                            }
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = localPath,
+                                onValueChange = { newPath ->
+                                    localPath = newPath
+                                    onValueChange(newPath)
+                                },
+                                singleLine = true,
+                                textStyle = LocalTextStyle.current.copy(
+                                    fontSize = 11.sp,
+                                    fontFamily = mono,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(MorpheColors.Teal),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { fieldFocused.value = it.isFocused }
+                            )
+                        }
+                    }
+
+                    // Browse button
+                    val browseHover = remember { MutableInteractionSource() }
+                    val isBrowseHovered by browseHover.collectIsHoveredAsState()
+                    val browseBorder by animateColorAsState(
+                        if (isBrowseHovered) MorpheColors.Teal.copy(alpha = 0.5f)
+                        else MorpheColors.Teal.copy(alpha = 0.2f),
+                        animationSpec = tween(150)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .hoverable(browseHover)
+                            .clip(RoundedCornerShape(corners.small))
+                            .border(1.dp, browseBorder, RoundedCornerShape(corners.small))
+                            .clickable {
+                                val dialog = FileDialog(null as java.awt.Frame?, fileFilterDesc, FileDialog.LOAD)
+                                if (isImage) {
+                                    // setFile pattern works on macOS; setFilenameFilter works on Linux/Windows
+                                    dialog.file = "*.png;*.jpg;*.jpeg;*.webp"
+                                    dialog.setFilenameFilter { _, name ->
+                                        val lower = name.lowercase()
+                                        lower.endsWith(".png") || lower.endsWith(".jpg") ||
+                                            lower.endsWith(".jpeg") || lower.endsWith(".webp")
+                                    }
+                                }
+                                dialog.isVisible = true
+                                val selected = dialog.file
+                                if (selected != null) {
+                                    val fullPath = File(dialog.directory, selected).absolutePath
+                                    localPath = fullPath
+                                    onValueChange(fullPath)
+                                }
+                            }
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "BROWSE",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = mono,
+                            color = if (isBrowseHovered) MorpheColors.Teal else MorpheColors.Teal.copy(alpha = 0.7f),
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            }
             else -> {
                 var localText by remember(option.key) { mutableStateOf(value) }
                 LaunchedEffect(value) {
                     if (localText != value) localText = value
                 }
 
-                OutlinedTextField(
-                    value = localText,
-                    onValueChange = { newText ->
-                        localText = newText
-                        onValueChange(newText)
-                    },
-                    placeholder = {
-                        Text(
-                            text = option.default ?: option.type.name.lowercase(),
-                            fontSize = 11.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
-                    },
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(
-                        fontSize = 11.sp,
-                        fontFamily = mono
-                    ),
-                    shape = RoundedCornerShape(corners.small),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MorpheColors.Teal.copy(alpha = 0.2f),
-                        focusedBorderColor = MorpheColors.Teal.copy(alpha = 0.6f)
-                    )
+                val fieldFocused = remember { mutableStateOf(false) }
+                val fieldBorder by animateColorAsState(
+                    if (fieldFocused.value) MorpheColors.Teal.copy(alpha = 0.6f)
+                    else MorpheColors.Teal.copy(alpha = 0.2f),
+                    animationSpec = tween(150)
                 )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(corners.small))
+                        .border(1.dp, fieldBorder, RoundedCornerShape(corners.small))
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (localText.isEmpty()) {
+                            Text(
+                                text = option.default ?: option.type.name.lowercase(),
+                                fontSize = 11.sp,
+                                fontFamily = mono,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                        }
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = localText,
+                            onValueChange = { newText ->
+                                localText = newText
+                                onValueChange(newText)
+                            },
+                            singleLine = true,
+                            textStyle = LocalTextStyle.current.copy(
+                                fontSize = 11.sp,
+                                fontFamily = mono,
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MorpheColors.Teal),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { fieldFocused.value = it.isFocused }
+                        )
+                    }
+                }
             }
         }
     }

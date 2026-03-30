@@ -344,9 +344,9 @@ private fun HeaderBar(
             // Logo — left-aligned, compact
             BrandingSection(isCompact = true)
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            // Patches version inline
+            // Patches version inline — centered
             if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
                 PatchesVersionInline(
                     patchesVersion = uiState.patchesVersion!!,

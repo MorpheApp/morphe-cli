@@ -65,7 +65,8 @@ enum class PatchOptionType {
     INT,
     LONG,
     FLOAT,
-    LIST
+    LIST,
+    FILE
 }
 
 /**

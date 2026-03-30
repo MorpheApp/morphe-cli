@@ -205,4 +205,44 @@ object FileUtils {
 
     @Deprecated("Use extractBaseApkFromBundle instead", ReplaceWith("extractBaseApkFromBundle(apkmFile)"))
     fun extractBaseApkFromApkm(apkmFile: File): File? = extractBaseApkFromBundle(apkmFile)
+
+    /**
+     * Extract supported CPU architectures from native libraries in an APK or bundle.
+     * Scans for lib/<arch>/ directories, and for bundles also detects arch from split APK names.
+     */
+    fun extractArchitectures(file: File): List<String> {
+        return try {
+            ZipFile(file).use { zip ->
+                val archDirs = mutableSetOf<String>()
+
+                // Scan for lib/<arch>/ entries
+                zip.entries().asSequence()
+                    .map { it.name }
+                    .filter { it.startsWith("lib/") }
+                    .mapNotNull { path ->
+                        val parts = path.split("/")
+                        if (parts.size >= 2) parts[1] else null
+                    }
+                    .forEach { archDirs.add(it) }
+
+                // For bundles: detect arch from split APK names (e.g. split_config.arm64_v8a.apk)
+                if (archDirs.isEmpty()) {
+                    val knownArchs = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    zip.entries().asSequence()
+                        .map { it.name }
+                        .filter { it.endsWith(".apk") }
+                        .forEach { name ->
+                            val normalized = name.replace("_", "-")
+                            knownArchs.filter { arch -> normalized.contains(arch) }
+                                .forEach { archDirs.add(it) }
+                        }
+                }
+
+                archDirs.toList().ifEmpty { listOf("universal") }
+            }
+        } catch (e: Exception) {
+            Logger.warn("Could not extract architectures: ${e.message}")
+            emptyList()
+        }
+    }
 }

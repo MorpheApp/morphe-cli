@@ -250,10 +250,15 @@ class QuickPatchViewModel(
 
             val result = analyzeApk(file)
             if (result != null) {
+                // Filter patches compatible with this package (ignore version — patcher will attempt all)
+                val compatible = cachedPatches.filter {
+                    it.isCompatibleWith(result.packageName)
+                }
                 _uiState.value = _uiState.value.copy(
                     phase = QuickPatchPhase.READY,
                     apkFile = file,
-                    apkInfo = result
+                    apkInfo = result,
+                    compatiblePatches = compatible
                 )
             } else {
                 _uiState.value = _uiState.value.copy(
@@ -342,7 +347,11 @@ class QuickPatchViewModel(
                 // TODO: Re-enable when checksums are provided via .mpp files
                 val checksumStatus = ChecksumStatus.NotConfigured
 
-                Logger.info("Quick mode: Analyzed $displayName v$versionName (recommended: $recommendedVersion, status: $versionStatus)")
+                // Extract architectures — scan the original file (bundles have splits with native libs)
+                val architectures = FileUtils.extractArchitectures(if (isBundleFormat) file else apkToParse)
+                val minSdk = meta.minSdkVersion?.toIntOrNull()
+
+                Logger.info("Quick mode: Analyzed $displayName v$versionName (recommended: $recommendedVersion, status: $versionStatus, archs: $architectures)")
 
                 QuickApkInfo(
                     fileName = file.name,
@@ -354,7 +363,9 @@ class QuickPatchViewModel(
                     isRecommendedVersion = isRecommendedVersion,
                     versionStatus = versionStatus,
                     versionWarning = versionWarning,
-                    checksumStatus = checksumStatus
+                    checksumStatus = checksumStatus,
+                    architectures = architectures,
+                    minSdk = minSdk
                 )
             }
         } catch (e: Exception) {
@@ -568,7 +579,9 @@ data class QuickApkInfo(
     val isRecommendedVersion: Boolean,
     val versionStatus: VersionStatus = VersionStatus.UNKNOWN,
     val versionWarning: String?,
-    val checksumStatus: ChecksumStatus
+    val checksumStatus: ChecksumStatus,
+    val architectures: List<String> = emptyList(),
+    val minSdk: Int? = null
 ) {
     val formattedSize: String
         get() = when {
@@ -597,5 +610,7 @@ data class QuickPatchUiState(
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
     val patchLoadError: String? = null,
-    val isOffline: Boolean = false
+    val isOffline: Boolean = false,
+    // Compatible patches for the loaded APK
+    val compatiblePatches: List<Patch> = emptyList()
 )

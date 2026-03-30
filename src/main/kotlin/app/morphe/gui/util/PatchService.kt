@@ -152,11 +152,12 @@ class PatchService {
                 )
             } ?: emptyList(),
             options = this.options.values.map { opt ->
+                Logger.info("PatchService: option key='${opt.key}' title='${opt.title}' type=${opt.type}")
                 PatchOption(
                     key = opt.key,
                     title = opt.title ?: opt.key,
                     description = opt.description ?: "",
-                    type = mapKTypeToOptionType(opt.type),
+                    type = mapKTypeToOptionType(opt.type, opt.key, opt.title),
                     default = opt.default?.toString(),
                     required = opt.required
                 )
@@ -168,7 +169,7 @@ class PatchService {
     /**
      * Map Kotlin KType to GUI PatchOptionType.
      */
-    private fun mapKTypeToOptionType(kType: KType): PatchOptionType {
+    private fun mapKTypeToOptionType(kType: KType, key: String = "", title: String? = null): PatchOptionType {
         val typeName = kType.toString()
         return when {
             typeName.contains("Boolean") -> PatchOptionType.BOOLEAN
@@ -176,7 +177,14 @@ class PatchService {
             typeName.contains("Long") -> PatchOptionType.LONG
             typeName.contains("Float") || typeName.contains("Double") -> PatchOptionType.FLOAT
             typeName.contains("List") || typeName.contains("Array") || typeName.contains("Set") -> PatchOptionType.LIST
-            else -> PatchOptionType.STRING
+            typeName.contains("File") || typeName.contains("Path") || typeName.contains("InputStream") -> PatchOptionType.FILE
+            else -> {
+                // Heuristic: detect file path options from key/title
+                val hint = (key + " " + (title ?: "")).lowercase()
+                val fileKeywords = listOf("icon", "image", "logo", "banner", "path", "file", "png", "jpg", "jpeg", "webp")
+                if (fileKeywords.any { hint.contains(it) }) PatchOptionType.FILE
+                else PatchOptionType.STRING
+            }
         }
     }
 }

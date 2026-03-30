@@ -1,6 +1,7 @@
 package app.morphe.gui.ui.screens.quick
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import app.morphe.morphe_cli.generated.resources.Res
 import app.morphe.morphe_cli.generated.resources.morphe_dark
 import app.morphe.morphe_cli.generated.resources.morphe_light
+import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -111,7 +114,13 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BrandingHeader(
+                        // Logo — left-aligned
+                        BrandingLogo()
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Patches version badge — centered
+                        PatchesVersionBadge(
                             patchesVersion = uiState.patchesVersion,
                             isLoading = uiState.isLoadingPatches
                         )
@@ -164,6 +173,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                                 if (info != null) {
                                     ReadyContent(
                                         apkInfo = info,
+                                        compatiblePatches = uiState.compatiblePatches,
                                         onPatch = { viewModel.startPatching() },
                                         onClear = { viewModel.reset() }
                                     )
@@ -240,103 +250,92 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
 // ════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun BrandingHeader(patchesVersion: String?, isLoading: Boolean) {
+private fun BrandingLogo() {
     val themeState = LocalThemeState.current
-    val mono = LocalMorpheFont.current
-    val corners = LocalMorpheCorners.current
     val isDark = when (themeState.current) {
         ThemePreference.SYSTEM -> isSystemInDarkTheme()
         else -> themeState.current.isDark()
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Image(
-            painter = painterResource(if (isDark) Res.drawable.morphe_dark else Res.drawable.morphe_light),
-            contentDescription = "Morphe Logo",
-            modifier = Modifier.height(28.dp)
-        )
+    Image(
+        painter = painterResource(if (isDark) Res.drawable.morphe_dark else Res.drawable.morphe_light),
+        contentDescription = "Morphe Logo",
+        modifier = Modifier.height(28.dp)
+    )
+}
 
-        Spacer(modifier = Modifier.width(12.dp))
+@Composable
+private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
+    val mono = LocalMorpheFont.current
+    val corners = LocalMorpheCorners.current
 
-        if (isLoading) {
-            Row(
+    if (isLoading) {
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .clip(RoundedCornerShape(corners.small))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(12.dp),
+                strokeWidth = 1.5.dp,
+                color = MorpheColors.Blue
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "LOADING…",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                letterSpacing = 1.sp
+            )
+        }
+    } else if (patchesVersion != null) {
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .clip(RoundedCornerShape(corners.small))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "PATCHES",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                letterSpacing = 1.5.sp
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = patchesVersion,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = mono,
+                color = MorpheColors.Blue
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Box(
                 modifier = Modifier
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(corners.small))
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .background(MorpheColors.Teal.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                    .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(12.dp),
-                    strokeWidth = 1.5.dp,
-                    color = MorpheColors.Blue
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "LOADING…",
-                    fontSize = 10.sp,
+                    text = "LATEST",
+                    fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    color = MorpheColors.Teal,
                     letterSpacing = 1.sp
                 )
             }
-        } else if (patchesVersion != null) {
-            // Matches expert mode PatchesVersionInline — but not clickable
-            Row(
-                modifier = Modifier
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(corners.small))
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "PATCHES",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = patchesVersion,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = mono,
-                    color = MorpheColors.Blue
-                )
-                // Quick mode always uses latest, so show LATEST badge
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .background(MorpheColors.Teal.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                        .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
-                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = "LATEST",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
-                        color = MorpheColors.Teal,
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
-        } else {
-            Text(
-                text = "QUICK PATCH",
-                fontSize = 11.sp,
-                fontFamily = mono,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 1.sp
-            )
         }
     }
 }
@@ -430,8 +429,10 @@ private fun IdleContent(
 // ════════════════════════════════════════════════════════════════════
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ReadyContent(
     apkInfo: QuickApkInfo,
+    compatiblePatches: List<Patch>,
     onPatch: () -> Unit,
     onClear: () -> Unit
 ) {
@@ -448,37 +449,34 @@ private fun ReadyContent(
         else -> MorpheColors.Blue
     }
 
+    val enabledPatches = compatiblePatches.filter { it.isEnabled }
+    val disabledPatches = compatiblePatches.filter { !it.isEnabled }
+    var isPatchListExpanded by remember { mutableStateOf(false) }
+    var patchSearchQuery by remember { mutableStateOf("") }
+
     Column(
-        modifier = Modifier.fillMaxHeight(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.weight(1f))
 
         // APK info card — bordered box with accent stripe
         Box(
             modifier = Modifier
-                .widthIn(max = 480.dp)
+                .widthIn(max = 640.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(corners.medium))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
                 .background(MaterialTheme.colorScheme.surface)
-                .drawBehind{
+                .drawBehind {
                     drawRect(
                         color = accentColor,
                         size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
                     )
                 }
         ) {
-            // Left accent stripe
-//            Box(
-//                modifier = Modifier
-//                    .width(3.dp)
-//                    .fillMaxHeight()
-//                    .background(accentColor)
-//                    .align(Alignment.CenterStart)
-//            )
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -622,6 +620,256 @@ private fun ReadyContent(
                         }
                     }
                 }
+
+                // ── Info row: architectures, package, minSdk ──
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawLine(
+                                color = borderColor,
+                                start = Offset(20.dp.toPx(), 0f),
+                                end = Offset(size.width - 20.dp.toPx(), 0f),
+                                strokeWidth = 1f
+                            )
+                        }
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Architectures
+                    if (apkInfo.architectures.isNotEmpty()) {
+                        val deviceState by DeviceMonitor.state.collectAsState()
+                        val deviceArch = deviceState.selectedDevice?.architecture
+                        val hasMultipleArchs = apkInfo.architectures.size > 1
+                        val highlightArch = if (hasMultipleArchs && deviceArch != null) deviceArch else null
+
+                        Text(
+                            text = "ARCH",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            letterSpacing = 1.5.sp
+                        )
+                        apkInfo.architectures.forEach { arch ->
+                            val isDeviceArch = highlightArch != null && arch == highlightArch
+                            val tagBorder = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+                            val tagBg = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.08f)
+                                else Color.Transparent
+                            val tagColor = if (isDeviceArch) MorpheColors.Blue
+                                else MaterialTheme.colorScheme.onSurface
+                            val dimmed = highlightArch != null && !isDeviceArch
+
+                            Box(
+                                modifier = Modifier
+                                    .border(1.dp, tagBorder, RoundedCornerShape(corners.small))
+                                    .background(tagBg, RoundedCornerShape(corners.small))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = arch,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isDeviceArch) FontWeight.Bold else FontWeight.Medium,
+                                    fontFamily = mono,
+                                    color = if (dimmed) tagColor.copy(alpha = 0.35f) else tagColor
+                                )
+                            }
+                        }
+                    }
+
+                    // MinSdk
+                    if (apkInfo.minSdk != null) {
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "MIN SDK",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            letterSpacing = 1.5.sp
+                        )
+                        Text(
+                            text = "${apkInfo.minSdk}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // ── Patches summary — collapsible ──
+                if (compatiblePatches.isNotEmpty()) {
+                    val chevronRotation by animateFloatAsState(
+                        if (isPatchListExpanded) 180f else 0f,
+                        animationSpec = tween(200)
+                    )
+
+                    // Summary header — clickable to expand
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .drawBehind {
+                                drawLine(
+                                    color = borderColor,
+                                    start = Offset(20.dp.toPx(), 0f),
+                                    end = Offset(size.width - 20.dp.toPx(), 0f),
+                                    strokeWidth = 1f
+                                )
+                            }
+                            .clickable { isPatchListExpanded = !isPatchListExpanded }
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "PATCHES",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            letterSpacing = 1.5.sp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "${enabledPatches.size} enabled",
+                            fontSize = 11.sp,
+                            fontFamily = mono,
+                            fontWeight = FontWeight.Medium,
+                            color = MorpheColors.Blue
+                        )
+                        if (disabledPatches.isNotEmpty()) {
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "·",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "${disabledPatches.size} disabled",
+                                fontSize = 11.sp,
+                                fontFamily = mono,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isPatchListExpanded) "Collapse" else "Expand",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier
+                                .size(18.dp)
+                                .graphicsLayer { rotationZ = chevronRotation }
+                        )
+                    }
+
+                    // Expanded patch list
+                    AnimatedVisibility(
+                        visible = isPatchListExpanded,
+                        enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+                        exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .padding(bottom = 14.dp)
+                        ) {
+                            // Search bar
+                            OutlinedTextField(
+                                value = patchSearchQuery,
+                                onValueChange = { patchSearchQuery = it },
+                                placeholder = {
+                                    Text("Search patches…", fontSize = 11.sp, fontFamily = mono)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Search, null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (patchSearchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { patchSearchQuery = "" }) {
+                                            Icon(
+                                                Icons.Default.Clear, "Clear",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, fontFamily = mono),
+                                shape = RoundedCornerShape(corners.small),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MorpheColors.Blue,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                                )
+                            )
+
+                            Spacer(Modifier.height(10.dp))
+
+                            // Filter patches by search
+                            val filteredPatches = if (patchSearchQuery.isBlank()) {
+                                compatiblePatches
+                            } else {
+                                compatiblePatches.filter {
+                                    it.name.contains(patchSearchQuery, ignoreCase = true) ||
+                                    it.description.contains(patchSearchQuery, ignoreCase = true)
+                                }
+                            }
+
+                            // Chips in flow layout
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                filteredPatches.forEach { patch ->
+                                    val isEnabled = patch.isEnabled
+                                    val chipBorder = if (isEnabled) MorpheColors.Blue.copy(alpha = 0.5f)
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+                                    val chipBg = if (isEnabled) MorpheColors.Blue.copy(alpha = 0.08f)
+                                        else Color.Transparent
+                                    val chipTextColor = if (isEnabled) MorpheColors.Blue
+                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .border(1.dp, chipBorder, RoundedCornerShape(corners.small))
+                                            .background(chipBg, RoundedCornerShape(corners.small))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = patch.name,
+                                            fontSize = 10.sp,
+                                            fontWeight = if (isEnabled) FontWeight.Medium else FontWeight.Normal,
+                                            fontFamily = mono,
+                                            color = chipTextColor,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (filteredPatches.isEmpty() && patchSearchQuery.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "No patches matching \"$patchSearchQuery\"",
+                                    fontSize = 11.sp,
+                                    fontFamily = mono,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -659,7 +907,8 @@ private fun ReadyContent(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "Uses latest patches with recommended settings",
+            text = "${enabledPatches.size} patches will be applied" +
+                if (disabledPatches.isNotEmpty()) " · ${disabledPatches.size} excluded" else "",
             fontSize = 11.sp,
             fontFamily = mono,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
