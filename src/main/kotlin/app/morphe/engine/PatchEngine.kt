@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.internal.NamedCompanion
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -30,10 +31,6 @@ import java.util.logging.Logger
  * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
  */
 
-private const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
-private const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
-private const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
-private const val LEGACY_KEYSTORE_PASSWORD = ""
 
 object PatchEngine {
 
@@ -59,7 +56,14 @@ object PatchEngine {
         val aaptBinaryPath: File? = null,
         val tempDir: File? = null,
         val failOnError: Boolean = true,
-    )
+    ) {
+        companion object {
+            internal const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
+            internal const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
+            internal const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
+            internal const val LEGACY_KEYSTORE_PASSWORD = ""
+        }
+    }
 
     data class Result(
         val success: Boolean,
@@ -237,8 +241,8 @@ object PatchEngine {
                         val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
                             File(tempDir, "morphe.keystore"),
                             null,
-                            DEFAULT_KEYSTORE_ALIAS,
-                            DEFAULT_KEYSTORE_PASSWORD,
+                            Config.DEFAULT_KEYSTORE_ALIAS,
+                            Config.DEFAULT_KEYSTORE_PASSWORD,
                         )
                         try {
                             ApkUtils.signApk(
@@ -255,8 +259,8 @@ object PatchEngine {
                                 val legacyKeystoreDetails = ApkUtils.KeyStoreDetails(
                                     keystoreDetails.keyStore,
                                     null,
-                                    LEGACY_KEYSTORE_ALIAS,
-                                    LEGACY_KEYSTORE_PASSWORD,
+                                    Config.LEGACY_KEYSTORE_ALIAS,
+                                    Config.LEGACY_KEYSTORE_PASSWORD,
                                 )
 
                                 ApkUtils.signApk(
