@@ -1,3 +1,10 @@
+## [1.6.4-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.6.3...v1.6.4-dev.1) (2026-03-30)
+
+
+### Bug Fixes
+
+* Use patcher implementation of strip libs ([#83](https://github.com/MorpheApp/morphe-cli/issues/83)) ([43f50ea](https://github.com/MorpheApp/morphe-cli/commit/43f50ea133088090648fa318047626f3166b8639)), closes [#80](https://github.com/MorpheApp/morphe-cli/issues/80) [#82](https://github.com/MorpheApp/morphe-cli/issues/82)
+
 ## [1.6.3](https://github.com/MorpheApp/morphe-cli/compare/v1.6.2...v1.6.3) (2026-03-28)
 
 
