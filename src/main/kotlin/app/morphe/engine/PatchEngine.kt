@@ -29,6 +29,12 @@ import java.util.logging.Logger
 /*
  * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
  */
+
+private const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
+private const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
+private const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
+private const val LEGACY_KEYSTORE_PASSWORD = ""
+
 object PatchEngine {
 
     enum class PatchStep {
@@ -231,8 +237,8 @@ object PatchEngine {
                         val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
                             File(tempDir, "morphe.keystore"),
                             null,
-                            "Morphe",
-                            "Morphe",
+                            DEFAULT_KEYSTORE_ALIAS,
+                            DEFAULT_KEYSTORE_PASSWORD,
                         )
                         try {
                             ApkUtils.signApk(
@@ -249,8 +255,8 @@ object PatchEngine {
                                 val legacyKeystoreDetails = ApkUtils.KeyStoreDetails(
                                     keystoreDetails.keyStore,
                                     null,
-                                    "Morphe Key",
-                                    "",
+                                    LEGACY_KEYSTORE_ALIAS,
+                                    LEGACY_KEYSTORE_PASSWORD,
                                 )
 
                                 ApkUtils.signApk(

@@ -47,6 +47,11 @@ import java.io.StringWriter
 import java.util.concurrent.Callable
 import java.util.logging.Logger
 
+private const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
+private const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
+private const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
+private const val LEGACY_KEYSTORE_PASSWORD = ""
+
 @OptIn(ExperimentalSerializationApi::class)
 @VisibleForTesting
 @CommandLine.Command(
@@ -196,13 +201,13 @@ internal object PatchCommand : Callable<Int> {
         description = ["Alias of the private key and certificate pair keystore entry."],
         showDefaultValue = ALWAYS,
     )
-    private var keyStoreEntryAlias = "Morphe" // Default now matches Manager
+    private var keyStoreEntryAlias = DEFAULT_KEYSTORE_ALIAS // Default now matches Manager
 
     @CommandLine.Option(
         names = ["--keystore-entry-password"],
         description = ["Password of the keystore entry."],
     )
-    private var keyStoreEntryPassword = "Morphe" // Default now matches Manager
+    private var keyStoreEntryPassword = DEFAULT_KEYSTORE_PASSWORD // Default now matches Manager
 
     @CommandLine.Option(
         names = ["--signer"],
@@ -676,7 +681,7 @@ internal object PatchCommand : Callable<Int> {
                                 )
                             } catch (e: Exception){
                                 // We retry with legacy keystore defaults here. Need to move to new defaults eventually!
-                                if (keyStoreEntryAlias == "Morphe" && keyStoreEntryPassword == "Morphe" && keystoreFilePath.exists()){
+                                if (keyStoreEntryAlias == DEFAULT_KEYSTORE_ALIAS && keyStoreEntryPassword == DEFAULT_KEYSTORE_PASSWORD && keystoreFilePath.exists()){
                                     logger.info("Retrying with legacy keystore credentials...")
 
                                     ApkUtils.signApk(
@@ -686,8 +691,8 @@ internal object PatchCommand : Callable<Int> {
                                         ApkUtils.KeyStoreDetails(
                                             keystoreFilePath,
                                             keyStorePassword,
-                                            "Morphe Key",
-                                            "",
+                                            LEGACY_KEYSTORE_ALIAS,
+                                            LEGACY_KEYSTORE_PASSWORD,
                                         )
                                     )
                                 } else {
