@@ -11,6 +11,7 @@ import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchOption
 import app.morphe.gui.data.model.PatchOptionType
 import app.morphe.patcher.patch.loadPatchesFromJar
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -82,7 +83,7 @@ class PatchService {
         disabledPatches: List<String> = emptyList(),
         options: Map<String, String> = emptyMap(),
         exclusiveMode: Boolean = false,
-        striplibs: List<String> = emptyList(),
+        keepArchitectures: Set<CpuArchitecture> = emptySet(),
         continueOnError: Boolean = false,
         onProgress: (String) -> Unit = {}
     ): Result<PatchResult> = withContext(Dispatchers.IO) {
@@ -122,7 +123,7 @@ class PatchService {
                     exclusiveMode = exclusiveMode,
                     forceCompatibility = true,
                     patchOptions = patchOptions,
-                    architecturesToKeep = striplibs,
+                    architecturesToKeep = keepArchitectures,
                     failOnError = !continueOnError,
                 )
 

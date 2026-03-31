@@ -16,6 +16,7 @@ import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.setOptions
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -35,7 +36,7 @@ import java.util.logging.Logger
 object PatchEngine {
 
     enum class PatchStep {
-        PATCHING, REBUILDING, STRIPPING_LIBS, SIGNING
+        PATCHING, REBUILDING, SIGNING
     }
 
     data class StepResult(val step: PatchStep, val success: Boolean, val error: String? = null)
@@ -52,7 +53,7 @@ object PatchEngine {
         val unsigned: Boolean = false,
         val signerName: String = "Morphe",
         val keystoreDetails: ApkUtils.KeyStoreDetails? = null,
-        val architecturesToKeep: List<String> = emptyList(),
+        val architecturesToKeep: Set<CpuArchitecture> = emptySet(),
         val aaptBinaryPath: File? = null,
         val tempDir: File? = null,
         val failOnError: Boolean = true,
@@ -123,6 +124,8 @@ object PatchEngine {
                 patcherTempDir,
                 config.aaptBinaryPath?.path,
                 patcherTempDir.absolutePath,
+                useArsclib = true,
+                keepArchitectures = config.architecturesToKeep
             )
 
             Patcher(patcherConfig).use { patcher ->
@@ -217,23 +220,7 @@ object PatchEngine {
 
                 currentCoroutineContext().ensureActive()
 
-                // 7. Strip libs (if configured)
-                if (config.architecturesToKeep.isNotEmpty()) {
-                    onProgress("Stripping native libraries...")
-                    try {
-                        ApkLibraryStripper.stripLibraries(rebuiltApk, config.architecturesToKeep) {
-                            onProgress(it)
-                        }
-                        stepResults.add(StepResult(PatchStep.STRIPPING_LIBS, true))
-                    } catch (e: Exception) {
-                        stepResults.add(StepResult(PatchStep.STRIPPING_LIBS, false, e.toString()))
-                        return earlyResult()
-                    }
-                }
-
-                currentCoroutineContext().ensureActive()
-
-                // 8. Sign APK (unless unsigned)
+                // 7. Sign APK (unless unsigned)
                 val tempOutput = File(tempDir, config.outputApk.name)
                 if (!config.unsigned) {
                     onProgress("Signing APK...")
@@ -282,7 +269,7 @@ object PatchEngine {
                     rebuiltApk.copyTo(tempOutput, overwrite = true)
                 }
 
-                // 9. Copy to final output
+                // 8. Copy to final output
                 config.outputApk.parentFile?.mkdirs()
                 tempOutput.copyTo(config.outputApk, overwrite = true)
 
