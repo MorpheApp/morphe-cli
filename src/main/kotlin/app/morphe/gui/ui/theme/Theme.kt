@@ -26,6 +26,68 @@ object MorpheColors {
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  ACCENT COLOR SYSTEM
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Per-theme accent colors. Components should read from LocalMorpheAccents
+ * instead of using MorpheColors.Blue/Teal directly.
+ */
+data class MorpheAccentColors(
+    val primary: Color,    // Buttons, selections, links (replaces MorpheColors.Blue)
+    val secondary: Color,  // Badges, options, success states (replaces MorpheColors.Teal)
+    val warning: Color = Color(0xFFFF9800),  // Warning states (was hardcoded everywhere)
+)
+
+val LocalMorpheAccents = compositionLocalOf { MorpheAccentColors(MorpheColors.Blue, MorpheColors.Teal) }
+
+/** Morphe Dark — brand blue + teal on dark gray. */
+private val DarkAccents = MorpheAccentColors(
+    primary = MorpheColors.Blue,
+    secondary = MorpheColors.Teal,
+)
+
+/** Amoled — slightly brighter accents to pop on pure black. */
+private val AmoledAccents = MorpheAccentColors(
+    primary = Color(0xFF4A7FFF),   // Brighter blue for pure black
+    secondary = Color(0xFF00BFA5), // Brighter teal
+)
+
+/** Morphe Light — brand colors work fine on light backgrounds. */
+private val LightAccents = MorpheAccentColors(
+    primary = MorpheColors.Blue,
+    secondary = MorpheColors.Teal,
+)
+
+/** Nord — native Nord palette. Arctic frost + aurora. */
+private val NordAccents = MorpheAccentColors(
+    primary = Color(0xFF88C0D0),   // Nord Frost
+    secondary = Color(0xFFA3BE8C), // Nord Aurora Green
+    warning = Color(0xFFEBCB8B),   // Nord Aurora Yellow
+)
+
+/** Catppuccin Mocha — native Catppuccin palette. Mauve + teal. */
+private val CatppuccinAccents = MorpheAccentColors(
+    primary = Color(0xFFCBA6F7),   // Mauve
+    secondary = Color(0xFF94E2D5), // Teal
+    warning = Color(0xFFFAB387),   // Peach
+)
+
+/** Sakura — warm rose + dusty lavender. */
+private val SakuraAccents = MorpheAccentColors(
+    primary = Color(0xFFD4567A),   // Deep rose
+    secondary = Color(0xFF9A6DAF), // Dusty lavender
+    warning = Color(0xFFE8874A),   // Warm amber
+)
+
+/** Matcha — forest green + sage. */
+private val MatchaAccents = MorpheAccentColors(
+    primary = Color(0xFF5A9A4E),   // Forest green
+    secondary = Color(0xFF7AADAF), // Sage teal
+    warning = Color(0xFFD4944A),   // Warm ochre
+)
+
+// ════════════════════════════════════════════════════════════════════
 //  CORNER / SHAPE STYLE SYSTEM
 // ════════════════════════════════════════════════════════════════════
 
@@ -230,10 +292,21 @@ fun MorpheTheme(
 
     val corners = if (themePreference.isSoft()) SoftCorners else SharpCorners
     val font = if (themePreference.isSoft()) Nunito else JetBrainsMono
+    val accents = when (themePreference) {
+        ThemePreference.DARK -> DarkAccents
+        ThemePreference.AMOLED -> AmoledAccents
+        ThemePreference.LIGHT -> LightAccents
+        ThemePreference.NORD -> NordAccents
+        ThemePreference.CATPPUCCIN -> CatppuccinAccents
+        ThemePreference.SAKURA -> SakuraAccents
+        ThemePreference.MATCHA -> MatchaAccents
+        ThemePreference.SYSTEM -> if (isSystemInDarkTheme()) DarkAccents else LightAccents
+    }
 
     CompositionLocalProvider(
         LocalMorpheCorners provides corners,
-        LocalMorpheFont provides font
+        LocalMorpheFont provides font,
+        LocalMorpheAccents provides accents
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
