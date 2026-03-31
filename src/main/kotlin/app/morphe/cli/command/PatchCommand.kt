@@ -20,13 +20,22 @@ import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.cli.command.model.withUpdatedBundle
 import app.morphe.engine.PatchEngine
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
+import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_PASSWORD
 import app.morphe.engine.UpdateChecker
-import app.morphe.patcher.apk.ApkUtils
-import app.morphe.patcher.apk.ApkUtils.applyTo
-import app.morphe.library.installation.installer.*
+import app.morphe.library.installation.installer.AdbInstaller
+import app.morphe.library.installation.installer.AdbInstallerResult
+import app.morphe.library.installation.installer.AdbRootInstaller
+import app.morphe.library.installation.installer.DeviceNotFoundException
+import app.morphe.library.installation.installer.Installer
+import app.morphe.library.installation.installer.RootInstallerResult
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkMerger
+import app.morphe.patcher.apk.ApkUtils
+import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
@@ -197,13 +206,13 @@ internal object PatchCommand : Callable<Int> {
         description = ["Alias of the private key and certificate pair keystore entry."],
         showDefaultValue = ALWAYS,
     )
-    private var keyStoreEntryAlias = PatchEngine.Config.DEFAULT_KEYSTORE_ALIAS // Default now matches Manager
+    private var keyStoreEntryAlias = PatchEngine.Config.DEFAULT_KEYSTORE_ALIAS
 
     @CommandLine.Option(
         names = ["--keystore-entry-password"],
         description = ["Password of the keystore entry."],
     )
-    private var keyStoreEntryPassword = PatchEngine.Config.DEFAULT_KEYSTORE_PASSWORD // Default now matches Manager
+    private var keyStoreEntryPassword = PatchEngine.Config.DEFAULT_KEYSTORE_PASSWORD
 
     @CommandLine.Option(
         names = ["--signer"],
@@ -667,7 +676,7 @@ internal object PatchCommand : Callable<Int> {
                     patchingResult.addStepResult(
                         PatchingStep.SIGNING,
                         {
-                            try {
+                            fun signApk(alias: String, password: String) {
                                 ApkUtils.signApk(
                                     patchedApkFile,
                                     outputFilePath,
@@ -675,26 +684,22 @@ internal object PatchCommand : Callable<Int> {
                                     ApkUtils.KeyStoreDetails(
                                         keystoreFilePath,
                                         keyStorePassword,
-                                        keyStoreEntryAlias,
-                                        keyStoreEntryPassword,
-                                    ),
-                                )
-                            } catch (e: Exception){
-                                // We retry with legacy keystore defaults here. Need to move to new defaults eventually!
-                                if (keyStoreEntryAlias == PatchEngine.Config.DEFAULT_KEYSTORE_ALIAS && keyStoreEntryPassword == PatchEngine.Config.DEFAULT_KEYSTORE_PASSWORD && keystoreFilePath.exists()){
-                                    logger.info("Retrying with legacy keystore credentials...")
-
-                                    ApkUtils.signApk(
-                                        patchedApkFile,
-                                        outputFilePath,
-                                        signer,
-                                        ApkUtils.KeyStoreDetails(
-                                            keystoreFilePath,
-                                            keyStorePassword,
-                                            PatchEngine.Config.LEGACY_KEYSTORE_ALIAS,
-                                            PatchEngine.Config.LEGACY_KEYSTORE_PASSWORD,
-                                        )
+                                        alias,
+                                        password,
                                     )
+                                )
+                            }
+                            try {
+                                signApk(keyStoreEntryAlias, keyStoreEntryPassword)
+                            } catch (e: Exception){
+                                // Retry with legacy keystore defaults.
+                                if (keyStoreEntryAlias == DEFAULT_KEYSTORE_ALIAS &&
+                                    keyStoreEntryPassword == DEFAULT_KEYSTORE_PASSWORD &&
+                                    keystoreFilePath.exists()
+                                ) {
+                                    logger.info("Using legacy keystore credentials")
+
+                                    signApk(LEGACY_KEYSTORE_ALIAS, LEGACY_KEYSTORE_PASSWORD)
                                 } else {
                                     throw e
                                 }

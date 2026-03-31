@@ -21,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.internal.NamedCompanion
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -225,23 +224,28 @@ object PatchEngine {
                 if (!config.unsigned) {
                     onProgress("Signing APK...")
                     try {
+                        fun signApk(details: ApkUtils.KeyStoreDetails) {
+                            ApkUtils.signApk(
+                                rebuiltApk,
+                                tempOutput,
+                                config.signerName,
+                                details,
+                            )
+                        }
+
                         val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
                             File(tempDir, "morphe.keystore"),
                             null,
                             Config.DEFAULT_KEYSTORE_ALIAS,
                             Config.DEFAULT_KEYSTORE_PASSWORD,
                         )
+
                         try {
-                            ApkUtils.signApk(
-                                rebuiltApk,
-                                tempOutput,
-                                config.signerName,
-                                keystoreDetails,
-                            )
+                            signApk(keystoreDetails)
                         } catch (e: Exception){
-                            // We retry with legacy keystore defaults here. Need to move to new defaults eventually!
-                            if (config.keystoreDetails == null && keystoreDetails.keyStore.exists()){
-                                onProgress("Retrying with legacy keystore credentials...")
+                            // Retry with legacy keystore defaults.
+                            if (config.keystoreDetails == null && keystoreDetails.keyStore.exists()) {
+                                logger.info("Using legacy keystore credentials")
 
                                 val legacyKeystoreDetails = ApkUtils.KeyStoreDetails(
                                     keystoreDetails.keyStore,
@@ -249,13 +253,7 @@ object PatchEngine {
                                     Config.LEGACY_KEYSTORE_ALIAS,
                                     Config.LEGACY_KEYSTORE_PASSWORD,
                                 )
-
-                                ApkUtils.signApk(
-                                    rebuiltApk,
-                                    tempOutput,
-                                    config.signerName,
-                                    legacyKeystoreDetails,
-                                )
+                                signApk(legacyKeystoreDetails)
                             } else {
                                 throw e
                             }
