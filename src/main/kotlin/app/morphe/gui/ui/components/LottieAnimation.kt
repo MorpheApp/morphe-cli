@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.components
 
 import androidx.compose.foundation.Canvas
@@ -11,6 +16,7 @@ import org.jetbrains.skia.Rect as SkiaRect
 import org.jetbrains.skia.skottie.Animation
 
 /**
+ * THIS IS STILL A WORK IN PROGRESS. THIS ANIMATION IS STILL NOT GOOD ENOUGH. NEEDS MUCH REWORK.
  * Plays a Lottie JSON animation using Skia's built-in Skottie renderer.
  * No extra dependencies needed — Compose Desktop includes Skottie via Skiko.
  *

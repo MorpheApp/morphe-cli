@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.screens.patching
 
 import cafe.adriel.voyager.core.model.ScreenModel
@@ -56,7 +61,7 @@ class PatchingViewModel(
                 disabledPatches = config.disabledPatches,
                 options = config.patchOptions,
                 exclusiveMode = config.useExclusiveMode,
-                striplibs = config.striplibs,
+                keepArchitectures = config.keepArchitectures,
                 continueOnError = config.continueOnError,
                 onProgress = { message ->
                     parseAndAddLog(message)

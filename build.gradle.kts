@@ -100,6 +100,9 @@ dependencies {
     implementation(libs.voyager.koin)
     implementation(libs.voyager.transitions)
 
+    // -- JBR API (macOS title bar customization) ----------------------------
+    implementation(libs.jbr.api)
+
     // -- APK Parsing (GUI) -------------------------------------------------
     implementation(libs.apk.parser)
 
