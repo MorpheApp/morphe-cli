@@ -2,7 +2,7 @@
 # Core
 shadow = "9.3.2"
 junit = "5.11.0"
-kotlin = "2.3.0"
+kotlin = "2.3.20"
 
 # CLI
 picocli = "4.7.7"
