@@ -1,6 +1,6 @@
 [versions]
 # Core
-shadow = "9.3.2"
+shadow = "9.4.1"
 junit = "5.11.0"
 kotlin = "2.3.0"
 
