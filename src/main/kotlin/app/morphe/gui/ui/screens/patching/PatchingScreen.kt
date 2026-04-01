@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.screens.patching
 
 import androidx.compose.animation.animateColorAsState
@@ -83,6 +88,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
     // Auto-navigate to result screen on successful completion
     LaunchedEffect(uiState.status) {
         if (uiState.status == PatchingStatus.COMPLETED && uiState.outputPath != null) {
+            // Small delay to let user see the success message
             kotlinx.coroutines.delay(1500)
             navigator.push(ResultScreen(outputPath = uiState.outputPath!!))
         }
@@ -93,7 +99,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // ── Header row ──
+        // Header row
         DraggableHeaderArea {
             Row(
                 modifier = Modifier
@@ -214,7 +220,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
             }
         }
 
-        // ── Progress section ──
+        // Progress section
         if (uiState.isInProgress) {
             Column {
                 LinearProgressIndicator(
@@ -262,7 +268,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
             }
         }
 
-        // ── Log output ──
+        // Log output
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -280,7 +286,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
             }
         }
 
-        // ── Bottom action bar ──
+        // Bottom action bar
         when (uiState.status) {
             PatchingStatus.COMPLETED -> {
                 Row(

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.data.constants
 
 /**
@@ -7,8 +12,15 @@ package app.morphe.gui.data.constants
 object AppConstants {
 
     // ==================== APP INFO ====================
-    const val APP_NAME = "Morphe GUI"
-    const val APP_VERSION = "1.4.0" // Keep in sync with the release version numbers
+    private val pkg by lazy { AppConstants::class.java.`package` }
+
+    val APP_NAME: String by lazy {
+        pkg?.implementationTitle ?: "Morphe GUI"
+    }
+
+    val APP_VERSION: String by lazy {
+        pkg?.implementationVersion?.let { "v$it" } ?: "dev"
+    }
 
     // ==================== API ====================
     const val MORPHE_API_URL = "https://api.morphe.software"

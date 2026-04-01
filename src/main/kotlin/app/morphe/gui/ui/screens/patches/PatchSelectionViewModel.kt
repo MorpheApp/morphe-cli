@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.screens.patches
 
 import cafe.adriel.voyager.core.model.ScreenModel
@@ -11,6 +16,7 @@ import kotlinx.coroutines.launch
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.patcher.resource.CpuArchitecture
 import java.io.File
 
 class PatchSelectionViewModel(
@@ -217,9 +223,9 @@ class PatchSelectionViewModel(
 
         // Only set riplibs if user deselected any architecture (keeps = selected ones)
         val striplibs = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
-            _uiState.value.selectedArchitectures.toList()
+            _uiState.value.selectedArchitectures.map { CpuArchitecture.valueOf(it) }.toSet()
         } else {
-            emptyList()
+            emptySet()
         }
 
         return PatchConfig(
@@ -230,7 +236,7 @@ class PatchSelectionViewModel(
             disabledPatches = disabledPatchNames,
             patchOptions = _uiState.value.patchOptionValues,
             useExclusiveMode = true,
-            striplibs = striplibs,
+            keepArchitectures = striplibs,
             continueOnError = continueOnError
         )
     }

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.screens.home
 
 import androidx.compose.animation.animateColorAsState
@@ -205,6 +210,7 @@ fun HomeScreenContent(
                             )
                         }
 
+                        // Offline banner
                         if (uiState.isOffline && !uiState.isLoadingPatches) {
                             Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
                             OfflineBanner(

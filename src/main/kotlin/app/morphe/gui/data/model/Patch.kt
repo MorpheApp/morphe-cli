@@ -1,5 +1,11 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.data.model
 
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.serialization.Serializable
 
 /**
@@ -81,6 +87,6 @@ data class PatchConfig(
     val disabledPatches: List<String> = emptyList(),
     val patchOptions: Map<String, String> = emptyMap(),
     val useExclusiveMode: Boolean = false,
-    val striplibs: List<String> = emptyList(),
+    val keepArchitectures: Set<CpuArchitecture> = emptySet(),
     val continueOnError: Boolean = false
 )

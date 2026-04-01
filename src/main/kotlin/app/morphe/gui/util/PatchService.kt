@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.util
 
 import app.morphe.engine.PatchEngine
@@ -6,6 +11,7 @@ import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchOption
 import app.morphe.gui.data.model.PatchOptionType
 import app.morphe.patcher.patch.loadPatchesFromJar
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -77,7 +83,7 @@ class PatchService {
         disabledPatches: List<String> = emptyList(),
         options: Map<String, String> = emptyMap(),
         exclusiveMode: Boolean = false,
-        striplibs: List<String> = emptyList(),
+        keepArchitectures: Set<CpuArchitecture> = emptySet(),
         continueOnError: Boolean = false,
         onProgress: (String) -> Unit = {}
     ): Result<PatchResult> = withContext(Dispatchers.IO) {
@@ -117,7 +123,7 @@ class PatchService {
                     exclusiveMode = exclusiveMode,
                     forceCompatibility = true,
                     patchOptions = patchOptions,
-                    architecturesToKeep = striplibs,
+                    architecturesToKeep = keepArchitectures,
                     failOnError = !continueOnError,
                 )
 
@@ -152,12 +158,11 @@ class PatchService {
                 )
             } ?: emptyList(),
             options = this.options.values.map { opt ->
-                Logger.info("PatchService: option key='${opt.key}' title='${opt.title}' type=${opt.type}")
                 PatchOption(
                     key = opt.key,
                     title = opt.title ?: opt.key,
                     description = opt.description ?: "",
-                    type = mapKTypeToOptionType(opt.type, opt.key, opt.title),
+                    type = mapKTypeToOptionType(opt.type),
                     default = opt.default?.toString(),
                     required = opt.required
                 )
@@ -169,7 +174,7 @@ class PatchService {
     /**
      * Map Kotlin KType to GUI PatchOptionType.
      */
-    private fun mapKTypeToOptionType(kType: KType, key: String = "", title: String? = null): PatchOptionType {
+    private fun mapKTypeToOptionType(kType: KType): PatchOptionType {
         val typeName = kType.toString()
         return when {
             typeName.contains("Boolean") -> PatchOptionType.BOOLEAN
@@ -177,14 +182,7 @@ class PatchService {
             typeName.contains("Long") -> PatchOptionType.LONG
             typeName.contains("Float") || typeName.contains("Double") -> PatchOptionType.FLOAT
             typeName.contains("List") || typeName.contains("Array") || typeName.contains("Set") -> PatchOptionType.LIST
-            typeName.contains("File") || typeName.contains("Path") || typeName.contains("InputStream") -> PatchOptionType.FILE
-            else -> {
-                // Heuristic: detect file path options from key/title
-                val hint = (key + " " + (title ?: "")).lowercase()
-                val fileKeywords = listOf("icon", "image", "logo", "banner", "path", "file", "png", "jpg", "jpeg", "webp")
-                if (fileKeywords.any { hint.contains(it) }) PatchOptionType.FILE
-                else PatchOptionType.STRING
-            }
+            else -> PatchOptionType.STRING
         }
     }
 }

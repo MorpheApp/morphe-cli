@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.components
 
 import androidx.compose.foundation.BorderStroke
@@ -1081,6 +1086,7 @@ private fun clearAllCache(): Boolean {
             try { if (!file.deleteRecursively()) throw Exception("Could not delete") }
             catch (e: Exception) { failedCount++; Logger.error("Failed to delete log ${file.name}: ${e.message}") }
         }
+
         FileUtils.cleanupAllTempDirs()
         if (failedCount > 0) {
             Logger.error("Cache clear incomplete: $failedCount file(s) could not be deleted (may be locked)")

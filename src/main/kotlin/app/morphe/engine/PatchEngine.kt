@@ -1,13 +1,22 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ *
+ * Code hard forked from:
+ * https://github.com/revanced/revanced-library/tree/06733072045c8016a75f232dec76505c0ba2e1cd
+ */
+
 package app.morphe.engine
 
-import app.morphe.patcher.apk.ApkUtils
-import app.morphe.patcher.apk.ApkUtils.applyTo
-import app.morphe.patcher.patch.setOptions
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
+import app.morphe.patcher.apk.ApkMerger
+import app.morphe.patcher.apk.ApkUtils
+import app.morphe.patcher.apk.ApkUtils.applyTo
+import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
-import com.reandroid.apkeditor.merge.Merger
-import com.reandroid.apkeditor.merge.MergerOptions
+import app.morphe.patcher.patch.setOptions
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -16,7 +25,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.nio.file.Files
-import kotlin.coroutines.coroutineContext
+import java.util.logging.Logger
 
 /**
  * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
@@ -24,7 +33,7 @@ import kotlin.coroutines.coroutineContext
 object PatchEngine {
 
     enum class PatchStep {
-        PATCHING, REBUILDING, STRIPPING_LIBS, SIGNING
+        PATCHING, REBUILDING, SIGNING
     }
 
     data class StepResult(val step: PatchStep, val success: Boolean, val error: String? = null)
@@ -41,7 +50,7 @@ object PatchEngine {
         val unsigned: Boolean = false,
         val signerName: String = "Morphe",
         val keystoreDetails: ApkUtils.KeyStoreDetails? = null,
-        val architecturesToKeep: List<String> = emptyList(),
+        val architecturesToKeep: Set<CpuArchitecture> = emptySet(),
         val aaptBinaryPath: File? = null,
         val tempDir: File? = null,
         val failOnError: Boolean = true,
@@ -58,6 +67,8 @@ object PatchEngine {
     )
 
     data class FailedPatch(val name: String, val error: String)
+
+    private val logger = Logger.getLogger(this::class.java.name)
 
     /**
      * The single patching pipeline.
@@ -76,16 +87,15 @@ object PatchEngine {
         val failedPatches = mutableListOf<FailedPatch>()
 
         try {
-            // 1. Handle split APK bundles (APKM, XAPK)
-            val actualInputApk = if (config.inputApk.extension.lowercase() in setOf("apkm", "xapk")) {
-                onProgress("Merging split APK bundle...")
+            // 1. Handle APKM format (split APK bundle)
+            val actualInputApk = if (config.inputApk.extension.equals("apkm", ignoreCase = true)) {
+                onProgress("Converting APKM to APK...")
                 val mergedApk = File(tempDir, "${config.inputApk.nameWithoutExtension}-merged.apk")
-                val mergerOptions = MergerOptions().apply {
-                    inputFile = config.inputApk
-                    outputFile = mergedApk
-                    cleanMeta = true
-                }
-                Merger(mergerOptions).run()
+                ApkMerger(logger.toMorpheLogger()).merge(
+                    inputFile = config.inputApk,
+                    outputFile = mergedApk,
+                    cleanMetaInf = true
+                )
                 mergedApkToCleanup = mergedApk
                 mergedApk
             } else {
@@ -104,6 +114,8 @@ object PatchEngine {
                 patcherTempDir,
                 config.aaptBinaryPath?.path,
                 patcherTempDir.absolutePath,
+                useArsclib = true,
+                keepArchitectures = config.architecturesToKeep
             )
 
             Patcher(patcherConfig).use { patcher ->
@@ -198,23 +210,7 @@ object PatchEngine {
 
                 currentCoroutineContext().ensureActive()
 
-                // 7. Strip libs (if configured)
-                if (config.architecturesToKeep.isNotEmpty()) {
-                    onProgress("Stripping native libraries...")
-                    try {
-                        ApkLibraryStripper.stripLibraries(rebuiltApk, config.architecturesToKeep) {
-                            onProgress(it)
-                        }
-                        stepResults.add(StepResult(PatchStep.STRIPPING_LIBS, true))
-                    } catch (e: Exception) {
-                        stepResults.add(StepResult(PatchStep.STRIPPING_LIBS, false, e.toString()))
-                        return earlyResult()
-                    }
-                }
-
-                currentCoroutineContext().ensureActive()
-
-                // 8. Sign APK (unless unsigned)
+                // 7. Sign APK (unless unsigned)
                 val tempOutput = File(tempDir, config.outputApk.name)
                 if (!config.unsigned) {
                     onProgress("Signing APK...")
@@ -240,7 +236,7 @@ object PatchEngine {
                     rebuiltApk.copyTo(tempOutput, overwrite = true)
                 }
 
-                // 9. Copy to final output
+                // 8. Copy to final output
                 config.outputApk.parentFile?.mkdirs()
                 tempOutput.copyTo(config.outputApk, overwrite = true)
 

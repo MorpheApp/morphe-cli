@@ -48,10 +48,8 @@ repositories {
         // A repository must be specified for some reason. "registry" is a dummy.
         url = uri("https://maven.pkg.github.com/MorpheApp/registry")
         credentials {
-            username = project.findProperty("gpr.user") as String?
-                ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key") as String?
-                ?: System.getenv("GITHUB_TOKEN")
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
         }
     }
     // Obtain baksmali/smali from source builds - https://github.com/iBotPeaches/smali
@@ -59,34 +57,11 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
-// ============================================================================
-// Dependencies
-// ============================================================================
-val apkEditorLib by configurations.creating
-
-val strippedApkEditorLib by tasks.registering(org.gradle.jvm.tasks.Jar::class) {
-    archiveFileName.set("APKEditor-cli.jar")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    doFirst {
-        from(apkEditorLib.resolve().map { zipTree(it) })
-    }
-    exclude(
-        "org/xmlpull/**",
-        "antlr/**",
-        "org/antlr/**",
-        "com/beust/jcommander/**",
-        "javax/annotation/**",
-        "smali.properties",
-        "baksmali.properties"
-    )
-}
-
 dependencies {
     api(libs.morphe.patcher)
+    implementation(libs.arsclib)
     implementation(libs.morphe.library)
     implementation(libs.picocli)
-    apkEditorLib(files("$rootDir/libs/APKEditor-1.4.7.jar"))
-    implementation(files(strippedApkEditorLib))
 
     // -- Compose Desktop ---------------------------------------------------
     // Platform-independent: single JAR runs on all supported OSes.
@@ -125,9 +100,6 @@ dependencies {
     implementation(libs.voyager.koin)
     implementation(libs.voyager.transitions)
 
-    // -- JBR API (macOS title bar customization) ----------------------------
-    implementation(libs.jbr.api)
-
     // -- APK Parsing (GUI) -------------------------------------------------
     implementation(libs.apk.parser)
 
@@ -141,6 +113,15 @@ dependencies {
 // Tasks
 // ============================================================================
 tasks {
+    jar {
+        manifest {
+            attributes(
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to project.version
+            )
+        }
+    }
+
     test {
         useJUnitPlatform()
         testLogging {
@@ -167,14 +148,12 @@ tasks {
         minimize {
             exclude(dependency("org.bouncycastle:.*"))
             exclude(dependency("app.morphe:morphe-patcher"))
-            // Compose / Skiko / Swing — cannot be minimized (reflection, native libs)
-            exclude(dependency("org.jetbrains.compose.*:.*"))
-            exclude(dependency("org.jetbrains.skiko:.*"))
-            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-swing:.*"))
             // Ktor uses ServiceLoader
             exclude(dependency("io.ktor:.*"))
             // Koin uses reflection
             exclude(dependency("io.insert-koin:.*"))
+            // Coroutines Swing provides Dispatchers.Main via ServiceLoader
+            exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-swing"))
         }
 
         mergeServiceFiles()

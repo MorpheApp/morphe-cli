@@ -19,17 +19,18 @@ import app.morphe.cli.command.model.mergeWith
 import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.cli.command.model.toSerializablePatch
 import app.morphe.cli.command.model.withUpdatedBundle
-import app.morphe.engine.ApkLibraryStripper
+import app.morphe.engine.UpdateChecker
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.library.installation.installer.*
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
+import app.morphe.patcher.apk.ApkMerger
+import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
 import app.morphe.patcher.patch.setOptions
-import com.reandroid.apkeditor.merge.Merger
-import com.reandroid.apkeditor.merge.MergerOptions
+import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -285,12 +286,26 @@ internal object PatchCommand : Callable<Int> {
     )
     private var unsigned: Boolean = false
 
+    private var keepArchitectures: Set<CpuArchitecture> = emptySet()
     @CommandLine.Option(
         names = ["--striplibs"],
         description = ["Architectures to keep, comma-separated (e.g. arm64-v8a,x86). Strips all other native architectures."],
         split = ",",
     )
-    private var striplibs: List<String> = emptyList()
+    @Suppress("unused")
+    private fun setStripLibs(architectures: List<String>) {
+        this.keepArchitectures = architectures.map { arch ->
+            CpuArchitecture.valueOfOrNull(arch.trim())
+                ?: throw CommandLine.ParameterException(
+                    spec.commandLine(),
+                    "Invalid architecture \"$arch\" in --striplibs. Valid values are: ${
+                        CpuArchitecture.entries.joinToString(
+                            ", "
+                        ) { it.arch }
+                    }",
+                )
+        }.toSet()
+    }
 
     @CommandLine.Option(
         names = ["--continue-on-error"],
@@ -318,6 +333,9 @@ internal object PatchCommand : Callable<Int> {
     private var updateOptions: Boolean = false
 
     override fun call(): Int {
+        // Check for any newer version
+        UpdateChecker.check(logger)?.let { logger.info(it) }
+
         // region Setup
 
         val outputFilePath =
@@ -427,20 +445,21 @@ internal object PatchCommand : Callable<Int> {
 
             val patcherTemporaryFilesPath = temporaryFilesPath.resolve("patcher")
 
-            // Checking if the file is in apkm format (like reddit)
-            val inputApk = if (apk.extension.equals("apkm", ignoreCase = true)) {
-                logger.info("Merging APKM bundle")
+            // We need to check for apkm (like reddit), xapk and apks formats here
+
+            val inputApk = if (apk.extension.lowercase() in  setOf("apkm", "xapk", "apks")) {
+
+                logger.info("Merging split APK bundle")
 
                 // Save merged APK to output directory (will be cleaned up after patching)
                 val outputApk = outputFilePath.parentFile.resolve("${apk.nameWithoutExtension}-merged.apk")
 
                 // Use APKEditor's Merger directly (handles extraction and merging)
-                val mergerOptions = MergerOptions().apply {
-                    inputFile = apk  // Original APKM file
-                    outputFile = outputApk
-                    cleanMeta = true
-                }
-                Merger(mergerOptions).run()
+                ApkMerger(logger.toMorpheLogger()).merge(
+                    inputFile = apk,
+                    outputFile = outputApk,
+                    cleanMetaInf = true
+                )
 
                 mergedApkToCleanup = outputApk
                 outputApk
@@ -455,6 +474,7 @@ internal object PatchCommand : Callable<Int> {
                     aaptBinaryPath?.path,
                     patcherTemporaryFilesPath.absolutePath,
                     if (aaptBinaryPath != null) { false } else { !forceApktool },
+                    keepArchitectures
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
@@ -479,29 +499,70 @@ internal object PatchCommand : Callable<Int> {
                     val jsonPatchNames = patchOptionsBundle.patches.keys.map { it.lowercase() }.toSet()
 
                     val newPatches = compatiblePatchNames - jsonPatchNames
+                    val oldPatches = jsonPatchNames - compatiblePatchNames
                     val removedPatches = jsonPatchNames - allMppPatchNames
 
-                    // Check for new option keys within existing patches
-                    var patchesWithNewOptions = 0
-                    for ((patchName, snapshotEntry) in patchesSnapshot.patches) {
+                    // Check for new option keys within existing patches. For better messaging, store it as a map and show users which patch is outdated instead of just a number.
+                    val patchesWithNewOptions = mutableMapOf<String, Set<String>>()
+                    val patchesWithOldOptions = mutableMapOf<String, Set<String>>()
+
+                    for ((patchName, _) in patchesSnapshot.patches) {
                         if (patchName.lowercase() !in compatiblePatchNames) continue
                         val jsonEntry = patchOptionsBundle.patches.entries
                             .firstOrNull { it.key.equals(patchName, ignoreCase = true) }?.value
                             ?: continue
-                        val newOptionKeys = snapshotEntry.options.keys - jsonEntry.options.keys
-                        if (newOptionKeys.isNotEmpty()) patchesWithNewOptions++
+
+                        // We compare from the patches list instead of the snapshot making it much better and accurate.
+                        // Snapshot keeps merging all patches with same names but different options making it a problem.
+                        val actualPatch = patches.find {
+                            it.name.equals(patchName, ignoreCase = true) &&
+                            (it.compatiblePackages == null || it.compatiblePackages!!.any {
+                                (name, _) -> name == packageName
+                            })
+                        }
+                        val actualOptionKeys = actualPatch?.options?.keys ?: emptySet()
+
+                        // This is for new keys that are introduced in the new patch
+                        val newOptionKeys = actualOptionKeys - jsonEntry.options.keys
+                        if (newOptionKeys.isNotEmpty()) patchesWithNewOptions[patchName] = newOptionKeys
+
+                        // This is for the old option keys that are not present in the new file
+                        val oldOptionKeys = jsonEntry.options.keys - actualOptionKeys
+                        if (oldOptionKeys.isNotEmpty()) patchesWithOldOptions[patchName] = oldOptionKeys
                     }
 
-                    if (newPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions > 0) {
+                    if (newPatches.isNotEmpty() || oldPatches.isNotEmpty() || removedPatches.isNotEmpty() || patchesWithNewOptions.isNotEmpty() || patchesWithOldOptions.isNotEmpty()) {
                         logger.warning("Your options file is out of date with the current patches:")
                         if (newPatches.isNotEmpty()) {
-                            logger.warning("  ${newPatches.size} new patches not in your options file, default patch values will be applied")
+                            logger.warning("  ${newPatches.size} new patches not in your options file, default patch values will be applied. New patches are:")
+                            newPatches.forEach {
+                                logger.warning("    - $it")
+                            }
                         }
+
                         if (removedPatches.isNotEmpty()) {
                             logger.warning("  ${removedPatches.size} patches in your options file no longer exist and will be ignored")
                         }
-                        if (patchesWithNewOptions > 0) {
-                            logger.warning("  $patchesWithNewOptions patches have new options not in your file, default patch values will be applied")
+
+                        if (oldPatches.isNotEmpty()) {
+                            logger.warning("  ${oldPatches.size} patches in your options file are not compatible with the app:")
+                            oldPatches.forEach {
+                                logger.warning("    - $it")
+                            }
+                        }
+
+                        if (patchesWithNewOptions.isNotEmpty()) {
+                            patchesWithNewOptions.forEach {
+                                (patch, key) ->
+                                logger.warning(" \"$patch\" has new options: ${key.joinToString(", ")}")
+                            }
+                        }
+
+                        if (patchesWithOldOptions.isNotEmpty()) {
+                            patchesWithOldOptions.forEach {
+                                    (patch, key) ->
+                                logger.warning(" \"$patch\" has old options: ${key.joinToString(", ")} that were removed.")
+                            }
                         }
                         logger.warning("  Use --options-update parameter to sync, or use 'options-create' command to regenerate.")
                     }
@@ -600,17 +661,6 @@ internal object PatchCommand : Callable<Int> {
                         patcherResult.applyTo(this)
                     }
                 )
-            }.also { rebuiltApk ->
-                if (striplibs.isNotEmpty()) {
-                    patchingResult.addStepResult(
-                        PatchingStep.STRIPPING_LIBS,
-                        {
-                            ApkLibraryStripper.stripLibraries(rebuiltApk, striplibs) { msg ->
-                                logger.info(msg)
-                            }
-                        }
-                    )
-                }
             }.let { patchedApkFile ->
                 if (!mount && !unsigned) {
                     patchingResult.addStepResult(
@@ -708,7 +758,7 @@ internal object PatchCommand : Callable<Int> {
                 purge(temporaryFilesPath)
             }
 
-            // Clean up merged APK if we created one from APKM
+            // Clean up merged apk if we created one from apkm, xapk or apks
             mergedApkToCleanup?.let {
                 if (!it.delete()) {
                     logger.warning("Could not clean up merged APK: ${it.path}")

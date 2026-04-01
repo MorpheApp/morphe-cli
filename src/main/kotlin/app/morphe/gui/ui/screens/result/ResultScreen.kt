@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.screens.result
 
 import androidx.compose.animation.animateColorAsState
@@ -136,7 +141,7 @@ fun ResultScreenContent(outputPath: String) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // ── Header row ──
+        // Header row
         DraggableHeaderArea {
             Row(
                 modifier = Modifier
@@ -206,7 +211,7 @@ fun ResultScreenContent(outputPath: String) {
             }
         }
 
-        // ── Content ──
+        // Content
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
@@ -216,7 +221,7 @@ fun ResultScreenContent(outputPath: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ── Output file info ──
+            // Output file info
             Box(
                 modifier = Modifier
                     .widthIn(max = 520.dp)
@@ -335,7 +340,7 @@ fun ResultScreenContent(outputPath: String) {
                 }
             }
 
-            // ── ADB Install section ──
+            // ADB Install section
             if (monitorState.isAdbAvailable == true) {
                 AdbInstallSection(
                     devices = monitorState.devices,
@@ -358,7 +363,7 @@ fun ResultScreenContent(outputPath: String) {
                 )
             }
 
-            // ── Cleanup section ──
+            // Cleanup section
             if (hasTempFiles || tempFilesCleared) {
                 CleanupSection(
                     hasTempFiles = hasTempFiles,
@@ -377,7 +382,7 @@ fun ResultScreenContent(outputPath: String) {
                 )
             }
 
-            // ── ADB help text ──
+            // ADB help text
             if (monitorState.isAdbAvailable == false) {
                 Text(
                     text = "ADB not found. Install Android SDK Platform Tools to enable direct installation.",
@@ -389,7 +394,7 @@ fun ResultScreenContent(outputPath: String) {
                 )
             }
 
-            // ── Patch Another button ──
+            // Patch Another button
             Spacer(Modifier.height(4.dp))
 
             val patchAnotherHover = remember { MutableInteractionSource() }

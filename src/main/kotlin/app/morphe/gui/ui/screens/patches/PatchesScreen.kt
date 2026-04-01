@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-cli
+ */
+
 package app.morphe.gui.ui.screens.patches
 
 import androidx.compose.animation.animateColorAsState
@@ -54,6 +59,7 @@ import java.io.File
 
 /**
  * Screen for selecting patch version to apply.
+ * This is the screen that selects the patches.mpp file
  */
 data class PatchesScreen(
     val apkPath: String,
@@ -67,6 +73,7 @@ data class PatchesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatchesScreenContent(viewModel: PatchesViewModel) {
     val corners = LocalMorpheCorners.current
@@ -84,6 +91,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
         }
     }
 
+    // Error dialog
     if (showErrorDialog && currentError != null) {
         ErrorDialog(
             title = "Error",
@@ -748,11 +756,21 @@ private fun parseMarkdown(markdown: String): List<MdLine> {
         }
 }
 
+/**
+ * Strip markdown syntax to plain readable text:
+ * - **bold** → bold
+ * - [text](url) → text
+ * - ([hash](url)) → remove entirely (commit refs)
+ */
 private fun cleanMarkdown(text: String): String {
     var result = text
+    // Remove commit refs like ([abc1234](https://...))
     result = result.replace(Regex("""\(\[[\da-f]{7,}]\([^)]*\)\)"""), "")
+    // [text](url) → text
     result = result.replace(Regex("""\[([^\]]*?)]\([^)]*\)"""), "$1")
+    // **bold** → bold
     result = result.replace(Regex("""\*\*(.+?)\*\*"""), "$1")
+    // Clean up extra whitespace
     result = result.replace(Regex("""\s+"""), " ").trim()
     return result
 }
@@ -955,6 +973,7 @@ private fun LocalSourceBanner(
 
 private fun formatDate(isoDate: String): String {
     return try {
+        // Takes "2024-01-15T10:30:00Z" and returns "Jan 15, 2024 at 10:30 AM"
         val datePart = isoDate.substringBefore("T")
         val timePart = isoDate.substringAfter("T").substringBefore("Z").substringBefore("+")
         val parts = datePart.split("-")
