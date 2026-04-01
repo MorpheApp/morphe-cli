@@ -162,7 +162,7 @@ class PatchService {
                     key = opt.key,
                     title = opt.title ?: opt.key,
                     description = opt.description ?: "",
-                    type = mapKTypeToOptionType(opt.type),
+                    type = mapKTypeToOptionType(opt.type, opt.key, opt.title ?: opt.key),
                     default = opt.default?.toString(),
                     required = opt.required
                 )
@@ -174,7 +174,7 @@ class PatchService {
     /**
      * Map Kotlin KType to GUI PatchOptionType.
      */
-    private fun mapKTypeToOptionType(kType: KType): PatchOptionType {
+    private fun mapKTypeToOptionType(kType: KType, key: String, title: String): PatchOptionType {
         val typeName = kType.toString()
         return when {
             typeName.contains("Boolean") -> PatchOptionType.BOOLEAN
@@ -182,7 +182,12 @@ class PatchService {
             typeName.contains("Long") -> PatchOptionType.LONG
             typeName.contains("Float") || typeName.contains("Double") -> PatchOptionType.FLOAT
             typeName.contains("List") || typeName.contains("Array") || typeName.contains("Set") -> PatchOptionType.LIST
-            else -> PatchOptionType.STRING
+            typeName.contains("File") || typeName.contains("Path") || typeName.contains("InputStream") -> PatchOptionType.FILE
+            else -> {
+                val combined = "$key $title".lowercase()
+                val fileKeywords = listOf("icon", "image", "logo", "banner", "path", "file", "png", "jpg")
+                if (fileKeywords.any { it in combined }) PatchOptionType.FILE else PatchOptionType.STRING
+            }
         }
     }
 }
