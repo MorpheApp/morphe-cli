@@ -52,9 +52,11 @@ object Logger {
             info("Morphe-GUI Started")
             info("Version: ${AppConstants.APP_VERSION}")
             info("OS: ${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})")
-            info("Java: ${System.getProperty("java.version")} (${System.getProperty("java.vendor")})")
+            info("Java: ${System.getProperty("java.version")} (${System.getProperty("java.vendor")}) ${System.getProperty("sun.arch.data.model")}-bit")
+            info("Memory: ${Runtime.getRuntime().maxMemory() / 1024 / 1024} MB max")
             info("User: ${System.getProperty("user.name")}")
             info("App Data: ${FileUtils.getAppDataDir().absolutePath}")
+            info("Working Dir: ${System.getProperty("user.dir")}")
             info("=".repeat(60))
 
             initialized = true
