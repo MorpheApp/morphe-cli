@@ -17,7 +17,7 @@ compose = "1.10.0"
 ktor = "3.4.0"
 
 # DI
-koin-bom = "4.1.1"
+koin-bom = "4.2.0"
 
 # Navigation
 voyager = "1.1.0-beta03"
