@@ -27,9 +27,11 @@ import java.io.StringWriter
 import java.nio.file.Files
 import java.util.logging.Logger
 
-/**
+/*
  * Single patching pipeline shared by CLI and GUI. (Eventually. Right now we are still having 2 pipelines)
  */
+
+
 object PatchEngine {
 
     enum class PatchStep {
@@ -54,7 +56,14 @@ object PatchEngine {
         val aaptBinaryPath: File? = null,
         val tempDir: File? = null,
         val failOnError: Boolean = true,
-    )
+    ) {
+        companion object {
+            internal const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
+            internal const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
+            internal const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
+            internal const val LEGACY_KEYSTORE_PASSWORD = ""
+        }
+    }
 
     data class Result(
         val success: Boolean,
@@ -215,18 +224,40 @@ object PatchEngine {
                 if (!config.unsigned) {
                     onProgress("Signing APK...")
                     try {
+                        fun signApk(details: ApkUtils.KeyStoreDetails) {
+                            ApkUtils.signApk(
+                                rebuiltApk,
+                                tempOutput,
+                                config.signerName,
+                                details,
+                            )
+                        }
+
                         val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
                             File(tempDir, "morphe.keystore"),
                             null,
-                            "Morphe Key",
-                            "",
+                            Config.DEFAULT_KEYSTORE_ALIAS,
+                            Config.DEFAULT_KEYSTORE_PASSWORD,
                         )
-                        ApkUtils.signApk(
-                            rebuiltApk,
-                            tempOutput,
-                            config.signerName,
-                            keystoreDetails,
-                        )
+
+                        try {
+                            signApk(keystoreDetails)
+                        } catch (e: Exception){
+                            // Retry with legacy keystore defaults.
+                            if (config.keystoreDetails == null && keystoreDetails.keyStore.exists()) {
+                                logger.info("Using legacy keystore credentials")
+
+                                val legacyKeystoreDetails = ApkUtils.KeyStoreDetails(
+                                    keystoreDetails.keyStore,
+                                    null,
+                                    Config.LEGACY_KEYSTORE_ALIAS,
+                                    Config.LEGACY_KEYSTORE_PASSWORD,
+                                )
+                                signApk(legacyKeystoreDetails)
+                            } else {
+                                throw e
+                            }
+                        }
                         stepResults.add(StepResult(PatchStep.SIGNING, true))
                     } catch (e: Exception) {
                         stepResults.add(StepResult(PatchStep.SIGNING, false, e.toString()))

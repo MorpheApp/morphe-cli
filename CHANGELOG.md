@@ -1,3 +1,10 @@
+## [1.6.4-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.6.4-dev.1...v1.6.4-dev.2) (2026-03-31)
+
+
+### Bug Fixes
+
+* Use same default keystore values as Morphe Manager ([#96](https://github.com/MorpheApp/morphe-cli/issues/96)) ([2d70c01](https://github.com/MorpheApp/morphe-cli/commit/2d70c016f293ba382266fb5c800073f763d633d8))
+
 ## [1.6.4-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.6.3...v1.6.4-dev.1) (2026-03-30)
 
 
