@@ -316,7 +316,7 @@ class QuickPatchViewModel(
                     }
 
                     if (packageName !in supportedPackages) {
-                        val appName = SupportedApp.getDisplayName(packageName)
+                        val appName = SupportedApp.resolveDisplayName(packageName, meta.label)
                         val supportedNames = cachedSupportedApps.map { it.displayName }
                             .ifEmpty { listOf("YouTube", "YouTube Music", "Reddit") }
                             .joinToString(", ")
@@ -330,7 +330,7 @@ class QuickPatchViewModel(
 
                 // Get display name and recommended version from dynamic data, fallback to constants
                 val displayName = dynamicAppInfo?.displayName
-                    ?: SupportedApp.getDisplayName(packageName)
+                    ?: SupportedApp.resolveDisplayName(packageName, meta.label)
 
                 val recommendedVersion = dynamicAppInfo?.recommendedVersion
 

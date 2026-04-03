@@ -19,6 +19,10 @@ data class SupportedApp(
     val apkDownloadUrl: String? = null
 ) {
     companion object {
+        fun resolveDisplayName(packageName: String, providedName: String?): String {
+            return providedName?.takeIf { it.isNotBlank() } ?: getDisplayName(packageName)
+        }
+
         /**
          * Derive display name from package name.
          */

@@ -151,12 +151,16 @@ class PatchService {
         return Patch(
             name = this.name ?: "Unknown",
             description = this.description ?: "",
-            compatiblePackages = this.compatiblePackages?.map { (name, versions) ->
-                CompatiblePackage(
-                    name = name,
-                    versions = versions?.toList() ?: emptyList()
-                )
-            } ?: emptyList(),
+            compatiblePackages = this.compatibility
+                ?.mapNotNull { compatibility ->
+                    val packageName = compatibility.packageName ?: return@mapNotNull null
+                    CompatiblePackage(
+                        name = packageName,
+                        displayName = compatibility.name,
+                        versions = compatibility.targets.mapNotNull { it.version }
+                    )
+                }
+                ?: emptyList(),
             options = this.options.values.map { opt ->
                 PatchOption(
                     key = opt.key,

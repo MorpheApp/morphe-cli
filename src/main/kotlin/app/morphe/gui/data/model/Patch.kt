@@ -51,6 +51,7 @@ data class Patch(
 @Serializable
 data class CompatiblePackage(
     val name: String,
+    val displayName: String? = null,
     val versions: List<String> = emptyList()
 )
 

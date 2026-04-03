@@ -772,9 +772,11 @@ private fun PatchListItem(
                     if (patch.compatiblePackages.isNotEmpty()) {
                         val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")
                         patch.compatiblePackages.take(2).forEach { pkg ->
-                            val meaningful = pkg.name.split(".").filter { it !in genericSegments }
-                            val displayName = meaningful.takeLast(2).joinToString(" ")
-                                .replaceFirstChar { it.uppercase() }
+                            val displayName = pkg.displayName?.takeIf { it.isNotBlank() } ?: run {
+                                val meaningful = pkg.name.split(".").filter { it !in genericSegments }
+                                meaningful.takeLast(2).joinToString(" ")
+                                    .replaceFirstChar { it.uppercase() }
+                            }
                             Box(
                                 modifier = Modifier
                                     .border(

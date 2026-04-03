@@ -23,6 +23,7 @@ object SupportedAppExtractor {
     fun extractSupportedApps(patches: List<Patch>): List<SupportedApp> {
         // Collect all package names and their versions from all patches
         val packageVersionsMap = mutableMapOf<String, MutableSet<String>>()
+        val packageDisplayNames = mutableMapOf<String, String>()
 
         for (patch in patches) {
             for (compatiblePackage in patch.compatiblePackages) {
@@ -32,6 +33,9 @@ object SupportedAppExtractor {
                 if (packageName.isNotBlank()) {
                     val existingVersions = packageVersionsMap.getOrPut(packageName) { mutableSetOf() }
                     existingVersions.addAll(versions)
+                    compatiblePackage.displayName
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { packageDisplayNames.putIfAbsent(packageName, it) }
                 }
             }
         }
@@ -42,7 +46,10 @@ object SupportedAppExtractor {
             val recommendedVersion = SupportedApp.getRecommendedVersion(versionList)
             SupportedApp(
                 packageName = packageName,
-                displayName = SupportedApp.getDisplayName(packageName),
+                displayName = SupportedApp.resolveDisplayName(
+                    packageName = packageName,
+                    providedName = packageDisplayNames[packageName]
+                ),
                 supportedVersions = versionList,
                 recommendedVersion = recommendedVersion,
                 apkDownloadUrl = SupportedApp.getDownloadUrl(packageName, recommendedVersion)

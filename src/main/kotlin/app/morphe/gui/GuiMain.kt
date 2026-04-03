@@ -88,9 +88,15 @@ fun launchGui(args: Array<String>) = application {
                     titleBar.height = 56f
                     titleBar.putProperty("controls.visible", true)
                     decorations.setCustomTitleBar(window, titleBar)
-                    insets = titleBar.toInsets(window, fallbackStartDp = 80f)
+                    val macInsets = titleBar.toInsets(window, fallbackStartDp = 80f)
+                    insets = macInsets.copy(
+                        // Keep header content clear of the traffic-light cluster.
+                        // JBR's inset can still land a bit tight on macOS depending on scaling.
+                        start = macInsets.start + 24.dp
+                    )
                 } catch (_: Exception) {
                     // Not running on JBR — traffic lights stay at default position
+                    insets = TitleBarInsets(start = 104.dp)
                 }
             }
             if (isWindows) {
