@@ -49,7 +49,10 @@ val LocalModeState = staticCompositionLocalOf<ModeState> {
 }
 
 @Composable
-fun App(initialSimplifiedMode: Boolean = true) {
+fun App(
+    initialSimplifiedMode: Boolean = true,
+    titleBarInsets: TitleBarInsets = TitleBarInsets()
+) {
     LaunchedEffect(Unit) {
         Logger.init()
     }
@@ -57,12 +60,18 @@ fun App(initialSimplifiedMode: Boolean = true) {
     KoinApplication(application = {
         modules(appModule)
     }) {
-        AppContent(initialSimplifiedMode)
+        AppContent(
+            initialSimplifiedMode = initialSimplifiedMode,
+            titleBarInsets = titleBarInsets
+        )
     }
 }
 
 @Composable
-private fun AppContent(initialSimplifiedMode: Boolean) {
+private fun AppContent(
+    initialSimplifiedMode: Boolean,
+    titleBarInsets: TitleBarInsets
+) {
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
     val scope = rememberCoroutineScope()
@@ -114,12 +123,6 @@ private fun AppContent(initialSimplifiedMode: Boolean) {
         onDispose {
             DeviceMonitor.stopMonitoring()
         }
-    }
-
-    val titleBarInsets = remember {
-        val isMac = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
-        if (isMac) TitleBarInsets(start = 80.dp, top = 0.dp)
-        else TitleBarInsets()
     }
 
     MorpheTheme(themePreference = themePreference) {

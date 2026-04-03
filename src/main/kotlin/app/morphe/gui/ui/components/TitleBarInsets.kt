@@ -13,7 +13,8 @@ import androidx.compose.ui.window.FrameWindowScope
  */
 data class TitleBarInsets(
     val start: androidx.compose.ui.unit.Dp = 0.dp,
-    val top: androidx.compose.ui.unit.Dp = 0.dp
+    val top: androidx.compose.ui.unit.Dp = 0.dp,
+    val end: androidx.compose.ui.unit.Dp = 0.dp
 )
 
 val LocalTitleBarInsets = compositionLocalOf { TitleBarInsets() }

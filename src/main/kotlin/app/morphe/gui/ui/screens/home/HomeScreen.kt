@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -143,6 +144,7 @@ fun HomeScreenContent(
             }
 
             val useHorizontalHeader = maxWidth >= 600.dp
+            val pinSupportedAppsToBottom = useHorizontalHeader && maxHeight >= 760.dp
             val patchesLoaded = !uiState.isLoadingPatches && viewModel.getCachedPatchesFile() != null
             val onChangePatchesClick: () -> Unit = {
                 navigator.push(PatchesScreen(
@@ -163,13 +165,105 @@ fun HomeScreenContent(
                 }
             }
 
+            val headerContent: @Composable ColumnScope.() -> Unit = {
+                if (useHorizontalHeader) {
+                    HeaderBar(
+                        uiState = uiState,
+                        isSmall = isSmall,
+                        onChangePatchesClick = onChangePatchesClick,
+                        onRetry = onRetry
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 16.dp))
+                    BrandingSection(isCompact = isCompact)
+
+                    if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
+                        Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
+                        PatchesVersionCard(
+                            patchesVersion = uiState.patchesVersion!!,
+                            isLatest = uiState.isUsingLatestPatches,
+                            onChangePatchesClick = onChangePatchesClick,
+                            isCompact = isCompact,
+                            modifier = Modifier
+                                .widthIn(max = 400.dp)
+                                .padding(horizontal = if (isCompact) 8.dp else 16.dp)
+                        )
+                    } else if (uiState.isLoadingPatches) {
+                        Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
+                        PatchesLoadingIndicator()
+                    } else if (uiState.patchLoadError != null) {
+                        Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
+                        PatchesVersionCard(
+                            patchesVersion = "NOT LOADED",
+                            isLatest = false,
+                            onChangePatchesClick = onChangePatchesClick,
+                            isCompact = isCompact,
+                            modifier = Modifier
+                                .widthIn(max = 400.dp)
+                                .padding(horizontal = if (isCompact) 8.dp else 16.dp)
+                        )
+                    }
+
+                    if (uiState.isOffline && !uiState.isLoadingPatches) {
+                        Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 12.dp))
+                        OfflineBanner(
+                            onRetry = onRetry,
+                            modifier = Modifier
+                                .widthIn(max = 400.dp)
+                                .padding(horizontal = if (isCompact) 8.dp else 16.dp)
+                        )
+                    }
+                }
+            }
+
+            val workspaceContent: @Composable (Modifier) -> Unit = { modifier ->
+                Box(
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    MiddleContent(
+                        uiState = uiState,
+                        isCompact = isCompact,
+                        patchesLoaded = patchesLoaded,
+                        onClearClick = onClearClick,
+                        onChangeClick = onChangeClick,
+                        onContinueClick = onContinueClick
+                    )
+                }
+            }
+
+            val supportedAppsContent: @Composable () -> Unit = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(
+                        start = padding,
+                        end = padding,
+                        bottom = if (isSmall) 8.dp else 16.dp
+                    )
+                ) {
+                    SupportedAppsSection(
+                        isCompact = isCompact,
+                        maxWidth = this@BoxWithConstraints.maxWidth,
+                        isLoading = uiState.isLoadingPatches,
+                        isDefaultSource = uiState.isDefaultSource,
+                        supportedApps = uiState.supportedApps,
+                        loadError = uiState.patchLoadError,
+                        onRetry = onRetry
+                    )
+                }
+            }
+
             Box(modifier = Modifier.fillMaxSize()) {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .heightIn(min = this@BoxWithConstraints.maxHeight)
                         .verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = if (pinSupportedAppsToBottom) Arrangement.SpaceBetween else Arrangement.Top
                 ) {
                     // ── Header ──
                     if (useHorizontalHeader) {
@@ -268,7 +362,7 @@ fun HomeScreenContent(
                             .align(Alignment.TopEnd)
                             .padding(
                                 top = padding + titleInsets.top,
-                                end = padding
+                                end = padding + titleInsets.end
                             ),
                         allowCacheClear = true
                     )
@@ -326,9 +420,13 @@ private fun HeaderBar(
     val mono = LocalMorpheFont.current
     val titleInsets = LocalTitleBarInsets.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var leadingWidthPx by remember { mutableIntStateOf(0) }
+    var trailingWidthPx by remember { mutableIntStateOf(0) }
+    val centerSidePadding = with(density) { maxOf(leadingWidthPx, trailingWidthPx).toDp() } + 16.dp
 
     DraggableHeaderArea {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
@@ -340,45 +438,63 @@ private fun HeaderBar(
                     )
                 }
                 .padding(
-                    start = 12.dp + titleInsets.start,
-                    end = 12.dp,
                     top = 8.dp + titleInsets.top,
                     bottom = 8.dp
-                ),
-            verticalAlignment = Alignment.CenterVertically
+                )
         ) {
             // Logo — left-aligned, compact
-            BrandingSection(isCompact = true)
-
-            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp + titleInsets.start)
+                    .onSizeChanged { leadingWidthPx = it.width }
+            ) {
+                BrandingSection(isCompact = true)
+            }
 
             // Patches version inline — centered
-            if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
-                PatchesVersionInline(
-                    patchesVersion = uiState.patchesVersion!!,
-                    isLatest = uiState.isUsingLatestPatches,
-                    onChangePatchesClick = onChangePatchesClick
-                )
-            } else if (uiState.isLoadingPatches) {
-                PatchesLoadingIndicator()
-            } else if (uiState.patchLoadError != null) {
-                PatchesVersionInline(
-                    patchesVersion = "NOT LOADED",
-                    isLatest = false,
-                    onChangePatchesClick = onChangePatchesClick
-                )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(start = centerSidePadding, end = centerSidePadding)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
+                        PatchesVersionInline(
+                            patchesVersion = uiState.patchesVersion!!,
+                            isLatest = uiState.isUsingLatestPatches,
+                            onChangePatchesClick = onChangePatchesClick
+                        )
+                    } else if (uiState.isLoadingPatches) {
+                        PatchesLoadingIndicator()
+                    } else if (uiState.patchLoadError != null) {
+                        PatchesVersionInline(
+                            patchesVersion = "NOT LOADED",
+                            isLatest = false,
+                            onChangePatchesClick = onChangePatchesClick
+                        )
+                    }
+
+                    if (uiState.isOffline && !uiState.isLoadingPatches) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        OfflineBadge(onRetry = onRetry)
+                    }
+                }
             }
 
-            // Offline badge
-            if (uiState.isOffline && !uiState.isLoadingPatches) {
-                Spacer(modifier = Modifier.width(12.dp))
-                OfflineBadge(onRetry = onRetry)
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
 
             // Device indicator + settings — inline in the header
-            TopBarRow(allowCacheClear = true)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp + titleInsets.end)
+                    .onSizeChanged { trailingWidthPx = it.width }
+            ) {
+                TopBarRow(allowCacheClear = true)
+            }
         }
     }
 }

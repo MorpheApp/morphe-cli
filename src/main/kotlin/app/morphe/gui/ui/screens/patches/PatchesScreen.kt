@@ -131,7 +131,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                 }
                 .padding(
                     start = 12.dp + titleInsets.start,
-                    end = 12.dp,
+                    end = 12.dp + titleInsets.end,
                     top = 8.dp + titleInsets.top,
                     bottom = 8.dp
                 ),

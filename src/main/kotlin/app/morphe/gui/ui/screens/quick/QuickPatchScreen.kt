@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +81,10 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var leadingWidthPx by remember { mutableIntStateOf(0) }
+    var trailingWidthPx by remember { mutableIntStateOf(0) }
+    val centerSidePadding = with(density) { maxOf(leadingWidthPx, trailingWidthPx).toDp() } + 16.dp
 
     FullScreenDropZone(
         isDragHovering = uiState.isDragHovering,
@@ -100,7 +105,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
             ) {
                 // ── Header row — matches expert mode ──
                 DraggableHeaderArea {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .drawBehind {
@@ -112,30 +117,43 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                                 )
                             }
                             .padding(
-                                start = 12.dp + titleInsets.start,
-                                end = 12.dp,
                                 top = 8.dp + titleInsets.top,
                                 bottom = 8.dp
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
+                            )
                     ) {
                         // Logo — left-aligned
-                        BrandingLogo()
-
-                        Spacer(modifier = Modifier.weight(1f))
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 12.dp + titleInsets.start)
+                                .onSizeChanged { leadingWidthPx = it.width }
+                        ) {
+                            BrandingLogo()
+                        }
 
                         // Patches version badge — centered
-                        PatchesVersionBadge(
-                            patchesVersion = uiState.patchesVersion,
-                            isLoading = uiState.isLoadingPatches
-                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(start = centerSidePadding, end = centerSidePadding)
+                        ) {
+                            PatchesVersionBadge(
+                                patchesVersion = uiState.patchesVersion,
+                                isLoading = uiState.isLoadingPatches
+                            )
+                        }
 
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        TopBarRow(
-                            allowCacheClear = false,
-                            isPatching = uiState.phase == QuickPatchPhase.DOWNLOADING || uiState.phase == QuickPatchPhase.PATCHING
-                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 12.dp + titleInsets.end)
+                                .onSizeChanged { trailingWidthPx = it.width }
+                        ) {
+                            TopBarRow(
+                                allowCacheClear = false,
+                                isPatching = uiState.phase == QuickPatchPhase.DOWNLOADING || uiState.phase == QuickPatchPhase.PATCHING
+                            )
+                        }
                     }
                 }
 
