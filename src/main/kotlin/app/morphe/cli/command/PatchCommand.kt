@@ -36,6 +36,7 @@ import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkMerger
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
+import app.morphe.patcher.dex.BytecodeMode
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
@@ -317,6 +318,28 @@ internal object PatchCommand : Callable<Int> {
         }.toSet()
     }
 
+    private var bytecodeMode: BytecodeMode = BytecodeMode.STRIP_FAST
+    @CommandLine.Option(
+        names = ["--bytecode-mode"],
+        description = ["Set bytecode mode. Valid options are FULL, STRIP_SAFE, and STRIP_FAST (the default)."],
+        showDefaultValue = ALWAYS,
+    )
+    @Suppress("unused")
+    private fun setBytecodeMode(desiredBytecodeMode: String) {
+        this.bytecodeMode = try {
+            BytecodeMode.valueOf(desiredBytecodeMode)
+        } catch (e: IllegalArgumentException) {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                "Invalid bytecode mode \"$desiredBytecodeMode\" in --bytecode-mode. Valid values are: ${
+                    BytecodeMode.entries.joinToString(
+                        ", "
+                    ) { it.name }
+                }",
+            )
+        }
+    }
+
     @CommandLine.Option(
         names = ["--continue-on-error"],
         description = ["Continue patching even if a patch fails. By default, patching stops on the first error."],
@@ -483,8 +506,9 @@ internal object PatchCommand : Callable<Int> {
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
                     patcherTemporaryFilesPath.absolutePath,
-                    if (aaptBinaryPath != null) { false } else { !forceApktool },
-                    keepArchitectures
+                    useArsclib = if (aaptBinaryPath != null) { false } else { !forceApktool },
+                    keepArchitectures = keepArchitectures,
+                    useBytecodeMode = bytecodeMode
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName

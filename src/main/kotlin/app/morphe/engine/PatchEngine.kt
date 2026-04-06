@@ -13,6 +13,7 @@ import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkMerger
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
+import app.morphe.patcher.dex.BytecodeMode
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.setOptions
@@ -124,7 +125,8 @@ object PatchEngine {
                 config.aaptBinaryPath?.path,
                 patcherTempDir.absolutePath,
                 useArsclib = true,
-                keepArchitectures = config.architecturesToKeep
+                keepArchitectures = config.architecturesToKeep,
+                useBytecodeMode = BytecodeMode.STRIP_FAST
             )
 
             Patcher(patcherConfig).use { patcher ->
