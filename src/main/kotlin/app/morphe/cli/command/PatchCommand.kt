@@ -271,7 +271,7 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["--custom-aapt2-binary"],
-        description = ["Path to a custom AAPT binary to compile resources with. Only valid when --use-arsclib is not specified."],
+        description = ["apktool is deprecated. This parameter has no effect and will be removed in a future release."],
     )
     @Suppress("unused")
     private fun setAaptBinaryPath(aaptBinaryPath: File) {
@@ -286,7 +286,7 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["--force-apktool"],
-        description = ["Use apktool instead of arsclib to compile resources. Implied if --custom-aapt2-binary is specified."],
+        description = ["apktool is deprecated. This parameter has no effect and will be removed in a future release."],
         showDefaultValue = ALWAYS,
     )
     private var forceApktool: Boolean = false
@@ -331,11 +331,7 @@ internal object PatchCommand : Callable<Int> {
         } catch (e: IllegalArgumentException) {
             throw CommandLine.ParameterException(
                 spec.commandLine(),
-                "Invalid bytecode mode \"$desiredBytecodeMode\" in --bytecode-mode. Valid values are: ${
-                    BytecodeMode.entries.joinToString(
-                        ", "
-                    ) { it.name }
-                }",
+                "Invalid bytecode mode \"$desiredBytecodeMode\" in --bytecode-mode. Valid values are: FULL, STRIP_SAFE, STRIP_FAST",
             )
         }
     }
