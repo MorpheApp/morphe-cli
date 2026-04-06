@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.sp
 import app.morphe.gui.ui.screens.home.ApkInfo
 import app.morphe.gui.util.VersionStatus
 import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.ChecksumStatus
 import app.morphe.gui.util.DeviceMonitor
 
@@ -46,7 +46,8 @@ fun ApkInfoCard(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
-    val accentColor = statusAccentColor(apkInfo)
+    val accents = LocalMorpheAccents.current
+    val accentColor = statusAccentColor(apkInfo, accents)
     val cardShape = RoundedCornerShape(corners.medium)
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
 
@@ -111,7 +112,7 @@ fun ApkInfoCard(
                         text = apkInfo.packageName,
                         fontSize = 11.sp,
                         fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = homeCardMutedTextColor(0.7f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         letterSpacing = 0.3.sp
@@ -146,7 +147,7 @@ fun ApkInfoCard(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Remove APK",
                         tint = if (isCloseHovered) MaterialTheme.colorScheme.error
-                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                               else homeCardMutedTextColor(0.5f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -165,12 +166,12 @@ fun ApkInfoCard(
                                 strokeWidth = 1f
                             )
                         }
-                        .background(Color(0xFFE65100).copy(alpha = 0.08f))
+                        .background(accents.warning.copy(alpha = 0.08f))
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val warningOrange = Color(0xFFE65100)
+                    val warningOrange = accents.warning
                     Icon(
                         imageVector = Icons.Default.Warning,
                         contentDescription = null,
@@ -257,11 +258,11 @@ fun ApkInfoCard(
                     Spacer(Modifier.width(4.dp))
                     apkInfo.architectures.forEach { arch ->
                         val isDeviceArch = highlightArch != null && arch == highlightArch
-                        val tagBorder = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.5f)
+                        val tagBorder = if (isDeviceArch) accents.primary.copy(alpha = 0.5f)
                             else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                        val tagBg = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.08f)
+                        val tagBg = if (isDeviceArch) accents.primary.copy(alpha = 0.08f)
                             else Color.Transparent
-                        val tagColor = if (isDeviceArch) MorpheColors.Blue
+                        val tagColor = if (isDeviceArch) accents.primary
                             else MaterialTheme.colorScheme.onSurface
                         val dimmed = highlightArch != null && !isDeviceArch
 
@@ -327,6 +328,16 @@ private fun TechDataCell(
 
 // ── Status ──
 
+@Composable
+private fun homeCardMutedTextColor(alpha: Float): Color {
+    return MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+}
+
+@Composable
+private fun homeCardAccentTextColor(accent: Color): Color {
+    return accent
+}
+
 private data class StatusInfo(
     val color: Color,
     val label: String,
@@ -335,52 +346,75 @@ private data class StatusInfo(
 
 @Composable
 private fun resolveStatus(apkInfo: ApkInfo): StatusInfo? {
-    if (apkInfo.suggestedVersion != null && apkInfo.versionStatus != VersionStatus.EXACT_MATCH) {
-        return when (apkInfo.versionStatus) {
-            VersionStatus.OLDER_VERSION -> StatusInfo(
-                color = Color(0xFFFF9800),
-                label = "OUTDATED",
-                detail = "Patches target v${apkInfo.suggestedVersion}"
-            )
-            VersionStatus.NEWER_VERSION -> StatusInfo(
-                color = MaterialTheme.colorScheme.error,
-                label = "VERSION MISMATCH",
-                detail = "Expected v${apkInfo.suggestedVersion} — patching may fail"
-            )
-            else -> StatusInfo(
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                label = "UNVERIFIED",
-                detail = "Suggested: v${apkInfo.suggestedVersion}"
-            )
-        }
-    }
+    val accents = LocalMorpheAccents.current
+    val errorColor = MaterialTheme.colorScheme.error
 
-    if (apkInfo.versionStatus == VersionStatus.EXACT_MATCH) {
-        return when (apkInfo.checksumStatus) {
+    return when (apkInfo.versionStatus) {
+        VersionStatus.LATEST_STABLE -> when (apkInfo.checksumStatus) {
             is ChecksumStatus.Verified -> StatusInfo(
-                color = MorpheColors.Teal,
-                label = "VERIFIED",
+                color = homeCardAccentTextColor(accents.primary),
+                label = "LATEST STABLE",
                 detail = "Checksum matches APKMirror"
             )
             is ChecksumStatus.Mismatch -> StatusInfo(
-                color = MaterialTheme.colorScheme.error,
+                color = errorColor,
                 label = "CHECKSUM MISMATCH",
                 detail = "File may be corrupted — re-download from APKMirror"
             )
             is ChecksumStatus.Error -> StatusInfo(
-                color = Color(0xFFFF9800),
-                label = "RECOMMENDED VERSION",
+                color = accents.warning,
+                label = "LATEST STABLE",
                 detail = "Checksum verification failed"
             )
             is ChecksumStatus.NotConfigured -> StatusInfo(
-                color = MorpheColors.Teal,
-                label = "RECOMMENDED VERSION"
+                color = homeCardAccentTextColor(accents.primary),
+                label = "LATEST STABLE"
             )
             is ChecksumStatus.NonRecommendedVersion -> null
         }
-    }
 
-    return null
+        VersionStatus.OLDER_STABLE -> StatusInfo(
+            color = accents.warning,
+            label = "OLDER STABLE",
+            detail = apkInfo.suggestedVersion
+                ?.let { "Newer stable v$it available" }
+                ?: "A newer stable version is available"
+        )
+
+        VersionStatus.LATEST_EXPERIMENTAL -> StatusInfo(
+            color = accents.warning,
+            label = "EXPERIMENTAL",
+            detail = "Supported, but may not work properly"
+        )
+
+        VersionStatus.OLDER_EXPERIMENTAL -> StatusInfo(
+            color = accents.warning,
+            label = "OLDER EXPERIMENTAL",
+            detail = apkInfo.suggestedVersion
+                ?.let { "Newer experimental v$it available" }
+                ?: "A newer experimental build is available"
+        )
+
+        VersionStatus.TOO_NEW -> StatusInfo(
+            color = errorColor,
+            label = "VERSION TOO NEW",
+            detail = "Not officially supported — patches will most likely fail"
+        )
+
+        VersionStatus.TOO_OLD -> StatusInfo(
+            color = errorColor,
+            label = "VERSION TOO OLD",
+            detail = "Not officially supported — patches will most likely fail"
+        )
+
+        VersionStatus.UNSUPPORTED_BETWEEN -> StatusInfo(
+            color = errorColor,
+            label = "UNSUPPORTED VERSION",
+            detail = "Not officially supported — patches will most likely fail"
+        )
+
+        VersionStatus.UNKNOWN -> null
+    }
 }
 
 @Composable
@@ -438,19 +472,20 @@ private fun StatusBar(
 }
 
 @Composable
-private fun statusAccentColor(apkInfo: ApkInfo): Color {
-    if (apkInfo.suggestedVersion != null && apkInfo.versionStatus != VersionStatus.EXACT_MATCH) {
-        return when (apkInfo.versionStatus) {
-            VersionStatus.NEWER_VERSION -> MaterialTheme.colorScheme.error
-            VersionStatus.OLDER_VERSION -> Color(0xFFFF9800)
-            else -> MorpheColors.Blue
-        }
-    }
+private fun statusAccentColor(apkInfo: ApkInfo, accents: app.morphe.gui.ui.theme.MorpheAccentColors): Color {
     if (apkInfo.checksumStatus is ChecksumStatus.Mismatch) {
         return MaterialTheme.colorScheme.error
     }
-    if (apkInfo.versionStatus == VersionStatus.EXACT_MATCH) {
-        return MorpheColors.Teal
+    return when (apkInfo.versionStatus) {
+        VersionStatus.LATEST_STABLE,
+        VersionStatus.UNKNOWN -> accents.primary
+
+        VersionStatus.OLDER_STABLE,
+        VersionStatus.LATEST_EXPERIMENTAL,
+        VersionStatus.OLDER_EXPERIMENTAL -> accents.warning
+
+        VersionStatus.TOO_NEW,
+        VersionStatus.TOO_OLD,
+        VersionStatus.UNSUPPORTED_BETWEEN -> MaterialTheme.colorScheme.error
     }
-    return MorpheColors.Blue
 }

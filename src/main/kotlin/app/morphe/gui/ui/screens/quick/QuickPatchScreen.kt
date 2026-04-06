@@ -465,10 +465,13 @@ private fun ReadyContent(
 
     val accentColor = when {
         apkInfo.checksumStatus is ChecksumStatus.Mismatch -> MaterialTheme.colorScheme.error
-        apkInfo.isRecommendedVersion -> MorpheColors.Teal
-        apkInfo.versionStatus == VersionStatus.NEWER_VERSION -> MaterialTheme.colorScheme.error
-        apkInfo.versionStatus == VersionStatus.OLDER_VERSION -> Color(0xFFFF9800)
-        !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null -> Color(0xFFFF9800)
+        apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> MorpheColors.Teal
+        apkInfo.versionStatus == VersionStatus.TOO_NEW ||
+            apkInfo.versionStatus == VersionStatus.TOO_OLD ||
+            apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN -> MaterialTheme.colorScheme.error
+        apkInfo.versionStatus == VersionStatus.OLDER_STABLE ||
+            apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL ||
+            apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL -> Color(0xFFFF9800)
         else -> MorpheColors.Blue
     }
 
@@ -580,23 +583,30 @@ private fun ReadyContent(
 
                 // Status bar
                 val statusText = when {
-                    apkInfo.checksumStatus is ChecksumStatus.Verified -> "VERIFIED"
                     apkInfo.checksumStatus is ChecksumStatus.Mismatch -> "CHECKSUM MISMATCH"
-                    apkInfo.versionStatus == VersionStatus.NEWER_VERSION -> "NEWER THAN RECOMMENDED"
-                    apkInfo.versionStatus == VersionStatus.OLDER_VERSION -> "OLDER THAN RECOMMENDED"
-                    !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null -> "VERSION MISMATCH"
-                    apkInfo.isRecommendedVersion -> "RECOMMENDED VERSION"
+                    apkInfo.checksumStatus is ChecksumStatus.Verified -> "VERIFIED"
+                    apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> "LATEST STABLE"
+                    apkInfo.versionStatus == VersionStatus.OLDER_STABLE -> "OLDER STABLE"
+                    apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL -> "EXPERIMENTAL"
+                    apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL -> "OLDER EXPERIMENTAL"
+                    apkInfo.versionStatus == VersionStatus.TOO_NEW -> "VERSION TOO NEW"
+                    apkInfo.versionStatus == VersionStatus.TOO_OLD -> "VERSION TOO OLD"
+                    apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN -> "UNSUPPORTED VERSION"
                     else -> null
                 }
                 val statusDetail = when {
-                    apkInfo.checksumStatus is ChecksumStatus.Verified -> "Checksum matches APKMirror"
                     apkInfo.checksumStatus is ChecksumStatus.Mismatch -> "Re-download from APKMirror"
-                    apkInfo.versionStatus == VersionStatus.NEWER_VERSION ->
-                        "Patches target v${apkInfo.recommendedVersion} — may not be compatible"
-                    apkInfo.versionStatus == VersionStatus.OLDER_VERSION ->
-                        "Patches target v${apkInfo.recommendedVersion}"
-                    !apkInfo.isRecommendedVersion && apkInfo.recommendedVersion != null ->
-                        "Patches target v${apkInfo.recommendedVersion}"
+                    apkInfo.checksumStatus is ChecksumStatus.Verified -> "Checksum matches APKMirror"
+                    apkInfo.versionStatus == VersionStatus.OLDER_STABLE ->
+                        "Newer stable v${apkInfo.recommendedVersion} available"
+                    apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL ->
+                        "Supported, but may not work properly"
+                    apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL ->
+                        "Newer experimental build available"
+                    apkInfo.versionStatus == VersionStatus.TOO_NEW ||
+                        apkInfo.versionStatus == VersionStatus.TOO_OLD ||
+                        apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN ->
+                        "Not officially supported — patches will most likely fail"
                     else -> null
                 }
 

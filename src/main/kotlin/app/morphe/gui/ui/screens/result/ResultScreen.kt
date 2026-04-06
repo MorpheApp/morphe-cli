@@ -43,6 +43,7 @@ import org.koin.compose.koinInject
 import app.morphe.gui.ui.components.DraggableHeaderArea
 import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
@@ -74,6 +75,7 @@ fun ResultScreenContent(outputPath: String) {
     val navigator = LocalNavigator.currentOrThrow
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val titleInsets = LocalTitleBarInsets.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
 
@@ -211,16 +213,23 @@ fun ResultScreenContent(outputPath: String) {
             }
         }
 
-        // Content
-        val scrollState = rememberScrollState()
-        Column(
+        // Content — vertically centered when it fits, scrollable when it overflows
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .fillMaxWidth()
+                .weight(1f)
         ) {
+            val bodyMaxHeight = this.maxHeight
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .heightIn(min = bodyMaxHeight)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+            ) {
             // Output file info
             Box(
                 modifier = Modifier
@@ -244,51 +253,49 @@ fun ResultScreenContent(outputPath: String) {
                         .fillMaxWidth()
                         .padding(start = 3.dp)
                 ) {
-                    // File name + size
-                    Row(
+                    // File name (first line) + size (second line)
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "OUTPUT FILE",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                letterSpacing = 1.5.sp
-                            )
+                        Text(
+                            text = "OUTPUT FILE",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            letterSpacing = 1.5.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = outputFile.name,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (outputFile.exists()) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = outputFile.name,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = outputFile.parent ?: "",
-                                fontSize = 10.sp,
-                                fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        if (outputFile.exists()) {
-                            Text(
                                 text = formatFileSize(outputFile.length()),
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = mono,
                                 color = MorpheColors.Teal
                             )
                         }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = outputFile.parent ?: "",
+                            fontSize = 10.sp,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
 
                     // Open folder button row
@@ -303,13 +310,17 @@ fun ResultScreenContent(outputPath: String) {
                                     strokeWidth = 1f
                                 )
                             }
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val folderHover = remember { MutableInteractionSource() }
                         val isFolderHovered by folderHover.collectIsHoveredAsState()
                         val folderColor by animateColorAsState(
-                            if (isFolderHovered) MorpheColors.Blue else MorpheColors.Blue.copy(alpha = 0.6f),
+                            if (isFolderHovered) accents.primary else accents.primary.copy(alpha = 0.7f),
+                            animationSpec = tween(150)
+                        )
+                        val folderBg by animateColorAsState(
+                            if (isFolderHovered) accents.primary.copy(alpha = 0.1f) else Color.Transparent,
                             animationSpec = tween(150)
                         )
 
@@ -317,6 +328,12 @@ fun ResultScreenContent(outputPath: String) {
                             modifier = Modifier
                                 .hoverable(folderHover)
                                 .clip(RoundedCornerShape(corners.small))
+                                .background(folderBg, RoundedCornerShape(corners.small))
+                                .border(
+                                    1.dp,
+                                    accents.primary.copy(alpha = if (isFolderHovered) 0.5f else 0.3f),
+                                    RoundedCornerShape(corners.small)
+                                )
                                 .clickable {
                                     try {
                                         val folder = outputFile.parentFile
@@ -325,7 +342,7 @@ fun ResultScreenContent(outputPath: String) {
                                         }
                                     } catch (_: Exception) {}
                                 }
-                                .padding(vertical = 2.dp)
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 text = "OPEN FOLDER →",
@@ -400,7 +417,7 @@ fun ResultScreenContent(outputPath: String) {
             val patchAnotherHover = remember { MutableInteractionSource() }
             val isPatchAnotherHovered by patchAnotherHover.collectIsHoveredAsState()
             val patchAnotherBg by animateColorAsState(
-                if (isPatchAnotherHovered) MorpheColors.Blue.copy(alpha = 0.9f) else MorpheColors.Blue,
+                if (isPatchAnotherHovered) accents.primary.copy(alpha = 0.9f) else accents.primary,
                 animationSpec = tween(150)
             )
 
@@ -426,6 +443,7 @@ fun ResultScreenContent(outputPath: String) {
             }
 
             Spacer(Modifier.height(8.dp))
+            }
         }
     }
 }

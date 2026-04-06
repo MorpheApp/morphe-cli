@@ -27,7 +27,6 @@ import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.SupportedAppExtractor
 import app.morphe.gui.util.VersionStatus
-import app.morphe.gui.util.compareVersions
 import java.io.File
 
 /**
@@ -334,20 +333,31 @@ class QuickPatchViewModel(
 
                 val recommendedVersion = dynamicAppInfo?.recommendedVersion
 
-                // Version check
-                val isRecommendedVersion = recommendedVersion != null && versionName == recommendedVersion
-                val versionStatus = if (recommendedVersion != null) {
-                    compareVersions(versionName, recommendedVersion)
+                // Resolve version status against the supported app's stable +
+                // experimental version lists.
+                val versionResolution = if (dynamicAppInfo != null) {
+                    app.morphe.gui.util.resolveVersionStatus(versionName, dynamicAppInfo)
                 } else {
-                    VersionStatus.UNKNOWN
+                    app.morphe.gui.util.VersionResolution(VersionStatus.UNKNOWN, null)
                 }
-                val versionWarning = if (!isRecommendedVersion && recommendedVersion != null) {
-                    when (versionStatus) {
-                        VersionStatus.NEWER_VERSION -> "Version $versionName is newer than recommended $recommendedVersion — patches may not be compatible"
-                        VersionStatus.OLDER_VERSION -> "Version $versionName is older than recommended $recommendedVersion"
-                        else -> "Version $versionName may have compatibility issues. Recommended: $recommendedVersion"
-                    }
-                } else null
+                val versionStatus = versionResolution.status
+                val isRecommendedVersion = versionStatus == VersionStatus.LATEST_STABLE
+                val versionWarning = when (versionStatus) {
+                    VersionStatus.OLDER_STABLE ->
+                        "Older stable build — newer stable v${versionResolution.suggestedVersion} available"
+                    VersionStatus.LATEST_EXPERIMENTAL ->
+                        "Experimental build — supported, but may not work properly"
+                    VersionStatus.OLDER_EXPERIMENTAL ->
+                        "Older experimental build — newer experimental v${versionResolution.suggestedVersion} available"
+                    VersionStatus.TOO_NEW ->
+                        "Version too new — not officially supported, patches will most likely fail"
+                    VersionStatus.TOO_OLD ->
+                        "Version too old — not officially supported, patches will most likely fail"
+                    VersionStatus.UNSUPPORTED_BETWEEN ->
+                        "Unsupported version — patches will most likely fail"
+                    VersionStatus.LATEST_STABLE,
+                    VersionStatus.UNKNOWN -> null
+                }
 
                 // TODO: Re-enable when checksums are provided via .mpp files
                 val checksumStatus = ChecksumStatus.NotConfigured

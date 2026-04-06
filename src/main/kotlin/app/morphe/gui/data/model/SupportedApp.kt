@@ -15,8 +15,10 @@ data class SupportedApp(
     val packageName: String,
     val displayName: String,
     val supportedVersions: List<String>,
+    val experimentalVersions: List<String> = emptyList(),
     val recommendedVersion: String?,
-    val apkDownloadUrl: String? = null
+    val apkDownloadUrl: String? = null,
+    val experimentalDownloadUrl: String? = null
 ) {
     companion object {
         fun resolveDisplayName(packageName: String, providedName: String?): String {

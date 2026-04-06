@@ -6,9 +6,7 @@
 package app.morphe.gui.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -41,6 +39,7 @@ object MorpheColors {
 data class MorpheAccentColors(
     val primary: Color,    // Buttons, selections, links (replaces MorpheColors.Blue)
     val secondary: Color,  // Badges, options, success states (replaces MorpheColors.Teal)
+    val tertiary: Color = Color(0xFF5C6BC0), // Structural emphasis, info accents
     val warning: Color = Color(0xFFFF9800),  // Warning states (was hardcoded everywhere)
 )
 
@@ -68,6 +67,7 @@ private val LightAccents = MorpheAccentColors(
 private val NordAccents = MorpheAccentColors(
     primary = Color(0xFF88C0D0),   // Nord Frost
     secondary = Color(0xFFA3BE8C), // Nord Aurora Green
+    tertiary = Color(0xFF81A1C1),  // Nord Frost Blue
     warning = Color(0xFFEBCB8B),   // Nord Aurora Yellow
 )
 
@@ -75,21 +75,24 @@ private val NordAccents = MorpheAccentColors(
 private val CatppuccinAccents = MorpheAccentColors(
     primary = Color(0xFFCBA6F7),   // Mauve
     secondary = Color(0xFF94E2D5), // Teal
+    tertiary = Color(0xFF89B4FA),  // Blue
     warning = Color(0xFFFAB387),   // Peach
 )
 
-/** Sakura — warm rose + dusty lavender. */
+/** Sakura — triadic: cherry blossom pink, spring sage, wisteria dusk. */
 private val SakuraAccents = MorpheAccentColors(
-    primary = Color(0xFFD4567A),   // Deep rose
-    secondary = Color(0xFF9A6DAF), // Dusty lavender
-    warning = Color(0xFFE8874A),   // Warm amber
+    primary = Color(0xFFD44B76),   // Cherry blossom pink
+    secondary = Color(0xFF5B8A72), // Spring-leaf sage (complementary green)
+    tertiary = Color(0xFF8B6B99),  // Wisteria dusk (purple structural accent)
+    warning = Color(0xFFD89A2B),   // Golden stamen amber
 )
 
 /** Matcha — forest green + sage. */
 private val MatchaAccents = MorpheAccentColors(
-    primary = Color(0xFF5A9A4E),   // Forest green
-    secondary = Color(0xFF7AADAF), // Sage teal
-    warning = Color(0xFFD4944A),   // Warm ochre
+    primary = Color(0xFF4C7A35),   // Tea-leaf green
+    secondary = Color(0xFF4C7871), // Muted jade
+    tertiary = Color(0xFF7D6A9B),  // Soft plum contrast
+    warning = Color(0xFFB77833),   // Toasted ochre
 )
 
 // ════════════════════════════════════════════════════════════════════
@@ -208,40 +211,40 @@ private val CatppuccinMochaColorScheme = darkColorScheme(
 )
 
 // ── Sakura ──
-// Soft pink, cute aesthetic — light theme with warm blush tones
+// Triadic cherry blossom: pink + sage + wisteria on warm petal surfaces
 private val SakuraColorScheme = lightColorScheme(
-    primary = Color(0xFFE8729A),       // Rose pink
-    secondary = Color(0xFFC75088),     // Deeper rose
-    tertiary = Color(0xFFF5A0C0),      // Soft pink
-    background = Color(0xFFFFF5F7),    // Blush white
-    surface = Color(0xFFFFE8EE),       // Petal
-    surfaceVariant = Color(0xFFFFD6E0),
+    primary = Color(0xFFD44B76),       // Cherry blossom pink
+    secondary = Color(0xFF5B8A72),     // Spring-leaf sage
+    tertiary = Color(0xFF8B6B99),      // Wisteria dusk
+    background = Color(0xFFFFF0EA),    // Warm blossom paper
+    surface = Color(0xFFFFE4DC),       // Pink petal surface
+    surfaceVariant = Color(0xFFF5D5CC), // Deeper blush for emphasis
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onTertiary = Color(0xFF5A1A30),
-    onBackground = Color(0xFF4A2030),  // Deep plum
-    onSurface = Color(0xFF4A2030),
-    onSurfaceVariant = Color(0xFF8A506A),
-    error = Color(0xFFD03050),
+    onTertiary = Color.White,
+    onBackground = Color(0xFF3D2832),  // Plum-tinted ink (not pure black)
+    onSurface = Color(0xFF3D2832),
+    onSurfaceVariant = Color(0xFF7A5562), // Plum-brown (sakura bark tone)
+    error = Color(0xFFC03048),
     onError = Color.White
 )
 
 // ── Matcha ──
 // Pista green, cute aesthetic — light theme with fresh green tones
 private val MatchaColorScheme = lightColorScheme(
-    primary = Color(0xFF6DAF5C),       // Pista green
-    secondary = Color(0xFF8BC77E),     // Fresh green
-    tertiary = Color(0xFFA3D99B),      // Light mint
-    background = Color(0xFFF4F9F0),    // Green-tinted white
-    surface = Color(0xFFE5F0DC),       // Soft green
-    surfaceVariant = Color(0xFFD4E5C8),
+    primary = Color(0xFF4C7A35),       // Tea leaf green
+    secondary = Color(0xFF5E8554),     // Deep herb
+    tertiary = Color(0xFF92B887),      // Soft matcha
+    background = Color(0xFFF6F8F1),    // Green-tinted white
+    surface = Color(0xFFEAF1E1),       // Pale leaf
+    surfaceVariant = Color(0xFFD6E2C9),
     onPrimary = Color.White,
-    onSecondary = Color(0xFF1E3318),
-    onTertiary = Color(0xFF1E3318),
-    onBackground = Color(0xFF1E3318),  // Deep forest
-    onSurface = Color(0xFF1E3318),
-    onSurfaceVariant = Color(0xFF4A6B3D),
-    error = Color(0xFFC04040),
+    onSecondary = Color.White,
+    onTertiary = Color(0xFF21321B),
+    onBackground = Color(0xFF21321B),  // Deep forest
+    onSurface = Color(0xFF21321B),
+    onSurfaceVariant = Color(0xFF476042),
+    error = Color(0xFFAA3A3A),
     onError = Color.White
 )
 

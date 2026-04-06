@@ -50,6 +50,7 @@ import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.components.OfflineBanner
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -80,6 +81,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
     val navigator = LocalNavigator.currentOrThrow
     val uiState by viewModel.uiState.collectAsState()
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
     var showErrorDialog by remember { mutableStateOf(false) }
     var currentError by remember { mutableStateOf<String?>(null) }
@@ -194,8 +196,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             val refreshHover = remember { MutableInteractionSource() }
             val isRefreshHovered by refreshHover.collectIsHoveredAsState()
             val refreshBorder by animateColorAsState(
-                if (isRefreshHovered) MorpheColors.Blue.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                MaterialTheme.colorScheme.outline.copy(alpha = if (isRefreshHovered) 0.24f else 0.1f),
                 animationSpec = tween(150)
             )
 
@@ -270,7 +271,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(28.dp),
-                                color = MorpheColors.Blue,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.height(14.dp))
@@ -303,8 +304,8 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                             OutlinedButton(
                                 onClick = { viewModel.loadReleases() },
                                 shape = RoundedCornerShape(corners.small),
-                                border = BorderStroke(1.dp, MorpheColors.Blue.copy(alpha = 0.4f)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MorpheColors.Blue)
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
                             ) {
                                 Text(
                                     "RETRY",
@@ -378,7 +379,7 @@ private fun ChannelSelector(
     devCount: Int,
     modifier: Modifier = Modifier
 ) {
-    val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -389,7 +390,7 @@ private fun ChannelSelector(
             count = stableCount,
             isSelected = selectedChannel == ReleaseChannel.STABLE,
             onClick = { onChannelSelected(ReleaseChannel.STABLE) },
-            accentColor = MorpheColors.Blue,
+            accentColor = accents.tertiary,
             modifier = Modifier.weight(1f)
         )
         ChannelChip(
@@ -397,7 +398,7 @@ private fun ChannelSelector(
             count = devCount,
             isSelected = selectedChannel == ReleaseChannel.DEV,
             onClick = { onChannelSelected(ReleaseChannel.DEV) },
-            accentColor = MorpheColors.Teal,
+            accentColor = accents.tertiary,
             modifier = Modifier.weight(1f)
         )
     }
@@ -487,10 +488,12 @@ private fun ReleaseCard(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
+    val selectedColor = accents.tertiary
+    val downloadedColor = accents.secondary
     val accentColor = when {
-        isSelected && isDownloaded -> MorpheColors.Teal
-        isSelected -> MorpheColors.Blue
-        isDownloaded -> MorpheColors.Teal
+        isSelected -> selectedColor
+        isDownloaded -> downloadedColor
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -503,15 +506,16 @@ private fun ReleaseCard(
     val borderColor by animateColorAsState(
         when {
             isSelected -> accentColor.copy(alpha = 0.5f)
+            isDownloaded -> downloadedColor.copy(alpha = 0.32f)
             isHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
-            isDownloaded -> MorpheColors.Teal.copy(alpha = 0.2f)
             else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
         },
         animationSpec = tween(150)
     )
 
     val bgColor = when {
-        isSelected -> accentColor.copy(alpha = 0.06f)
+        isSelected -> selectedColor.copy(alpha = 0.07f)
+        isDownloaded -> downloadedColor.copy(alpha = 0.045f)
         else -> MaterialTheme.colorScheme.surface
     }
 
@@ -552,13 +556,17 @@ private fun ReleaseCard(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 fontFamily = mono,
-                                color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurface
+                                color = when {
+                                    isSelected -> selectedColor
+                                    isDownloaded -> downloadedColor
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
                             )
                             if (release.isDevRelease()) {
                                 Box(
                                     modifier = Modifier
-                                        .background(MorpheColors.Teal.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                                        .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                                        .background(accents.primary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                                        .border(1.dp, accents.primary.copy(alpha = 0.22f), RoundedCornerShape(corners.small))
                                         .padding(horizontal = 5.dp, vertical = 1.dp)
                                 ) {
                                     Text(
@@ -566,7 +574,7 @@ private fun ReleaseCard(
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = mono,
-                                        color = MorpheColors.Teal,
+                                        color = accents.primary,
                                         letterSpacing = 1.sp
                                     )
                                 }
@@ -574,8 +582,8 @@ private fun ReleaseCard(
                             if (isDownloaded) {
                                 Box(
                                     modifier = Modifier
-                                        .background(MorpheColors.Teal.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                                        .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                                        .background(downloadedColor.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                                        .border(1.dp, downloadedColor.copy(alpha = 0.24f), RoundedCornerShape(corners.small))
                                         .padding(horizontal = 5.dp, vertical = 1.dp)
                                 ) {
                                     Text(
@@ -583,7 +591,7 @@ private fun ReleaseCard(
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = mono,
-                                        color = MorpheColors.Teal,
+                                        color = downloadedColor,
                                         letterSpacing = 1.sp
                                     )
                                 }
@@ -710,7 +718,7 @@ private fun FormattedReleaseNotes(markdown: String, modifier: Modifier = Modifie
                             text = "·  ",
                             fontSize = 11.sp,
                             fontFamily = mono,
-                            color = MorpheColors.Blue.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                         )
                         Text(
                             text = line.text,
@@ -788,6 +796,7 @@ private fun BottomActionBar(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
 
     Column(
@@ -812,7 +821,7 @@ private fun BottomActionBar(
                     .fillMaxWidth()
                     .height(3.dp)
                     .clip(RoundedCornerShape(1.dp)),
-                color = MorpheColors.Blue,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -821,7 +830,7 @@ private fun BottomActionBar(
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = mono,
-                color = MorpheColors.Blue.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 letterSpacing = 1.5.sp
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -839,7 +848,7 @@ private fun BottomActionBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
+                    colors = ButtonDefaults.buttonColors(containerColor = accents.primary),
                     shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(
@@ -857,7 +866,7 @@ private fun BottomActionBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Teal),
+                    colors = ButtonDefaults.buttonColors(containerColor = accents.primary),
                     shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(
@@ -877,7 +886,7 @@ private fun BottomActionBar(
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = MorpheColors.Blue,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             strokeWidth = 2.dp
                         )
                     }
@@ -886,8 +895,8 @@ private fun BottomActionBar(
                         onClick = onExportJsonClick,
                         modifier = Modifier.height(44.dp),
                         shape = RoundedCornerShape(corners.small),
-                        border = BorderStroke(1.dp, MorpheColors.Blue.copy(alpha = 0.3f)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MorpheColors.Blue)
+                        border = BorderStroke(1.dp, accents.primary.copy(alpha = 0.3f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = accents.primary)
                     ) {
                         Text(
                             text = "EXPORT JSON",
@@ -914,13 +923,14 @@ private fun LocalSourceBanner(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
-            .border(1.dp, MorpheColors.Blue.copy(alpha = 0.2f), RoundedCornerShape(corners.medium))
-            .background(MorpheColors.Blue.copy(alpha = 0.04f))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f), RoundedCornerShape(corners.medium))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f))
     ) {
         Row(
             modifier = Modifier
@@ -932,7 +942,7 @@ private fun LocalSourceBanner(
                 modifier = Modifier
                     .width(3.dp)
                     .fillMaxHeight()
-                    .background(MorpheColors.Blue)
+                    .background(accents.primary)
             )
 
             Row(
@@ -943,7 +953,7 @@ private fun LocalSourceBanner(
                 Icon(
                     imageVector = Icons.Default.FolderOpen,
                     contentDescription = null,
-                    tint = MorpheColors.Blue,
+                    tint = accents.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Column {
@@ -952,7 +962,7 @@ private fun LocalSourceBanner(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = mono,
-                        color = MorpheColors.Blue,
+                        color = accents.primary,
                         letterSpacing = 1.5.sp
                     )
                     if (patchFile != null) {

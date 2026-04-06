@@ -52,7 +52,8 @@ data class Patch(
 data class CompatiblePackage(
     val name: String,
     val displayName: String? = null,
-    val versions: List<String> = emptyList()
+    val versions: List<String> = emptyList(),
+    val experimentalVersions: List<String> = emptyList()
 )
 
 @Serializable

@@ -154,10 +154,12 @@ class PatchService {
             compatiblePackages = this.compatibility
                 ?.mapNotNull { compatibility ->
                     val packageName = compatibility.packageName ?: return@mapNotNull null
+                    val (experimental, stable) = compatibility.targets.partition { it.isExperimental }
                     CompatiblePackage(
                         name = packageName,
                         displayName = compatibility.name,
-                        versions = compatibility.targets.mapNotNull { it.version }
+                        versions = stable.mapNotNull { it.version },
+                        experimentalVersions = experimental.mapNotNull { it.version }
                     )
                 }
                 ?: emptyList(),

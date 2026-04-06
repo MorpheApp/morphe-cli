@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.MorpheColors
@@ -64,6 +65,7 @@ fun SettingsDialog(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
 
     var showClearCacheConfirm by remember { mutableStateOf(false) }
@@ -155,7 +157,7 @@ fun SettingsDialog(
                     description = "Full control over patch selection and configuration",
                     checked = useExpertMode,
                     onCheckedChange = onExpertModeChange,
-                    accentColor = MorpheColors.Blue,
+                    accentColor = accents.primary,
                     mono = mono,
                     enabled = !isPatching
                 )
@@ -168,7 +170,7 @@ fun SettingsDialog(
                     description = "Delete temporary files after patching",
                     checked = autoCleanupTempFiles,
                     onCheckedChange = onAutoCleanupChange,
-                    accentColor = MorpheColors.Teal,
+                    accentColor = accents.primary,
                     mono = mono,
                     enabled = !isPatching
                 )
@@ -187,6 +189,7 @@ fun SettingsDialog(
                     onEdit = { source -> editingSource = source },
                     onAddClick = { showAddSourceDialog = true },
                     mono = mono,
+                    accentColor = accents.primary,
                     borderColor = borderColor,
                     enabled = !isPatching
                 )
@@ -271,7 +274,7 @@ fun SettingsDialog(
 
                 // ── About ──
                 Text(
-                    text = "${AppConstants.APP_NAME} v${AppConstants.APP_VERSION}",
+                    text = "${AppConstants.APP_NAME} ${AppConstants.APP_VERSION}",
                     fontSize = 10.sp,
                     fontFamily = mono,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -505,6 +508,7 @@ private fun PatchSourcesSection(
     onEdit: (PatchSource) -> Unit,
     onAddClick: () -> Unit,
     mono: androidx.compose.ui.text.font.FontFamily,
+    accentColor: Color,
     borderColor: Color,
     enabled: Boolean = true
 ) {
@@ -534,14 +538,14 @@ private fun PatchSourcesSection(
                     .border(
                         1.dp,
                         when {
-                            isActive -> MorpheColors.Blue.copy(alpha = 0.4f)
+                            isActive -> accentColor.copy(alpha = 0.4f)
                             isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                             else -> borderColor
                         },
                         RoundedCornerShape(corners.medium)
                     )
                     .background(
-                        if (isActive) MorpheColors.Blue.copy(alpha = 0.05f)
+                        if (isActive) accentColor.copy(alpha = 0.08f)
                         else Color.Transparent
                     )
                     .hoverable(hoverInteraction)
@@ -554,7 +558,7 @@ private fun PatchSourcesSection(
                         modifier = Modifier
                             .size(6.dp)
                             .background(
-                                if (isActive) MorpheColors.Blue
+                                if (isActive) accentColor
                                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
                                 RoundedCornerShape(1.dp)
                             )
@@ -647,6 +651,7 @@ private fun AddPatchSourceDialog(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     var name by remember { mutableStateOf("") }
     var sourceType by remember { mutableStateOf(PatchSourceType.GITHUB) }
     var url by remember { mutableStateOf("") }
@@ -680,12 +685,12 @@ private fun AddPatchSourceDialog(
                                 .clip(RoundedCornerShape(corners.small))
                                 .border(
                                     1.dp,
-                                    if (isSelected) MorpheColors.Blue.copy(alpha = 0.5f)
+                                    if (isSelected) accents.primary.copy(alpha = 0.5f)
                                     else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
                                     RoundedCornerShape(corners.small)
                                 )
                                 .background(
-                                    if (isSelected) MorpheColors.Blue.copy(alpha = 0.08f)
+                                    if (isSelected) accents.primary.copy(alpha = 0.08f)
                                     else Color.Transparent
                                 )
                                 .clickable { sourceType = type }
@@ -701,7 +706,7 @@ private fun AddPatchSourceDialog(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontFamily = mono,
                                 letterSpacing = 0.5.sp,
-                                color = if (isSelected) MorpheColors.Blue
+                                color = if (isSelected) accents.primary
                                         else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -828,7 +833,7 @@ private fun AddPatchSourceDialog(
                         deletable = true
                     ))
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
+                colors = ButtonDefaults.buttonColors(containerColor = accents.primary),
                 shape = RoundedCornerShape(corners.small)
             ) {
                 Text(
@@ -862,6 +867,7 @@ private fun EditPatchSourceDialog(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     var name by remember { mutableStateOf(source.name) }
     var url by remember { mutableStateOf(source.url ?: "") }
     var filePath by remember { mutableStateOf(source.filePath ?: "") }
@@ -895,7 +901,7 @@ private fun EditPatchSourceDialog(
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
-                    color = MorpheColors.Blue,
+                    color = accents.primary,
                     letterSpacing = 1.sp
                 )
 
@@ -996,7 +1002,7 @@ private fun EditPatchSourceDialog(
                         filePath = if (source.type == PatchSourceType.LOCAL) filePath.trim() else source.filePath
                     ))
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MorpheColors.Blue),
+                colors = ButtonDefaults.buttonColors(containerColor = accents.primary),
                 shape = RoundedCornerShape(corners.small)
             ) {
                 Text(
@@ -1055,8 +1061,8 @@ private fun ThemePreference.accentColor(): Color {
         ThemePreference.AMOLED -> MorpheColors.Cyan
         ThemePreference.NORD -> Color(0xFF88C0D0)
         ThemePreference.CATPPUCCIN -> Color(0xFFCBA6F7)
-        ThemePreference.SAKURA -> Color(0xFFE8729A)
-        ThemePreference.MATCHA -> Color(0xFF6DAF5C)
+        ThemePreference.SAKURA -> Color(0xFFB43A67)
+        ThemePreference.MATCHA -> Color(0xFF4C7A35)
         ThemePreference.SYSTEM -> MorpheColors.Blue
     }
 }

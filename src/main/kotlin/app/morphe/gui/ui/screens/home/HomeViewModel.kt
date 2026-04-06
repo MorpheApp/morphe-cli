@@ -26,7 +26,6 @@ import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.SupportedAppExtractor
 import app.morphe.gui.util.VersionStatus
-import app.morphe.gui.util.compareVersions
 import java.io.File
 
 class HomeViewModel(
@@ -454,15 +453,15 @@ class HomeViewModel(
                     ?: SupportedApp.resolveDisplayName(packageName, meta.label)
                     ?: packageName
 
-                // Get recommended version from dynamic patches data (no hardcoded fallback)
-                val suggestedVersion = dynamicSupportedApp?.recommendedVersion
-
-                // Compare versions if we have a suggested version
-                val versionStatus = if (suggestedVersion != null) {
-                    compareVersions(versionName, suggestedVersion)
+                // Resolve the version against the supported app's stable +
+                // experimental version lists.
+                val versionResolution = if (dynamicSupportedApp != null) {
+                    app.morphe.gui.util.resolveVersionStatus(versionName, dynamicSupportedApp)
                 } else {
-                    VersionStatus.UNKNOWN
+                    app.morphe.gui.util.VersionResolution(VersionStatus.UNKNOWN, null)
                 }
+                val suggestedVersion = versionResolution.suggestedVersion
+                val versionStatus = versionResolution.status
 
                 // Get supported architectures from native libraries
                 // For split bundles, scan the original bundle (splits contain the native libs, not base.apk)

@@ -221,9 +221,14 @@ class PatchSelectionViewModel(
             .filter { !_uiState.value.selectedPatches.contains(it.uniqueId) }
             .map { it.name }
 
-        // Only set riplibs if user deselected any architecture (keeps = selected ones)
+        // Only set striplibs if user deselected any architecture (keeps = selected ones).
+        // Note: selectedArchitectures stores display strings like "arm64-v8a" (with
+        // hyphens), so use valueOfOrNull which matches against the enum's `.arch`
+        // property — plain valueOf() only accepts the underscored Kotlin constant name.
         val striplibs = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
-            _uiState.value.selectedArchitectures.map { CpuArchitecture.valueOf(it) }.toSet()
+            _uiState.value.selectedArchitectures
+                .mapNotNull { CpuArchitecture.valueOfOrNull(it) }
+                .toSet()
         } else {
             emptySet()
         }
