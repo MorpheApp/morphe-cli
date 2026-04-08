@@ -16,7 +16,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -1095,51 +1098,65 @@ private fun SupportedAppsSection(
                 }
 
                 if (supportedApps.size > 4) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = {
-                            Text(
-                                "Filter apps…",
-                                fontSize = 11.sp,
-                                fontFamily = mono,
-                                color = homeMutedTextColor(0.4f)
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = null,
-                                tint = homeMutedTextColor(0.6f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(
-                                        Icons.Default.Clear,
-                                        contentDescription = "Clear",
-                                        tint = homeMutedTextColor(0.5f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
+                    if (isDefaultSource) {
+                        // Default search field for Morphe-source patches.
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = {
+                                Text(
+                                    "Filter apps…",
+                                    fontSize = 11.sp,
+                                    fontFamily = mono,
+                                    color = homeMutedTextColor(0.4f)
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = homeMutedTextColor(0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Clear",
+                                            tint = homeMutedTextColor(0.5f),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
                                 }
-                            }
-                        },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = mono,
-                            fontSize = 11.sp
-                        ),
-                        shape = RoundedCornerShape(corners.small),
-                        modifier = Modifier
-                            .widthIn(max = 260.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                            cursorColor = accents.primary
+                            },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = mono,
+                                fontSize = 11.sp
+                            ),
+                            shape = RoundedCornerShape(corners.small),
+                            modifier = Modifier
+                                .widthIn(max = 260.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                                cursorColor = accents.primary
+                            )
                         )
-                    )
+                    } else {
+                        // Slim, elongated search field for third-party patches.
+                        // Uses BasicTextField + a custom decoration so we can break
+                        // out of OutlinedTextField's 56dp minimum height.
+                        SlimSearchField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            mono = mono,
+                            corners = corners,
+                            accents = accents
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
@@ -1522,8 +1539,20 @@ private fun SupportedAppVerticalCard(
             modifier = Modifier
                 .width(collapsedWidth)
                 .fillMaxHeight()
-                .hoverable(hoverInteraction)
-                .clickable(onClick = onClick)
+                .then(
+                    // Only Morphe-source cards are expandable for now — third-party
+                    // cards don't have meaningful detail to show in the expanded
+                    // right-side panel (no experimental versions, no download links).
+                    // When we add more metadata for third-party patches (description,
+                    // source URL, etc.) this can become unconditional.
+                    if (isDefaultSource) {
+                        Modifier
+                            .hoverable(hoverInteraction)
+                            .clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(horizontal = 14.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -1825,28 +1854,117 @@ private fun VersionWithDownload(
                 }
             }
         } else {
-            // Disabled / unavailable state — keeps the layout symmetric
-            Box(
+            // No download URL — show the version as plain text. Either the
+            // version is genuinely absent (e.g. no experimental version exists,
+            // version == null) in which case we render a faint placeholder, or
+            // this is a third-party patch source where we don't provide download
+            // links but the version is real and should look like the primary
+            // information on the card.
+            Text(
+                text = version?.let { "v$it" } ?: "—",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = mono,
+                color = if (version != null) channelColor
+                        else channelColor.copy(alpha = 0.3f),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(28.dp)
-                    .border(
-                        1.dp,
-                        channelColor.copy(alpha = 0.15f),
-                        RoundedCornerShape(corners.small)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = version?.let { "v$it" } ?: "—",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = mono,
-                    color = channelColor.copy(alpha = 0.35f)
-                )
-            }
+                    .padding(vertical = 6.dp)
+            )
         }
     }
+}
+
+/**
+ * Slim, elongated search field used when third-party patches are loaded.
+ * Built on BasicTextField so we can drop below the 56dp minimum height that
+ * Material 3's OutlinedTextField enforces internally. Visually mirrors the
+ * default OutlinedTextField (border, leading search icon, trailing clear,
+ * mono placeholder), just thinner and wider.
+ */
+@Composable
+private fun SlimSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
+    accents: app.morphe.gui.ui.theme.MorpheAccentColors
+) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val borderColor by animateColorAsState(
+        if (isFocused) MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+        else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+        animationSpec = tween(150),
+        label = "slimSearchBorder"
+    )
+
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        interactionSource = interactionSource,
+        textStyle = MaterialTheme.typography.bodySmall.copy(
+            fontFamily = mono,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        ),
+        cursorBrush = SolidColor(accents.primary),
+        modifier = Modifier
+            .widthIn(max = 360.dp)
+            .fillMaxWidth()
+            .height(34.dp)
+            .clip(RoundedCornerShape(corners.small))
+            .border(1.dp, borderColor, RoundedCornerShape(corners.small)),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = muted.copy(alpha = 0.55f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (value.isEmpty()) {
+                        Text(
+                            "Filter apps…",
+                            fontSize = 11.sp,
+                            fontFamily = mono,
+                            color = muted.copy(alpha = 0.4f)
+                        )
+                    }
+                    innerTextField()
+                }
+                if (value.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(corners.small))
+                            .clickable { onValueChange("") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = "Clear",
+                            tint = muted.copy(alpha = 0.5f),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
 
 /**
