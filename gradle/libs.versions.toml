@@ -26,8 +26,8 @@ voyager = "1.1.0-beta03"
 coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
 
-# JBR
-jbr-api = "1.5.0"
+# JNA (Windows DWM title bar tinting)
+jna = "5.14.0"
 
 # APK
 apk-parser = "2.6.10"
@@ -68,8 +68,9 @@ kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-
 # Serialization
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
-# JBR
-jbr-api = { module = "org.jetbrains.runtime:jbr-api", version.ref = "jbr-api" }
+# JNA (Windows DWM title bar tinting)
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 
 # APK
 apk-parser = { module = "net.dongliu:apk-parser", version.ref = "apk-parser" }

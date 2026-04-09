@@ -40,9 +40,7 @@ import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
-import app.morphe.gui.ui.components.DraggableHeaderArea
 import app.morphe.gui.ui.components.OfflineBanner
-import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.theme.*
@@ -77,7 +75,6 @@ class QuickPatchScreen : Screen {
 fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
-    val titleInsets = LocalTitleBarInsets.current
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
@@ -104,56 +101,51 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                 modifier = Modifier.fillMaxSize()
             ) {
                 // ── Header row — matches expert mode ──
-                DraggableHeaderArea {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawLine(
+                                color = borderColor,
+                                start = Offset(0f, size.height),
+                                end = Offset(size.width, size.height),
+                                strokeWidth = 1f
+                            )
+                        }
+                        .padding(vertical = 8.dp)
+                ) {
+                    // Logo — left-aligned
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .drawBehind {
-                                drawLine(
-                                    color = borderColor,
-                                    start = Offset(0f, size.height),
-                                    end = Offset(size.width, size.height),
-                                    strokeWidth = 1f
-                                )
-                            }
-                            .padding(
-                                top = 8.dp + titleInsets.top,
-                                bottom = 8.dp
-                            )
+                            .align(Alignment.CenterStart)
+                            .padding(start = 12.dp)
+                            .onSizeChanged { leadingWidthPx = it.width }
                     ) {
-                        // Logo — left-aligned
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 12.dp + titleInsets.start)
-                                .onSizeChanged { leadingWidthPx = it.width }
-                        ) {
-                            BrandingLogo()
-                        }
+                        BrandingLogo()
+                    }
 
-                        // Patches version badge — centered
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(start = centerSidePadding, end = centerSidePadding)
-                        ) {
-                            PatchesVersionBadge(
-                                patchesVersion = uiState.patchesVersion,
-                                isLoading = uiState.isLoadingPatches
-                            )
-                        }
+                    // Patches version badge — centered
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(start = centerSidePadding, end = centerSidePadding)
+                    ) {
+                        PatchesVersionBadge(
+                            patchesVersion = uiState.patchesVersion,
+                            isLoading = uiState.isLoadingPatches
+                        )
+                    }
 
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 12.dp + titleInsets.end)
-                                .onSizeChanged { trailingWidthPx = it.width }
-                        ) {
-                            TopBarRow(
-                                allowCacheClear = false,
-                                isPatching = uiState.phase == QuickPatchPhase.DOWNLOADING || uiState.phase == QuickPatchPhase.PATCHING
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 12.dp)
+                            .onSizeChanged { trailingWidthPx = it.width }
+                    ) {
+                        TopBarRow(
+                            allowCacheClear = false,
+                            isPatching = uiState.phase == QuickPatchPhase.DOWNLOADING || uiState.phase == QuickPatchPhase.PATCHING
+                        )
                     }
                 }
 

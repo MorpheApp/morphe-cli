@@ -7,6 +7,7 @@ package app.morphe.gui.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,9 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheCorners
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.DeviceStatus
 
@@ -40,6 +41,7 @@ import app.morphe.gui.util.DeviceStatus
 fun DeviceIndicator(modifier: Modifier = Modifier) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val monitorState by DeviceMonitor.state.collectAsState()
 
     val isAdbAvailable = monitorState.isAdbAvailable
@@ -54,15 +56,15 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
 
     val dotColor = when {
         isAdbAvailable == false -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-        selectedDevice != null && selectedDevice.isReady -> MorpheColors.Teal
-        unauthorizedDevices.isNotEmpty() -> Color(0xFFFF9800)
+        selectedDevice != null && selectedDevice.isReady -> accents.secondary
+        unauthorizedDevices.isNotEmpty() -> accents.warning
         else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
     }
 
     val borderColor by animateColorAsState(
         when {
             isHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-            selectedDevice != null && selectedDevice.isReady -> MorpheColors.Teal.copy(alpha = 0.2f)
+            selectedDevice != null && selectedDevice.isReady -> accents.secondary.copy(alpha = 0.2f)
             else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
         },
         animationSpec = tween(150)
@@ -110,7 +112,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                     color = when {
                         isAdbAvailable == false -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                         selectedDevice != null -> MaterialTheme.colorScheme.onSurface
-                        unauthorizedDevices.isNotEmpty() -> Color(0xFFFF9800)
+                        unauthorizedDevices.isNotEmpty() -> accents.warning
                         else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     },
                     maxLines = 1,
@@ -130,7 +132,10 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
         // Popup
         DropdownMenu(
             expanded = showPopup,
-            onDismissRequest = { showPopup = false }
+            onDismissRequest = { showPopup = false },
+            shape = RoundedCornerShape(corners.medium),
+            containerColor = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         ) {
             when {
                 isAdbAvailable == false -> {
@@ -210,7 +215,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
-                                    tint = MorpheColors.Blue.copy(alpha = 0.6f)
+                                    tint = accents.primary.copy(alpha = 0.6f)
                                 )
                                 Column {
                                     Text(
@@ -218,7 +223,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         fontFamily = mono,
-                                        color = MorpheColors.Blue
+                                        color = accents.primary
                                     )
                                     Text(
                                         text = "Settings → Developer Options → USB Debugging",
@@ -248,9 +253,9 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                             .size(6.dp)
                                             .background(
                                                 when {
-                                                    isSelected -> MorpheColors.Teal
-                                                    device.isReady -> MorpheColors.Blue
-                                                    device.status == DeviceStatus.UNAUTHORIZED -> Color(0xFFFF9800)
+                                                    isSelected -> accents.secondary
+                                                    device.isReady -> accents.primary
+                                                    device.status == DeviceStatus.UNAUTHORIZED -> accents.warning
                                                     else -> MaterialTheme.colorScheme.error
                                                 },
                                                 RoundedCornerShape(1.dp)
@@ -282,8 +287,8 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                                 fontSize = 10.sp,
                                                 fontFamily = mono,
                                                 color = when (device.status) {
-                                                    DeviceStatus.DEVICE -> MorpheColors.Teal
-                                                    DeviceStatus.UNAUTHORIZED -> Color(0xFFFF9800)
+                                                    DeviceStatus.DEVICE -> accents.secondary
+                                                    DeviceStatus.UNAUTHORIZED -> accents.warning
                                                     else -> MaterialTheme.colorScheme.error
                                                 }
                                             )

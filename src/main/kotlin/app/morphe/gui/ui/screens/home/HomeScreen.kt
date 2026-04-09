@@ -62,8 +62,6 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.SupportedApp
-import app.morphe.gui.ui.components.DraggableHeaderArea
-import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
@@ -378,14 +376,10 @@ fun HomeScreenContent(
 
                 // Top bar — only floated when not using horizontal header
                 if (!useHorizontalHeader) {
-                    val titleInsets = LocalTitleBarInsets.current
                     TopBarRow(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(
-                                top = padding + titleInsets.top,
-                                end = padding + titleInsets.end
-                            ),
+                            .padding(top = padding, end = padding),
                         allowCacheClear = true
                     )
                 }
@@ -440,83 +434,77 @@ private fun HeaderBar(
     onRetry: () -> Unit
 ) {
     val mono = LocalMorpheFont.current
-    val titleInsets = LocalTitleBarInsets.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
     val density = androidx.compose.ui.platform.LocalDensity.current
     var leadingWidthPx by remember { mutableIntStateOf(0) }
     var trailingWidthPx by remember { mutableIntStateOf(0) }
     val centerSidePadding = with(density) { maxOf(leadingWidthPx, trailingWidthPx).toDp() } + 16.dp
 
-    DraggableHeaderArea {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawLine(
+                    color = borderColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1f
+                )
+            }
+            .padding(vertical = 8.dp)
+    ) {
+        // Logo — left-aligned, compact
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .drawBehind {
-                    drawLine(
-                        color = borderColor,
-                        start = Offset(0f, size.height),
-                        end = Offset(size.width, size.height),
-                        strokeWidth = 1f
+                .align(Alignment.CenterStart)
+                .padding(start = 12.dp)
+                .onSizeChanged { leadingWidthPx = it.width }
+        ) {
+            BrandingSection(isCompact = true)
+        }
+
+        // Patches version inline — centered
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(start = centerSidePadding, end = centerSidePadding)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
+                    PatchesVersionInline(
+                        patchesVersion = uiState.patchesVersion!!,
+                        isLatest = uiState.isUsingLatestPatches,
+                        onChangePatchesClick = onChangePatchesClick
+                    )
+                } else if (uiState.isLoadingPatches) {
+                    PatchesLoadingIndicator()
+                } else if (uiState.patchLoadError != null) {
+                    PatchesVersionInline(
+                        patchesVersion = "NOT LOADED",
+                        isLatest = false,
+                        onChangePatchesClick = onChangePatchesClick
                     )
                 }
-                .padding(
-                    top = 8.dp + titleInsets.top,
-                    bottom = 8.dp
-                )
-        ) {
-            // Logo — left-aligned, compact
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 12.dp + titleInsets.start)
-                    .onSizeChanged { leadingWidthPx = it.width }
-            ) {
-                BrandingSection(isCompact = true)
-            }
 
-            // Patches version inline — centered
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(start = centerSidePadding, end = centerSidePadding)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
-                        PatchesVersionInline(
-                            patchesVersion = uiState.patchesVersion!!,
-                            isLatest = uiState.isUsingLatestPatches,
-                            onChangePatchesClick = onChangePatchesClick
-                        )
-                    } else if (uiState.isLoadingPatches) {
-                        PatchesLoadingIndicator()
-                    } else if (uiState.patchLoadError != null) {
-                        PatchesVersionInline(
-                            patchesVersion = "NOT LOADED",
-                            isLatest = false,
-                            onChangePatchesClick = onChangePatchesClick
-                        )
-                    }
-
-                    if (uiState.isOffline && !uiState.isLoadingPatches) {
-                        Spacer(modifier = Modifier.width(12.dp))
-                        OfflineBadge(onRetry = onRetry)
-                    }
+                if (uiState.isOffline && !uiState.isLoadingPatches) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    OfflineBadge(onRetry = onRetry)
                 }
             }
+        }
 
 
-            // Device indicator + settings — inline in the header
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 12.dp + titleInsets.end)
-                    .onSizeChanged { trailingWidthPx = it.width }
-            ) {
-                TopBarRow(allowCacheClear = true)
-            }
+        // Device indicator + settings — inline in the header
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 12.dp)
+                .onSizeChanged { trailingWidthPx = it.width }
+        ) {
+            TopBarRow(allowCacheClear = true)
         }
     }
 }
@@ -1318,8 +1306,7 @@ private fun VersionWarningDialog(
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val isHardError = versionStatus == VersionStatus.TOO_NEW ||
-                      versionStatus == VersionStatus.TOO_OLD ||
+    val isHardError = versionStatus == VersionStatus.TOO_OLD ||
                       versionStatus == VersionStatus.UNSUPPORTED_BETWEEN
     val warnColor = if (isHardError) MaterialTheme.colorScheme.error else accents.warning
 
@@ -1331,10 +1318,11 @@ private fun VersionWarningDialog(
                 "You may be missing recent fixes."
         )
         VersionStatus.LATEST_EXPERIMENTAL -> Pair(
-            "EXPERIMENTAL VERSION",
+            "DO YOU WANT TO EXPERIMENT? 🧪",
             "Current: v$currentVersion\n\n" +
-                "This is a supported experimental build. It may not work as " +
-                "expected — proceed with caution."
+                "This version has early experimental support\n\n" +
+                "🔧 Expect quirky app behavior or unidentified bugs as the " +
+                "patches are refined for this app version."
         )
         VersionStatus.OLDER_EXPERIMENTAL -> Pair(
             "OLDER EXPERIMENTAL VERSION",
@@ -1343,9 +1331,11 @@ private fun VersionWarningDialog(
                 "version is available. It may not work as expected — proceed with caution."
         )
         VersionStatus.TOO_NEW -> Pair(
-            "VERSION TOO NEW",
+            "DO YOU WANT TO EXPERIMENT? 🧪",
             "Current: v$currentVersion\nNewest known: v$suggestedVersion\n\n" +
-                "This isn't an officially supported version. Patches will most likely fail."
+                "This version has early experimental support\n\n" +
+                "🔧 Expect quirky app behavior or unidentified bugs as the " +
+                "patches are refined for this app version."
         )
         VersionStatus.TOO_OLD -> Pair(
             "VERSION TOO OLD",

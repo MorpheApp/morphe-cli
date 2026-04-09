@@ -38,13 +38,11 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.PatchConfig
 import org.koin.core.parameter.parametersOf
-import app.morphe.gui.ui.components.DraggableHeaderArea
-import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.result.ResultScreen
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import java.awt.Desktop
@@ -65,11 +63,11 @@ data class PatchingScreen(
 
 @Composable
 fun PatchingScreenContent(viewModel: PatchingViewModel) {
+    val accents = LocalMorpheAccents.current
     val navigator = LocalNavigator.currentOrThrow
     val uiState by viewModel.uiState.collectAsState()
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
-    val titleInsets = LocalTitleBarInsets.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
 
     // Auto-start patching when screen loads
@@ -100,26 +98,20 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Header row
-        DraggableHeaderArea {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .drawBehind {
-                        drawLine(
-                            color = borderColor,
-                            start = Offset(0f, size.height),
-                            end = Offset(size.width, size.height),
-                            strokeWidth = 1f
-                        )
-                    }
-                    .padding(
-                        start = 12.dp + titleInsets.start,
-                        end = 12.dp + titleInsets.end,
-                        top = 8.dp + titleInsets.top,
-                        bottom = 8.dp
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawLine(
+                        color = borderColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1f
+                    )
+                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
                 // Back button
                 val backHover = remember { MutableInteractionSource() }
                 val isBackHovered by backHover.collectIsHoveredAsState()
@@ -217,7 +209,6 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                 }
 
                 TopBarRow(allowCacheClear = false, isPatching = true)
-            }
         }
 
         // Progress section
@@ -227,8 +218,8 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(3.dp),
-                    color = MorpheColors.Blue,
-                    trackColor = MorpheColors.Blue.copy(alpha = 0.08f),
+                    color = accents.primary,
+                    trackColor = accents.primary.copy(alpha = 0.08f),
                     progress = { if (uiState.hasProgress) uiState.progress else 0f },
                 )
                 if (!uiState.hasProgress) {
@@ -236,7 +227,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(3.dp),
-                        color = MorpheColors.Blue,
+                        color = accents.primary,
                         trackColor = Color.Transparent
                     )
                 }
@@ -260,7 +251,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                             text = "${uiState.patchedCount}/${uiState.totalPatches}",
                             fontSize = 10.sp,
                             fontFamily = mono,
-                            color = MorpheColors.Blue,
+                            color = accents.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -300,7 +291,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                                 strokeWidth = 1f
                             )
                         }
-                        .background(MorpheColors.Teal.copy(alpha = 0.04f))
+                        .background(accents.secondary.copy(alpha = 0.04f))
                         .padding(14.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
@@ -308,7 +299,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = MorpheColors.Teal
+                        color = accents.secondary
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
@@ -316,7 +307,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = mono,
-                        color = MorpheColors.Teal,
+                        color = accents.secondary,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -349,6 +340,7 @@ private fun FailureBottomBar(
     onStartOver: () -> Unit,
     onGoBack: () -> Unit
 ) {
+    val accents = LocalMorpheAccents.current
     var tempFilesCleared by remember { mutableStateOf(false) }
     val hasTempFiles = remember { FileUtils.hasTempFiles() }
     val tempFilesSize = remember { FileUtils.getTempDirSize() }
@@ -423,7 +415,7 @@ private fun FailureBottomBar(
                 val openHover = remember { MutableInteractionSource() }
                 val isOpenHovered by openHover.collectIsHoveredAsState()
                 val openBg by animateColorAsState(
-                    if (isOpenHovered) MorpheColors.Blue.copy(alpha = 0.1f) else Color.Transparent,
+                    if (isOpenHovered) accents.primary.copy(alpha = 0.1f) else Color.Transparent,
                     animationSpec = tween(150)
                 )
                 Box(
@@ -447,7 +439,7 @@ private fun FailureBottomBar(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = mono,
-                        color = MorpheColors.Blue,
+                        color = accents.primary,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -489,7 +481,7 @@ private fun FailureBottomBar(
                 val cleanHover = remember { MutableInteractionSource() }
                 val isCleanHovered by cleanHover.collectIsHoveredAsState()
                 val cleanBg by animateColorAsState(
-                    if (isCleanHovered) Color(0xFFFF9800).copy(alpha = 0.1f) else Color.Transparent,
+                    if (isCleanHovered) accents.warning.copy(alpha = 0.1f) else Color.Transparent,
                     animationSpec = tween(150)
                 )
                 Box(
@@ -509,7 +501,7 @@ private fun FailureBottomBar(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = mono,
-                        color = Color(0xFFFF9800),
+                        color = accents.warning,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -521,8 +513,8 @@ private fun FailureBottomBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(corners.small))
-                    .background(MorpheColors.Teal.copy(alpha = 0.06f))
-                    .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                    .background(accents.secondary.copy(alpha = 0.06f))
+                    .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
                     .padding(12.dp)
             ) {
                 Text(
@@ -530,7 +522,7 @@ private fun FailureBottomBar(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
-                    color = MorpheColors.Teal,
+                    color = accents.secondary,
                     letterSpacing = 0.5.sp
                 )
             }
@@ -576,8 +568,8 @@ private fun FailureBottomBar(
             val goBackHover = remember { MutableInteractionSource() }
             val isGoBackHovered by goBackHover.collectIsHoveredAsState()
             val goBackBg by animateColorAsState(
-                if (isGoBackHovered) MorpheColors.Blue.copy(alpha = 0.9f)
-                else MorpheColors.Blue,
+                if (isGoBackHovered) accents.primary.copy(alpha = 0.9f)
+                else accents.primary,
                 animationSpec = tween(150)
             )
 
@@ -609,11 +601,12 @@ private fun LogEntryRow(
     entry: LogEntry,
     mono: androidx.compose.ui.text.font.FontFamily
 ) {
+    val accents = LocalMorpheAccents.current
     val color = when (entry.level) {
-        LogLevel.SUCCESS -> MorpheColors.Teal
+        LogLevel.SUCCESS -> accents.secondary
         LogLevel.ERROR -> MaterialTheme.colorScheme.error
-        LogLevel.WARNING -> Color(0xFFFF9800)
-        LogLevel.PROGRESS -> MorpheColors.Blue
+        LogLevel.WARNING -> accents.warning
+        LogLevel.PROGRESS -> accents.primary
         LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     }
 
@@ -656,8 +649,9 @@ private fun getStatusText(status: PatchingStatus): String {
 
 @Composable
 private fun getStatusColor(status: PatchingStatus): Color {
+    val accents = LocalMorpheAccents.current
     return when (status) {
-        PatchingStatus.COMPLETED -> MorpheColors.Teal
+        PatchingStatus.COMPLETED -> accents.secondary
         PatchingStatus.FAILED -> MaterialTheme.colorScheme.error
         PatchingStatus.CANCELLED -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)

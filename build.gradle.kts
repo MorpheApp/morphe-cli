@@ -100,8 +100,9 @@ dependencies {
     implementation(libs.voyager.koin)
     implementation(libs.voyager.transitions)
 
-    // -- JBR API (macOS title bar customization) ----------------------------
-    implementation(libs.jbr.api)
+    // -- JNA (Windows DWM title bar tinting) -------------------------------
+    implementation(libs.jna)
+    implementation(libs.jna.platform)
 
     // -- APK Parsing (GUI) -------------------------------------------------
     implementation(libs.apk.parser)

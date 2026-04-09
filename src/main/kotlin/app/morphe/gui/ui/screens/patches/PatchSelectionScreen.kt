@@ -49,17 +49,15 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Patch
 import org.koin.core.parameter.parametersOf
-import app.morphe.gui.ui.components.DraggableHeaderArea
-import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.screens.patching.PatchingScreen
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DeviceMonitor
 import java.awt.FileDialog
 import java.awt.Toolkit
@@ -92,6 +90,7 @@ data class PatchSelectionScreen(
 fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val navigator = LocalNavigator.currentOrThrow
     val uiState by viewModel.uiState.collectAsState()
 
@@ -130,8 +129,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ── Header bar ──
-        val titleInsets = LocalTitleBarInsets.current
-        DraggableHeaderArea {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -143,12 +140,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         strokeWidth = 1f
                     )
                 }
-                .padding(
-                    start = 12.dp + titleInsets.start,
-                    end = 12.dp + titleInsets.end,
-                    top = 8.dp + titleInsets.top,
-                    bottom = 8.dp
-                ),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
@@ -208,7 +200,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             val isSelectAllHovered by selectAllHover.collectIsHoveredAsState()
             val allSelected = uiState.selectedPatches.size == uiState.allPatches.size
             val selectAllBorder by animateColorAsState(
-                if (isSelectAllHovered) MorpheColors.Blue.copy(alpha = 0.4f)
+                if (isSelectAllHovered) accents.primary.copy(alpha = 0.4f)
                 else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
                 animationSpec = tween(150)
             )
@@ -230,8 +222,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = mono,
-                    color = if (isSelectAllHovered) MorpheColors.Blue
-                            else MorpheColors.Blue.copy(alpha = 0.7f),
+                    color = if (isSelectAllHovered) accents.primary
+                            else accents.primary.copy(alpha = 0.7f),
                     letterSpacing = 1.sp
                 )
             }
@@ -245,7 +237,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 val cmdActive = showCommandPreview
                 val cmdBorder by animateColorAsState(
                     when {
-                        cmdActive -> MorpheColors.Teal.copy(alpha = 0.5f)
+                        cmdActive -> accents.secondary.copy(alpha = 0.5f)
                         isCmdHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     },
@@ -260,7 +252,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         .border(1.dp, cmdBorder, RoundedCornerShape(corners.small))
                         .then(
                             if (cmdActive) Modifier.background(
-                                MorpheColors.Teal.copy(alpha = 0.08f),
+                                accents.secondary.copy(alpha = 0.08f),
                                 RoundedCornerShape(corners.small)
                             ) else Modifier
                         )
@@ -270,7 +262,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                     Icon(
                         imageVector = Icons.Default.Terminal,
                         contentDescription = "Command Preview",
-                        tint = if (cmdActive) MorpheColors.Teal
+                        tint = if (cmdActive) accents.secondary
                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
@@ -335,7 +327,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             Spacer(modifier = Modifier.width(6.dp))
             SettingsButton(allowCacheClear = false)
         }
-        }
 
         // Command preview — collapsible
         if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
@@ -398,7 +389,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CircularProgressIndicator(
-                            color = MorpheColors.Blue,
+                            color = accents.primary,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(24.dp)
                         )
@@ -498,9 +489,9 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                     val patchEnabled = uiState.selectedPatches.isNotEmpty()
                     val patchBg by animateColorAsState(
                         when {
-                            !patchEnabled -> MorpheColors.Blue.copy(alpha = 0.1f)
-                            isPatchHovered -> MorpheColors.Blue.copy(alpha = 0.9f)
-                            else -> MorpheColors.Blue
+                            !patchEnabled -> accents.primary.copy(alpha = 0.1f)
+                            isPatchHovered -> accents.primary.copy(alpha = 0.9f)
+                            else -> accents.primary
                         },
                         animationSpec = tween(150)
                     )
@@ -548,6 +539,7 @@ private fun PatchSearchBar(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -557,7 +549,7 @@ private fun PatchSearchBar(
         // Custom compact search field
         val searchFocused = remember { mutableStateOf(false) }
         val searchBorderColor by animateColorAsState(
-            if (searchFocused.value) MorpheColors.Blue.copy(alpha = 0.5f)
+            if (searchFocused.value) accents.primary.copy(alpha = 0.5f)
             else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
             animationSpec = tween(150)
         )
@@ -597,7 +589,7 @@ private fun PatchSearchBar(
                         fontFamily = mono,
                         color = MaterialTheme.colorScheme.onSurface
                     ),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(MorpheColors.Blue),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(accents.primary),
                     modifier = Modifier
                         .fillMaxWidth()
                         .onFocusChanged { searchFocused.value = it.isFocused }
@@ -627,7 +619,7 @@ private fun PatchSearchBar(
         val isChipHovered by chipHover.collectIsHoveredAsState()
         val chipBorder by animateColorAsState(
             when {
-                showOnlySelected -> MorpheColors.Blue.copy(alpha = 0.5f)
+                showOnlySelected -> accents.primary.copy(alpha = 0.5f)
                 isChipHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
             },
@@ -642,7 +634,7 @@ private fun PatchSearchBar(
                 .border(1.dp, chipBorder, RoundedCornerShape(corners.small))
                 .then(
                     if (showOnlySelected) Modifier.background(
-                        MorpheColors.Blue.copy(alpha = 0.08f),
+                        accents.primary.copy(alpha = 0.08f),
                         RoundedCornerShape(corners.small)
                     ) else Modifier
                 )
@@ -658,7 +650,7 @@ private fun PatchSearchBar(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
-                        tint = MorpheColors.Blue,
+                        tint = accents.primary,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -667,7 +659,7 @@ private fun PatchSearchBar(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = mono,
-                    color = if (showOnlySelected) MorpheColors.Blue
+                    color = if (showOnlySelected) accents.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     letterSpacing = 1.sp
                 )
@@ -688,13 +680,14 @@ private fun PatchListItem(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val borderColor by animateColorAsState(
         when {
-            isSelected && isHovered -> MorpheColors.Blue.copy(alpha = 0.4f)
-            isSelected -> MorpheColors.Blue.copy(alpha = 0.2f)
+            isSelected && isHovered -> accents.primary.copy(alpha = 0.4f)
+            isSelected -> accents.primary.copy(alpha = 0.2f)
             isHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
             else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
         },
@@ -711,7 +704,7 @@ private fun PatchListItem(
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
             .then(
                 if (isSelected) Modifier.background(
-                    MorpheColors.Blue.copy(alpha = 0.04f),
+                    accents.primary.copy(alpha = 0.04f),
                     RoundedCornerShape(corners.small)
                 ) else Modifier
             )
@@ -733,11 +726,11 @@ private fun PatchListItem(
                     .clip(RoundedCornerShape(corners.small))
                     .border(
                         1.5.dp,
-                        if (isSelected) MorpheColors.Blue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        if (isSelected) accents.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                         RoundedCornerShape(corners.small)
                     )
                     .then(
-                        if (isSelected) Modifier.background(MorpheColors.Blue, RoundedCornerShape(corners.small))
+                        if (isSelected) Modifier.background(accents.primary, RoundedCornerShape(corners.small))
                         else Modifier
                     ),
                 contentAlignment = Alignment.Center
@@ -818,14 +811,14 @@ private fun PatchListItem(
                 val isGearHovered by gearHover.collectIsHoveredAsState()
                 val gearBorder by animateColorAsState(
                     when {
-                        showOptions -> MorpheColors.Teal.copy(alpha = 0.5f)
-                        isGearHovered -> MorpheColors.Teal.copy(alpha = 0.3f)
+                        showOptions -> accents.secondary.copy(alpha = 0.5f)
+                        isGearHovered -> accents.secondary.copy(alpha = 0.3f)
                         else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
                     },
                     animationSpec = tween(150)
                 )
                 val gearBg by animateColorAsState(
-                    if (showOptions) MorpheColors.Teal.copy(alpha = 0.08f)
+                    if (showOptions) accents.secondary.copy(alpha = 0.08f)
                     else Color.Transparent,
                     animationSpec = tween(150)
                 )
@@ -850,8 +843,8 @@ private fun PatchListItem(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Configure options",
                             tint = when {
-                                showOptions -> MorpheColors.Teal
-                                isGearHovered -> MorpheColors.Teal.copy(alpha = 0.7f)
+                                showOptions -> accents.secondary
+                                isGearHovered -> accents.secondary.copy(alpha = 0.7f)
                                 else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                             },
                             modifier = Modifier.size(22.dp)
@@ -863,7 +856,7 @@ private fun PatchListItem(
                             .align(Alignment.TopEnd)
                             .offset(x = 3.dp, y = (-3).dp)
                             .size(18.dp)
-                            .background(MorpheColors.Teal, RoundedCornerShape(9.dp)),
+                            .background(accents.secondary, RoundedCornerShape(9.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -924,6 +917,7 @@ private fun PatchOptionEditor(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(
@@ -935,7 +929,7 @@ private fun PatchOptionEditor(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = mono,
-                color = MorpheColors.Teal
+                color = accents.secondary
             )
             if (option.required) {
                 Text(
@@ -974,7 +968,7 @@ private fun PatchOptionEditor(
                             onValueChange(newChecked.toString())
                         },
                         colors = SwitchDefaults.colors(
-                            checkedTrackColor = MorpheColors.Teal
+                            checkedTrackColor = accents.secondary
                         )
                     )
                     Text(
@@ -1001,8 +995,8 @@ private fun PatchOptionEditor(
 
                 val fieldFocused = remember { mutableStateOf(false) }
                 val fieldBorder by animateColorAsState(
-                    if (fieldFocused.value) MorpheColors.Teal.copy(alpha = 0.6f)
-                    else MorpheColors.Teal.copy(alpha = 0.2f),
+                    if (fieldFocused.value) accents.secondary.copy(alpha = 0.6f)
+                    else accents.secondary.copy(alpha = 0.2f),
                     animationSpec = tween(150)
                 )
 
@@ -1044,7 +1038,7 @@ private fun PatchOptionEditor(
                                     fontFamily = mono,
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
-                                cursorBrush = androidx.compose.ui.graphics.SolidColor(MorpheColors.Teal),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(accents.secondary),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .onFocusChanged { fieldFocused.value = it.isFocused }
@@ -1056,8 +1050,8 @@ private fun PatchOptionEditor(
                     val browseHover = remember { MutableInteractionSource() }
                     val isBrowseHovered by browseHover.collectIsHoveredAsState()
                     val browseBorder by animateColorAsState(
-                        if (isBrowseHovered) MorpheColors.Teal.copy(alpha = 0.5f)
-                        else MorpheColors.Teal.copy(alpha = 0.2f),
+                        if (isBrowseHovered) accents.secondary.copy(alpha = 0.5f)
+                        else accents.secondary.copy(alpha = 0.2f),
                         animationSpec = tween(150)
                     )
 
@@ -1094,7 +1088,7 @@ private fun PatchOptionEditor(
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = mono,
-                            color = if (isBrowseHovered) MorpheColors.Teal else MorpheColors.Teal.copy(alpha = 0.7f),
+                            color = if (isBrowseHovered) accents.secondary else accents.secondary.copy(alpha = 0.7f),
                             letterSpacing = 1.sp
                         )
                     }
@@ -1108,8 +1102,8 @@ private fun PatchOptionEditor(
 
                 val fieldFocused = remember { mutableStateOf(false) }
                 val fieldBorder by animateColorAsState(
-                    if (fieldFocused.value) MorpheColors.Teal.copy(alpha = 0.6f)
-                    else MorpheColors.Teal.copy(alpha = 0.2f),
+                    if (fieldFocused.value) accents.secondary.copy(alpha = 0.6f)
+                    else accents.secondary.copy(alpha = 0.2f),
                     animationSpec = tween(150)
                 )
 
@@ -1143,7 +1137,7 @@ private fun PatchOptionEditor(
                                 fontFamily = mono,
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
-                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MorpheColors.Teal),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(accents.secondary),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onFocusChanged { fieldFocused.value = it.isFocused }
@@ -1165,6 +1159,7 @@ private fun DefaultDisabledInfoCard(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
     Row(
         modifier = modifier
@@ -1172,10 +1167,10 @@ private fun DefaultDisabledInfoCard(
             .clip(RoundedCornerShape(corners.small))
             .border(
                 1.dp,
-                MorpheColors.Blue.copy(alpha = 0.15f),
+                accents.primary.copy(alpha = 0.15f),
                 RoundedCornerShape(corners.small)
             )
-            .background(MorpheColors.Blue.copy(alpha = 0.04f))
+            .background(accents.primary.copy(alpha = 0.04f))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1183,7 +1178,7 @@ private fun DefaultDisabledInfoCard(
         Icon(
             imageVector = Icons.Default.Info,
             contentDescription = null,
-            tint = MorpheColors.Blue.copy(alpha = 0.6f),
+            tint = accents.primary.copy(alpha = 0.6f),
             modifier = Modifier.size(16.dp)
         )
         Text(
@@ -1222,8 +1217,9 @@ private fun CommandPreview(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
 
-    val terminalGreen = MorpheColors.Teal
+    val terminalGreen = accents.secondary
     val terminalText = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val terminalBg = MaterialTheme.colorScheme.surface
 
@@ -1369,6 +1365,7 @@ private fun ArchitectureSelectorCard(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val deviceState by DeviceMonitor.state.collectAsState()
     val deviceArch = deviceState.selectedDevice?.architecture
 
@@ -1378,10 +1375,10 @@ private fun ArchitectureSelectorCard(
             .clip(RoundedCornerShape(corners.small))
             .border(
                 1.dp,
-                MorpheColors.Teal.copy(alpha = 0.15f),
+                accents.secondary.copy(alpha = 0.15f),
                 RoundedCornerShape(corners.small)
             )
-            .background(MorpheColors.Teal.copy(alpha = 0.03f))
+            .background(accents.secondary.copy(alpha = 0.03f))
             .padding(12.dp)
     ) {
         Row(
@@ -1391,7 +1388,7 @@ private fun ArchitectureSelectorCard(
             Box(
                 modifier = Modifier
                     .size(6.dp)
-                    .background(MorpheColors.Teal, RoundedCornerShape(1.dp))
+                    .background(accents.secondary, RoundedCornerShape(1.dp))
             )
             Text(
                 text = "STRIP NATIVE LIBRARIES",
@@ -1419,7 +1416,7 @@ private fun ArchitectureSelectorCard(
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = mono,
-                color = MorpheColors.Teal.copy(alpha = 0.8f)
+                color = accents.secondary.copy(alpha = 0.8f)
             )
         }
 
@@ -1437,7 +1434,7 @@ private fun ArchitectureSelectorCard(
                 val isArchHovered by archHover.collectIsHoveredAsState()
                 val archBorder by animateColorAsState(
                     when {
-                        isSelected -> MorpheColors.Teal.copy(alpha = 0.4f)
+                        isSelected -> accents.secondary.copy(alpha = 0.4f)
                         isArchHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                         else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                     },
@@ -1451,7 +1448,7 @@ private fun ArchitectureSelectorCard(
                         .border(1.dp, archBorder, RoundedCornerShape(corners.small))
                         .then(
                             if (isSelected) Modifier.background(
-                                MorpheColors.Teal.copy(alpha = 0.08f),
+                                accents.secondary.copy(alpha = 0.08f),
                                 RoundedCornerShape(corners.small)
                             ) else Modifier
                         )
@@ -1466,7 +1463,7 @@ private fun ArchitectureSelectorCard(
                             modifier = Modifier
                                 .size(6.dp)
                                 .background(
-                                    if (isSelected) MorpheColors.Teal
+                                    if (isSelected) accents.secondary
                                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
                                     RoundedCornerShape(1.dp)
                                 )
@@ -1476,7 +1473,7 @@ private fun ArchitectureSelectorCard(
                             fontSize = 11.sp,
                             fontFamily = mono,
                             fontWeight = FontWeight.Medium,
-                            color = if (isSelected) MorpheColors.Teal
+                            color = if (isSelected) accents.secondary
                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }

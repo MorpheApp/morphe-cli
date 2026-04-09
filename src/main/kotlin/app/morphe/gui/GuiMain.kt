@@ -18,7 +18,6 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import app.morphe.gui.data.model.AppConfig
-import app.morphe.gui.ui.components.TitleBarInsets
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.Image
 import app.morphe.gui.util.FileUtils
@@ -67,58 +66,26 @@ fun launchGui(args: Array<String>) = application {
     ) {
         window.minimumSize = java.awt.Dimension(600, 400)
 
-        // macOS: transparent title bar with expanded height so traffic lights
-        // align with our header row content. Uses JetBrains Runtime custom title bar API.
-        // Other OS: standard decorated window (no-op).
-        val titleBarInsets = remember {
+        // macOS: hide the OS-drawn title bar so a Compose-rendered colored
+        // band can take its place. Traffic lights stay where the OS draws
+        // them (top-left of the client area, ~12px from each edge), and the
+        // colored band sits behind them. These three Apple AWT properties
+        // ship with every macOS JDK — no JetBrains Runtime needed.
+        //
+        // Windows / Linux: standard decorated window. The OS title bar is
+        // drawn above the client area as normal. On Windows, its color is
+        // tinted to match the active theme via DWM (see WindowTitleBarTint).
+        remember {
             val isMac = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
-            val isWindows = System.getProperty("os.name")?.lowercase()?.contains("win") == true
-            var insets = TitleBarInsets()
             if (isMac) {
                 window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
                 window.rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
                 window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
-
-                // JBR: expand the title bar so traffic lights center with our header row.
-                // Height ~= header top padding (26dp) + half content height (~20dp) + buffer
-                // → traffic lights center vertically with our header icons/text.
-                try {
-                    val decorations = com.jetbrains.JBR.getWindowDecorations()
-                    val titleBar = decorations.createCustomTitleBar()
-                    titleBar.height = 56f
-                    titleBar.putProperty("controls.visible", true)
-                    decorations.setCustomTitleBar(window, titleBar)
-                    val macInsets = titleBar.toInsets(window, fallbackStartDp = 80f)
-                    insets = macInsets.copy(
-                        // Keep header content clear of the traffic-light cluster.
-                        // JBR's inset can still land a bit tight on macOS depending on scaling.
-                        start = macInsets.start + 24.dp
-                    )
-                } catch (_: Exception) {
-                    // Not running on JBR — traffic lights stay at default position
-                    insets = TitleBarInsets(start = 104.dp)
-                }
             }
-            if (isWindows) {
-                try {
-                    val decorations = com.jetbrains.JBR.getWindowDecorations()
-                    val titleBar = decorations.createCustomTitleBar()
-                    titleBar.height = 50f
-                    titleBar.putProperty("controls.visible", true)
-                    decorations.setCustomTitleBar(window, titleBar)
-                    insets = titleBar.toInsets(window, fallbackEndDp = 138f)
-                } catch (_: Exception) {
-                    insets = TitleBarInsets(end = 138.dp)
-                }
-            }
-            insets
         }
 
         CompositionLocalProvider(LocalFrameWindowScope provides this) {
-            App(
-                initialSimplifiedMode = initialSimplifiedMode,
-                titleBarInsets = titleBarInsets
-            )
+            App(initialSimplifiedMode = initialSimplifiedMode)
         }
     }
 }
@@ -176,16 +143,3 @@ private fun loadAppIcon(): BitmapPainter? {
     return null
 }
 
-private fun com.jetbrains.WindowDecorations.CustomTitleBar.toInsets(
-    window: java.awt.Window,
-    fallbackStartDp: Float = 0f,
-    fallbackEndDp: Float = 0f
-): TitleBarInsets {
-    val scale = window.graphicsConfiguration?.defaultTransform?.scaleX?.toFloat()?.coerceAtLeast(1f) ?: 1f
-    val leftDp = (leftInset / scale).takeIf { it > 0f } ?: fallbackStartDp
-    val rightDp = (rightInset / scale).takeIf { it > 0f } ?: fallbackEndDp
-    return TitleBarInsets(
-        start = leftDp.dp,
-        end = rightDp.dp
-    )
-}

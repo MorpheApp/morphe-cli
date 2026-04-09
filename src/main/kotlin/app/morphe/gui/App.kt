@@ -6,17 +6,20 @@
 package app.morphe.gui
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.window.WindowDraggableArea
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
-import app.morphe.gui.ui.components.LocalTitleBarInsets
+import app.morphe.gui.ui.components.LocalFrameWindowScope
 import app.morphe.gui.ui.components.LottieAnimation
 import app.morphe.gui.ui.components.SakuraPetals
-import app.morphe.gui.ui.components.TitleBarInsets
+import app.morphe.gui.util.applyTitleBarTint
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.SlideTransition
 import app.morphe.gui.data.repository.ConfigRepository
@@ -50,8 +53,7 @@ val LocalModeState = staticCompositionLocalOf<ModeState> {
 
 @Composable
 fun App(
-    initialSimplifiedMode: Boolean = true,
-    titleBarInsets: TitleBarInsets = TitleBarInsets()
+    initialSimplifiedMode: Boolean = true
 ) {
     LaunchedEffect(Unit) {
         Logger.init()
@@ -60,17 +62,13 @@ fun App(
     KoinApplication(application = {
         modules(appModule)
     }) {
-        AppContent(
-            initialSimplifiedMode = initialSimplifiedMode,
-            titleBarInsets = titleBarInsets
-        )
+        AppContent(initialSimplifiedMode = initialSimplifiedMode)
     }
 }
 
 @Composable
 private fun AppContent(
-    initialSimplifiedMode: Boolean,
-    titleBarInsets: TitleBarInsets
+    initialSimplifiedMode: Boolean
 ) {
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
@@ -128,12 +126,41 @@ private fun AppContent(
     MorpheTheme(themePreference = themePreference) {
         CompositionLocalProvider(
             LocalThemeState provides themeState,
-            LocalModeState provides modeState,
-            LocalTitleBarInsets provides titleBarInsets
+            LocalModeState provides modeState
         ) {
+            // Tint the OS title bar (Windows DWM caption color, macOS traffic
+            // light contrast) to match the active theme's surface color.
+            val titleBarColor = MaterialTheme.colorScheme.surface
+            val frameScope = LocalFrameWindowScope.current
+            LaunchedEffect(titleBarColor, frameScope) {
+                frameScope?.window?.let { applyTitleBarTint(it, titleBarColor) }
+            }
+
+            // macOS only: render a 28dp colored band at the very top of the
+            // window, sitting underneath the (now-transparent) OS title bar.
+            // The traffic lights overlay this band at their default position.
+            // Wrapped in WindowDraggableArea so the band acts as a drag region.
+            val isMac = remember {
+                System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+            }
+
             Surface(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (!isLoading) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (isMac && frameScope != null) {
+                        with(frameScope) {
+                            WindowDraggableArea {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(16.dp)
+                                        .background(titleBarColor)
+                                )
+                            }
+                        }
+                    }
+
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        if (!isLoading) {
                         val patchService: PatchService = koinInject()
                         val quickViewModel = remember {
                             QuickPatchViewModel(patchSourceManager, patchService, configRepository)
@@ -190,6 +217,7 @@ private fun AppContent(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }

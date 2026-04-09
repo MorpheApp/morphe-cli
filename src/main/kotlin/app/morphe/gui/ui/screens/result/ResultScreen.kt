@@ -40,13 +40,10 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.repository.ConfigRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import app.morphe.gui.ui.components.DraggableHeaderArea
-import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.AdbDevice
 import app.morphe.gui.util.AdbException
 import app.morphe.gui.util.AdbManager
@@ -76,7 +73,6 @@ fun ResultScreenContent(outputPath: String) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val titleInsets = LocalTitleBarInsets.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
 
     val outputFile = File(outputPath)
@@ -144,26 +140,20 @@ fun ResultScreenContent(outputPath: String) {
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Header row
-        DraggableHeaderArea {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .drawBehind {
-                        drawLine(
-                            color = borderColor,
-                            start = Offset(0f, size.height),
-                            end = Offset(size.width, size.height),
-                            strokeWidth = 1f
-                        )
-                    }
-                    .padding(
-                        start = 12.dp + titleInsets.start,
-                        end = 12.dp + titleInsets.end,
-                        top = 8.dp + titleInsets.top,
-                        bottom = 8.dp
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawLine(
+                        color = borderColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1f
+                    )
+                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
                 // Back button
                 val backHover = remember { MutableInteractionSource() }
                 val isBackHovered by backHover.collectIsHoveredAsState()
@@ -195,7 +185,7 @@ fun ResultScreenContent(outputPath: String) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(MorpheColors.Teal, RoundedCornerShape(2.dp))
+                        .background(accents.secondary, RoundedCornerShape(2.dp))
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -203,14 +193,13 @@ fun ResultScreenContent(outputPath: String) {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
-                    color = MorpheColors.Teal,
+                    color = accents.secondary,
                     letterSpacing = 1.sp
                 )
 
                 Spacer(Modifier.weight(1f))
 
                 TopBarRow(allowCacheClear = false)
-            }
         }
 
         // Content — vertically centered when it fits, scrollable when it overflows
@@ -244,7 +233,7 @@ fun ResultScreenContent(outputPath: String) {
                     modifier = Modifier
                         .width(3.dp)
                         .fillMaxHeight()
-                        .background(MorpheColors.Teal)
+                        .background(accents.secondary)
                         .align(Alignment.CenterStart)
                 )
 
@@ -284,7 +273,7 @@ fun ResultScreenContent(outputPath: String) {
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = mono,
-                                color = MorpheColors.Teal
+                                color = accents.secondary
                             )
                         }
                         Spacer(Modifier.height(2.dp))
@@ -468,6 +457,7 @@ private fun AdbInstallSection(
     onRetryClick: () -> Unit,
     onDismissError: () -> Unit
 ) {
+    val accents = LocalMorpheAccents.current
     Box(
         modifier = Modifier
             .widthIn(max = 520.dp)
@@ -507,7 +497,7 @@ private fun AdbInstallSection(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = MorpheColors.Teal,
+                            tint = accents.secondary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
@@ -516,7 +506,7 @@ private fun AdbInstallSection(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = mono,
-                            color = MorpheColors.Teal,
+                            color = accents.secondary,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -594,7 +584,7 @@ private fun AdbInstallSection(
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = MorpheColors.Blue
+                            color = accents.primary
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
@@ -602,7 +592,7 @@ private fun AdbInstallSection(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = mono,
-                            color = MorpheColors.Blue,
+                            color = accents.primary,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -636,7 +626,7 @@ private fun AdbInstallSection(
 
                             val deviceBorder by animateColorAsState(
                                 when {
-                                    isSelected -> MorpheColors.Teal.copy(alpha = 0.5f)
+                                    isSelected -> accents.secondary.copy(alpha = 0.5f)
                                     isDeviceHovered && enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                     else -> borderColor
                                 },
@@ -644,7 +634,7 @@ private fun AdbInstallSection(
                             )
                             val deviceBg by animateColorAsState(
                                 when {
-                                    isSelected -> MorpheColors.Teal.copy(alpha = 0.06f)
+                                    isSelected -> accents.secondary.copy(alpha = 0.06f)
                                     else -> Color.Transparent
                                 },
                                 animationSpec = tween(150)
@@ -670,8 +660,8 @@ private fun AdbInstallSection(
                                     imageVector = Icons.Default.PhoneAndroid,
                                     contentDescription = null,
                                     tint = when {
-                                        isSelected -> MorpheColors.Teal
-                                        enabled -> MorpheColors.Blue.copy(alpha = 0.6f)
+                                        isSelected -> accents.secondary
+                                        enabled -> accents.primary.copy(alpha = 0.6f)
                                         else -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
                                     },
                                     modifier = Modifier.size(20.dp)
@@ -694,8 +684,8 @@ private fun AdbInstallSection(
                                 }
                                 // Status tag
                                 val statusColor = when (device.status) {
-                                    DeviceStatus.DEVICE -> MorpheColors.Teal
-                                    DeviceStatus.UNAUTHORIZED -> Color(0xFFFF9800)
+                                    DeviceStatus.DEVICE -> accents.secondary
+                                    DeviceStatus.UNAUTHORIZED -> accents.warning
                                     else -> MaterialTheme.colorScheme.error
                                 }
                                 Box(
@@ -728,9 +718,9 @@ private fun AdbInstallSection(
                         val isInstallHovered by installHover.collectIsHoveredAsState()
                         val installBg by animateColorAsState(
                             when {
-                                selectedDevice == null -> MorpheColors.Teal.copy(alpha = 0.3f)
-                                isInstallHovered -> MorpheColors.Teal.copy(alpha = 0.9f)
-                                else -> MorpheColors.Teal
+                                selectedDevice == null -> accents.secondary.copy(alpha = 0.3f)
+                                isInstallHovered -> accents.secondary.copy(alpha = 0.9f)
+                                else -> accents.secondary
                             },
                             animationSpec = tween(150)
                         )
@@ -782,7 +772,8 @@ private fun CleanupSection(
     borderColor: Color,
     onCleanupClick: () -> Unit
 ) {
-    val accentColor = if (tempFilesCleared) MorpheColors.Teal else MaterialTheme.colorScheme.onSurfaceVariant
+    val accents = LocalMorpheAccents.current
+    val accentColor = if (tempFilesCleared) accents.secondary else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = Modifier
@@ -791,11 +782,11 @@ private fun CleanupSection(
             .clip(RoundedCornerShape(corners.medium))
             .border(
                 1.dp,
-                if (tempFilesCleared) MorpheColors.Teal.copy(alpha = 0.2f) else borderColor,
+                if (tempFilesCleared) accents.secondary.copy(alpha = 0.2f) else borderColor,
                 RoundedCornerShape(corners.medium)
             )
             .background(
-                if (tempFilesCleared) MorpheColors.Teal.copy(alpha = 0.04f)
+                if (tempFilesCleared) accents.secondary.copy(alpha = 0.04f)
                 else MaterialTheme.colorScheme.surface
             )
             .padding(16.dp),
@@ -808,7 +799,7 @@ private fun CleanupSection(
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = mono,
-                color = if (tempFilesCleared) MorpheColors.Teal
+                color = if (tempFilesCleared) accents.secondary
                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 letterSpacing = 1.sp
             )
@@ -821,7 +812,7 @@ private fun CleanupSection(
                 },
                 fontSize = 11.sp,
                 fontFamily = mono,
-                color = if (tempFilesCleared) MorpheColors.Teal.copy(alpha = 0.7f)
+                color = if (tempFilesCleared) accents.secondary.copy(alpha = 0.7f)
                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
@@ -830,7 +821,7 @@ private fun CleanupSection(
             val cleanHover = remember { MutableInteractionSource() }
             val isCleanHovered by cleanHover.collectIsHoveredAsState()
             val cleanBg by animateColorAsState(
-                if (isCleanHovered) Color(0xFFFF9800).copy(alpha = 0.1f) else Color.Transparent,
+                if (isCleanHovered) accents.warning.copy(alpha = 0.1f) else Color.Transparent,
                 animationSpec = tween(150)
             )
             Box(
@@ -846,7 +837,7 @@ private fun CleanupSection(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
-                    color = Color(0xFFFF9800),
+                    color = accents.warning,
                     letterSpacing = 0.5.sp
                 )
             }
@@ -854,7 +845,7 @@ private fun CleanupSection(
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = MorpheColors.Teal,
+                tint = accents.secondary,
                 modifier = Modifier.size(18.dp)
             )
         }

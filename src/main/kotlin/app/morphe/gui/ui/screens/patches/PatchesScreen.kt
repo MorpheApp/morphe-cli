@@ -42,8 +42,6 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Release
 import org.koin.core.parameter.parametersOf
 import cafe.adriel.voyager.koin.koinScreenModel
-import app.morphe.gui.ui.components.DraggableHeaderArea
-import app.morphe.gui.ui.components.LocalTitleBarInsets
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.SettingsButton
@@ -118,8 +116,6 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             .fillMaxSize()
     ) {
         // ── Header bar ──
-        val titleInsets = LocalTitleBarInsets.current
-        DraggableHeaderArea {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -131,12 +127,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                         strokeWidth = 1f
                     )
                 }
-                .padding(
-                    start = 12.dp + titleInsets.start,
-                    end = 12.dp + titleInsets.end,
-                    top = 8.dp + titleInsets.top,
-                    bottom = 8.dp
-                ),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
@@ -227,7 +218,6 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             DeviceIndicator()
             Spacer(modifier = Modifier.width(6.dp))
             SettingsButton(allowCacheClear = true)
-        }
         }
 
         // ── Content area ──
