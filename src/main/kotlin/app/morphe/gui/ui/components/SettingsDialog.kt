@@ -103,7 +103,7 @@ fun SettingsDialog(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    ThemePreference.entries.forEach { theme ->
+                    ThemePreference.entries.filter { it != ThemePreference.MATCHA }.forEach { theme ->
                         val isSelected = currentTheme == theme
                         val themeAccent = theme.accentColor()
                         val hoverInteraction = remember { MutableInteractionSource() }

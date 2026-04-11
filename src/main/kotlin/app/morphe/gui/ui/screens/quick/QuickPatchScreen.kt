@@ -77,6 +77,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
 
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
     val density = androidx.compose.ui.platform.LocalDensity.current
     var leadingWidthPx by remember { mutableIntStateOf(0) }
@@ -238,8 +239,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
             uiState.error?.let { error ->
                 val mono = LocalMorpheFont.current
                 val isUnsupportedWarning = error.contains("not supported in Quick Patch")
-                val containerColor = if (isUnsupportedWarning) Color(0xFF4A3000) else MaterialTheme.colorScheme.errorContainer
-                val contentColor = if (isUnsupportedWarning) Color(0xFFFFB74D) else MaterialTheme.colorScheme.onErrorContainer
+                val containerColor = if (isUnsupportedWarning) accents.warning.copy(alpha = 0.15f) else MaterialTheme.colorScheme.errorContainer
+                val contentColor = if (isUnsupportedWarning) accents.warning else MaterialTheme.colorScheme.onErrorContainer
                 Snackbar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -283,6 +284,7 @@ private fun BrandingLogo() {
 private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
     val mono = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
+    val accents = LocalMorpheAccents.current
 
     if (isLoading) {
         Row(
@@ -297,7 +299,7 @@ private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
             CircularProgressIndicator(
                 modifier = Modifier.size(12.dp),
                 strokeWidth = 1.5.dp,
-                color = MorpheColors.Blue
+                color = accents.primary
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -333,13 +335,13 @@ private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = mono,
-                color = MorpheColors.Blue
+                color = accents.primary
             )
             Spacer(modifier = Modifier.width(6.dp))
             Box(
                 modifier = Modifier
-                    .background(MorpheColors.Teal.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                    .border(1.dp, MorpheColors.Teal.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                    .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                    .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
                     .padding(horizontal = 5.dp, vertical = 1.dp)
             ) {
                 Text(
@@ -347,7 +349,7 @@ private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = mono,
-                    color = MorpheColors.Teal,
+                    color = accents.secondary,
                     letterSpacing = 1.sp
                 )
             }
@@ -366,7 +368,8 @@ private fun IdleContent(
     onBrowse: () -> Unit
 ) {
     val corners = LocalMorpheCorners.current
-    val bracketColor = if (isDragHovering) MorpheColors.Blue.copy(alpha = 0.7f)
+    val accents = LocalMorpheAccents.current
+    val bracketColor = if (isDragHovering) accents.primary.copy(alpha = 0.7f)
         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
 
     Box(
@@ -397,7 +400,7 @@ private fun IdleContent(
             if (isAnalyzing) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(40.dp),
-                    color = MorpheColors.Blue,
+                    color = accents.primary,
                     strokeWidth = 3.dp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -411,7 +414,7 @@ private fun IdleContent(
                     imageVector = Icons.Default.CloudUpload,
                     contentDescription = null,
                     modifier = Modifier.size(44.dp),
-                    tint = if (isDragHovering) MorpheColors.Blue
+                    tint = if (isDragHovering) accents.primary
                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -419,7 +422,7 @@ private fun IdleContent(
                     text = "Drop APK here",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isDragHovering) MorpheColors.Blue
+                    color = if (isDragHovering) accents.primary
                            else MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -453,18 +456,19 @@ private fun ReadyContent(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
 
     val accentColor = when {
         apkInfo.checksumStatus is ChecksumStatus.Mismatch -> MaterialTheme.colorScheme.error
-        apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> MorpheColors.Teal
+        apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> accents.secondary
         apkInfo.versionStatus == VersionStatus.TOO_NEW ||
             apkInfo.versionStatus == VersionStatus.TOO_OLD ||
             apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN -> MaterialTheme.colorScheme.error
         apkInfo.versionStatus == VersionStatus.OLDER_STABLE ||
             apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL ||
-            apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL -> Color(0xFFFF9800)
-        else -> MorpheColors.Blue
+            apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL -> accents.warning
+        else -> accents.primary
     }
 
     val enabledPatches = compatiblePatches.filter { it.isEnabled }
@@ -679,11 +683,11 @@ private fun ReadyContent(
                         )
                         apkInfo.architectures.forEach { arch ->
                             val isDeviceArch = highlightArch != null && arch == highlightArch
-                            val tagBorder = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.5f)
+                            val tagBorder = if (isDeviceArch) accents.primary.copy(alpha = 0.5f)
                                 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                            val tagBg = if (isDeviceArch) MorpheColors.Blue.copy(alpha = 0.08f)
+                            val tagBg = if (isDeviceArch) accents.primary.copy(alpha = 0.08f)
                                 else Color.Transparent
-                            val tagColor = if (isDeviceArch) MorpheColors.Blue
+                            val tagColor = if (isDeviceArch) accents.primary
                                 else MaterialTheme.colorScheme.onSurface
                             val dimmed = highlightArch != null && !isDeviceArch
 
@@ -762,7 +766,7 @@ private fun ReadyContent(
                             fontSize = 11.sp,
                             fontFamily = mono,
                             fontWeight = FontWeight.Medium,
-                            color = MorpheColors.Blue
+                            color = accents.primary
                         )
                         if (disabledPatches.isNotEmpty()) {
                             Spacer(Modifier.width(6.dp))
@@ -833,7 +837,7 @@ private fun ReadyContent(
                                 shape = RoundedCornerShape(corners.small),
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MorpheColors.Blue,
+                                    focusedBorderColor = accents.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                                 )
                             )
@@ -858,11 +862,11 @@ private fun ReadyContent(
                             ) {
                                 filteredPatches.forEach { patch ->
                                     val isEnabled = patch.isEnabled
-                                    val chipBorder = if (isEnabled) MorpheColors.Blue.copy(alpha = 0.5f)
+                                    val chipBorder = if (isEnabled) accents.primary.copy(alpha = 0.5f)
                                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                                    val chipBg = if (isEnabled) MorpheColors.Blue.copy(alpha = 0.08f)
+                                    val chipBg = if (isEnabled) accents.primary.copy(alpha = 0.08f)
                                         else Color.Transparent
-                                    val chipTextColor = if (isEnabled) MorpheColors.Blue
+                                    val chipTextColor = if (isEnabled) accents.primary
                                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
 
                                     Box(
@@ -904,7 +908,7 @@ private fun ReadyContent(
         val patchHover = remember { MutableInteractionSource() }
         val isPatchHovered by patchHover.collectIsHoveredAsState()
         val patchBg by animateColorAsState(
-            if (isPatchHovered) MorpheColors.Blue.copy(alpha = 0.9f) else MorpheColors.Blue,
+            if (isPatchHovered) accents.primary.copy(alpha = 0.9f) else accents.primary,
             animationSpec = tween(150)
         )
 
@@ -956,6 +960,7 @@ private fun PatchingContent(
 ) {
     val mono = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
+    val accents = LocalMorpheAccents.current
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -965,7 +970,7 @@ private fun PatchingContent(
         CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
             strokeWidth = 3.dp,
-            color = MorpheColors.Teal
+            color = accents.secondary
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -979,7 +984,7 @@ private fun PatchingContent(
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = mono,
-            color = MorpheColors.Teal,
+            color = accents.secondary,
             letterSpacing = 1.sp
         )
 
@@ -1037,6 +1042,7 @@ private fun CompletedContent(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
     val outputFile = File(outputPath)
     val scope = rememberCoroutineScope()
@@ -1057,7 +1063,7 @@ private fun CompletedContent(
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .background(MorpheColors.Teal, RoundedCornerShape(2.dp))
+                .background(accents.secondary, RoundedCornerShape(2.dp))
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
@@ -1065,7 +1071,7 @@ private fun CompletedContent(
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = mono,
-            color = MorpheColors.Teal,
+            color = accents.secondary,
             letterSpacing = 1.sp
         )
 
@@ -1084,7 +1090,7 @@ private fun CompletedContent(
                 modifier = Modifier
                     .width(3.dp)
                     .fillMaxHeight()
-                    .background(MorpheColors.Teal)
+                    .background(accents.secondary)
                     .align(Alignment.CenterStart)
             )
 
@@ -1125,7 +1131,7 @@ private fun CompletedContent(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = mono,
-                            color = MorpheColors.Teal
+                            color = accents.secondary
                         )
                     }
                 }
@@ -1148,7 +1154,7 @@ private fun CompletedContent(
                     val folderHover = remember { MutableInteractionSource() }
                     val isFolderHovered by folderHover.collectIsHoveredAsState()
                     val folderColor by animateColorAsState(
-                        if (isFolderHovered) MorpheColors.Blue else MorpheColors.Blue.copy(alpha = 0.6f),
+                        if (isFolderHovered) accents.primary else accents.primary.copy(alpha = 0.6f),
                         animationSpec = tween(150)
                     )
                     Box(
@@ -1194,7 +1200,7 @@ private fun CompletedContent(
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(MorpheColors.Teal, RoundedCornerShape(1.dp))
+                                .background(accents.secondary, RoundedCornerShape(1.dp))
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -1202,7 +1208,7 @@ private fun CompletedContent(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = mono,
-                            color = MorpheColors.Teal,
+                            color = accents.secondary,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -1215,7 +1221,7 @@ private fun CompletedContent(
                         CircularProgressIndicator(
                             modifier = Modifier.size(14.dp),
                             strokeWidth = 2.dp,
-                            color = MorpheColors.Blue
+                            color = accents.primary
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -1223,7 +1229,7 @@ private fun CompletedContent(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = mono,
-                            color = MorpheColors.Blue,
+                            color = accents.primary,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -1233,7 +1239,7 @@ private fun CompletedContent(
                     val installHover = remember { MutableInteractionSource() }
                     val isInstallHovered by installHover.collectIsHoveredAsState()
                     val installBg by animateColorAsState(
-                        if (isInstallHovered) MorpheColors.Teal.copy(alpha = 0.9f) else MorpheColors.Teal,
+                        if (isInstallHovered) accents.secondary.copy(alpha = 0.9f) else accents.secondary,
                         animationSpec = tween(150)
                     )
 
@@ -1300,7 +1306,7 @@ private fun CompletedContent(
         val patchAnotherHover = remember { MutableInteractionSource() }
         val isPatchAnotherHovered by patchAnotherHover.collectIsHoveredAsState()
         val patchAnotherBg by animateColorAsState(
-            if (isPatchAnotherHovered) MorpheColors.Blue.copy(alpha = 0.9f) else MorpheColors.Blue,
+            if (isPatchAnotherHovered) accents.primary.copy(alpha = 0.9f) else accents.primary,
             animationSpec = tween(150)
         )
 
@@ -1341,6 +1347,7 @@ private fun SupportedAppsRow(
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
     val uriHandler = LocalUriHandler.current
     val focusManager = LocalFocusManager.current
 
@@ -1371,7 +1378,7 @@ private fun SupportedAppsRow(
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = MorpheColors.Blue
+                        color = accents.primary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -1460,7 +1467,7 @@ private fun SupportedAppsRow(
                         shape = RoundedCornerShape(corners.small),
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MorpheColors.Blue,
+                            focusedBorderColor = accents.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
                     )
@@ -1485,7 +1492,7 @@ private fun SupportedAppsRow(
                         val hoverInteraction = remember { MutableInteractionSource() }
                         val isHovered by hoverInteraction.collectIsHoveredAsState()
                         val borderColor by animateColorAsState(
-                            if (isHovered) MorpheColors.Blue.copy(alpha = 0.4f)
+                            if (isHovered) accents.primary.copy(alpha = 0.4f)
                             else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
                             animationSpec = tween(200)
                         )
@@ -1528,7 +1535,7 @@ private fun SupportedAppsRow(
                                     Text(
                                         text = "v${app.recommendedVersion}",
                                         fontSize = 11.sp,
-                                        color = MorpheColors.Teal,
+                                        color = accents.secondary,
                                         fontWeight = FontWeight.Medium
                                     )
                                 } else {
@@ -1543,7 +1550,7 @@ private fun SupportedAppsRow(
                                     Text(
                                         text = "Download ↗",
                                         fontSize = 10.sp,
-                                        color = MorpheColors.Blue.copy(alpha = 0.7f),
+                                        color = accents.primary.copy(alpha = 0.7f),
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -1562,13 +1569,14 @@ private fun SupportedAppsRow(
 
 @Composable
 private fun DragOverlay() {
+    val accents = LocalMorpheAccents.current
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f))
             .border(
                 width = 2.dp,
-                color = MorpheColors.Blue.copy(alpha = 0.5f),
+                color = accents.primary.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(0.dp)
             ),
         contentAlignment = Alignment.Center
@@ -1578,14 +1586,14 @@ private fun DragOverlay() {
                 imageVector = Icons.Default.CloudUpload,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = MorpheColors.Blue
+                tint = accents.primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Drop APK here",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MorpheColors.Blue
+                color = accents.primary
             )
         }
     }

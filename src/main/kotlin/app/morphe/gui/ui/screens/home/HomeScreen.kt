@@ -1806,7 +1806,7 @@ private fun VersionWithDownload(
             letterSpacing = 1.2.sp
         )
 
-        Spacer(modifier = Modifier.height(5.dp))
+//        Spacer(modifier = Modifier.height(3.dp))
 
         if (version != null && downloadUrl != null) {
             val uriHandler = LocalUriHandler.current
@@ -1862,7 +1862,7 @@ private fun VersionWithDownload(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 0.dp)
             )
         }
     }

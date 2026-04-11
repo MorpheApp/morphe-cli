@@ -68,21 +68,20 @@ fun ApkInfoCard(
         )
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 3.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             // ── Header: app identity + dismiss ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(start = 23.dp, end = 20.dp, top = 16.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // App initial — monospace, bold, in accent
                 Box(
                     modifier = Modifier
                         .size(44.dp)
+                        .clip(RoundedCornerShape(corners.small))
                         .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                         .background(accentColor.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
@@ -167,7 +166,7 @@ fun ApkInfoCard(
                             )
                         }
                         .background(accents.warning.copy(alpha = 0.08f))
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                        .padding(start = 23.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -199,7 +198,7 @@ fun ApkInfoCard(
                             strokeWidth = 1f
                         )
                     }
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(start = 23.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 TechDataCell(
@@ -243,7 +242,7 @@ fun ApkInfoCard(
                                 strokeWidth = 1f
                             )
                         }
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                        .padding(start = 23.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
