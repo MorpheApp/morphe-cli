@@ -60,7 +60,7 @@ fun launchGui(args: Array<String>) = application {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Morphe",
+        title = "",
         state = windowState,
         icon = appIcon
     ) {
