@@ -45,6 +45,10 @@ import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.theme.*
 import app.morphe.gui.util.ChecksumStatus
+import app.morphe.gui.util.StatusColorType
+import app.morphe.gui.util.resolveStatusColorType
+import app.morphe.gui.util.resolveVersionStatusDisplay
+import app.morphe.gui.util.toColor
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 import app.morphe.gui.util.VersionStatus
 import app.morphe.gui.util.PatchService
@@ -459,17 +463,9 @@ private fun ReadyContent(
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
 
-    val accentColor = when {
-        apkInfo.checksumStatus is ChecksumStatus.Mismatch -> MaterialTheme.colorScheme.error
-        apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> accents.secondary
-        apkInfo.versionStatus == VersionStatus.TOO_NEW ||
-            apkInfo.versionStatus == VersionStatus.TOO_OLD ||
-            apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN -> MaterialTheme.colorScheme.error
-        apkInfo.versionStatus == VersionStatus.OLDER_STABLE ||
-            apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL ||
-            apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL -> accents.warning
-        else -> accents.primary
-    }
+    val statusColorType = resolveStatusColorType(apkInfo.versionStatus, apkInfo.checksumStatus)
+    val accentColor = if (statusColorType == StatusColorType.PRIMARY) accents.secondary
+                      else statusColorType.toColor()
 
     val enabledPatches = compatiblePatches.filter { it.isEnabled }
     val disabledPatches = compatiblePatches.filter { !it.isEnabled }
@@ -578,33 +574,11 @@ private fun ReadyContent(
                 }
 
                 // Status bar
-                val statusText = when {
-                    apkInfo.checksumStatus is ChecksumStatus.Mismatch -> "CHECKSUM MISMATCH"
-                    apkInfo.checksumStatus is ChecksumStatus.Verified -> "VERIFIED"
-                    apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> "LATEST STABLE"
-                    apkInfo.versionStatus == VersionStatus.OLDER_STABLE -> "OLDER STABLE"
-                    apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL -> "EXPERIMENTAL"
-                    apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL -> "OLDER EXPERIMENTAL"
-                    apkInfo.versionStatus == VersionStatus.TOO_NEW -> "VERSION TOO NEW"
-                    apkInfo.versionStatus == VersionStatus.TOO_OLD -> "VERSION TOO OLD"
-                    apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN -> "UNSUPPORTED VERSION"
-                    else -> null
-                }
-                val statusDetail = when {
-                    apkInfo.checksumStatus is ChecksumStatus.Mismatch -> "Re-download from APKMirror"
-                    apkInfo.checksumStatus is ChecksumStatus.Verified -> "Checksum matches APKMirror"
-                    apkInfo.versionStatus == VersionStatus.OLDER_STABLE ->
-                        "Newer stable v${apkInfo.recommendedVersion} available"
-                    apkInfo.versionStatus == VersionStatus.LATEST_EXPERIMENTAL ->
-                        "Supported, but may not work properly"
-                    apkInfo.versionStatus == VersionStatus.OLDER_EXPERIMENTAL ->
-                        "Newer experimental build available"
-                    apkInfo.versionStatus == VersionStatus.TOO_NEW ||
-                        apkInfo.versionStatus == VersionStatus.TOO_OLD ||
-                        apkInfo.versionStatus == VersionStatus.UNSUPPORTED_BETWEEN ->
-                        "Not officially supported — patches will most likely fail"
-                    else -> null
-                }
+                val statusDisplay = resolveVersionStatusDisplay(
+                    apkInfo.versionStatus, apkInfo.checksumStatus, apkInfo.suggestedVersion
+                )
+                val statusText = statusDisplay?.label
+                val statusDetail = statusDisplay?.detail
 
                 if (statusText != null) {
                     Row(

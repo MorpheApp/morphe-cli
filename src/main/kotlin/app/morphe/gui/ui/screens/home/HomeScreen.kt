@@ -70,6 +70,9 @@ import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 import app.morphe.gui.util.VersionStatus
+import app.morphe.gui.util.resolveStatusColorType
+import app.morphe.gui.util.resolveVersionWarningContent
+import app.morphe.gui.util.toColor
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -788,15 +791,7 @@ private fun ApkSelectedSection(
     val showWarning = apkInfo.versionStatus != VersionStatus.LATEST_STABLE &&
                       apkInfo.versionStatus != VersionStatus.UNKNOWN
     val accents = LocalMorpheAccents.current
-    val warningColor = when (apkInfo.versionStatus) {
-        VersionStatus.TOO_NEW,
-        VersionStatus.TOO_OLD,
-        VersionStatus.UNSUPPORTED_BETWEEN -> MaterialTheme.colorScheme.error
-        VersionStatus.OLDER_STABLE,
-        VersionStatus.LATEST_EXPERIMENTAL,
-        VersionStatus.OLDER_EXPERIMENTAL -> accents.warning
-        else -> accents.primary
-    }
+    val warningColor = resolveStatusColorType(apkInfo.versionStatus, apkInfo.checksumStatus).toColor()
     val primaryColor = if (showWarning) warningColor else accents.primary
 
     Column(
@@ -1306,49 +1301,10 @@ private fun VersionWarningDialog(
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val isHardError = versionStatus == VersionStatus.TOO_OLD ||
-                      versionStatus == VersionStatus.UNSUPPORTED_BETWEEN
-    val warnColor = if (isHardError) MaterialTheme.colorScheme.error else accents.warning
-
-    val (title, message) = when (versionStatus) {
-        VersionStatus.OLDER_STABLE -> Pair(
-            "OLDER STABLE VERSION",
-            "Current: v$currentVersion\nLatest stable: v$suggestedVersion\n\n" +
-                "This version is supported, but a newer stable version is available. " +
-                "You may be missing recent fixes."
-        )
-        VersionStatus.LATEST_EXPERIMENTAL -> Pair(
-            "DO YOU WANT TO EXPERIMENT? 🧪",
-            "Current: v$currentVersion\n\n" +
-                "This version has early experimental support\n\n" +
-                "🔧 Expect quirky app behavior or unidentified bugs as the " +
-                "patches are refined for this app version."
-        )
-        VersionStatus.OLDER_EXPERIMENTAL -> Pair(
-            "OLDER EXPERIMENTAL VERSION",
-            "Current: v$currentVersion\nLatest experimental: v$suggestedVersion\n\n" +
-                "This is a supported experimental build, but a newer experimental " +
-                "version is available. It may not work as expected — proceed with caution."
-        )
-        VersionStatus.TOO_NEW -> Pair(
-            "DO YOU WANT TO EXPERIMENT? 🧪",
-            "Current: v$currentVersion\nNewest known: v$suggestedVersion\n\n" +
-                "This version has early experimental support\n\n" +
-                "🔧 Expect quirky app behavior or unidentified bugs as the " +
-                "patches are refined for this app version."
-        )
-        VersionStatus.TOO_OLD -> Pair(
-            "VERSION TOO OLD",
-            "Current: v$currentVersion\nOldest supported: v$suggestedVersion\n\n" +
-                "This isn't an officially supported version. Patches will most likely fail."
-        )
-        VersionStatus.UNSUPPORTED_BETWEEN -> Pair(
-            "UNSUPPORTED VERSION",
-            "Current: v$currentVersion\n\n" +
-                "This isn't an officially supported version. Patches will most likely fail."
-        )
-        else -> Pair("VERSION NOTICE", "Continue with v$currentVersion?")
-    }
+    val warningContent = resolveVersionWarningContent(versionStatus, currentVersion, suggestedVersion)
+    val warnColor = warningContent.colorType.toColor()
+    val title = warningContent.title
+    val message = warningContent.message
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1396,7 +1352,10 @@ private fun VersionWarningDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(corners.small)
+            ) {
                 Text(
                     "CANCEL",
                     fontFamily = mono,

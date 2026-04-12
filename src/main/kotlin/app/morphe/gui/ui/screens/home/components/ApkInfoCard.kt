@@ -37,6 +37,9 @@ import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.util.ChecksumStatus
 import app.morphe.gui.util.DeviceMonitor
+import app.morphe.gui.util.resolveStatusColorType
+import app.morphe.gui.util.resolveVersionStatusDisplay
+import app.morphe.gui.util.toColor
 
 @Composable
 fun ApkInfoCard(
@@ -47,7 +50,7 @@ fun ApkInfoCard(
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val accentColor = statusAccentColor(apkInfo, accents)
+    val accentColor = resolveStatusColorType(apkInfo.versionStatus, apkInfo.checksumStatus).toColor()
     val cardShape = RoundedCornerShape(corners.medium)
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
 
@@ -284,10 +287,14 @@ fun ApkInfoCard(
             }
 
             // ── Status bar ──
-            val statusInfo = resolveStatus(apkInfo)
-            if (statusInfo != null) {
+            val statusDisplay = resolveVersionStatusDisplay(
+                apkInfo.versionStatus, apkInfo.checksumStatus, apkInfo.suggestedVersion
+            )
+            if (statusDisplay != null) {
                 StatusBar(
-                    statusInfo = statusInfo,
+                    label = statusDisplay.label,
+                    detail = statusDisplay.detail,
+                    color = statusDisplay.colorType.toColor(),
                     mono = mono,
                     borderColor = borderColor
                 )
@@ -333,92 +340,10 @@ private fun homeCardMutedTextColor(alpha: Float): Color {
 }
 
 @Composable
-private fun homeCardAccentTextColor(accent: Color): Color {
-    return accent
-}
-
-private data class StatusInfo(
-    val color: Color,
-    val label: String,
-    val detail: String? = null
-)
-
-@Composable
-private fun resolveStatus(apkInfo: ApkInfo): StatusInfo? {
-    val accents = LocalMorpheAccents.current
-    val errorColor = MaterialTheme.colorScheme.error
-
-    return when (apkInfo.versionStatus) {
-        VersionStatus.LATEST_STABLE -> when (apkInfo.checksumStatus) {
-            is ChecksumStatus.Verified -> StatusInfo(
-                color = homeCardAccentTextColor(accents.primary),
-                label = "LATEST STABLE",
-                detail = "Checksum matches APKMirror"
-            )
-            is ChecksumStatus.Mismatch -> StatusInfo(
-                color = errorColor,
-                label = "CHECKSUM MISMATCH",
-                detail = "File may be corrupted, re-download from APKMirror"
-            )
-            is ChecksumStatus.Error -> StatusInfo(
-                color = accents.warning,
-                label = "LATEST STABLE",
-                detail = "Checksum verification failed"
-            )
-            is ChecksumStatus.NotConfigured -> StatusInfo(
-                color = homeCardAccentTextColor(accents.primary),
-                label = "LATEST STABLE"
-            )
-            is ChecksumStatus.NonRecommendedVersion -> null
-        }
-
-        VersionStatus.OLDER_STABLE -> StatusInfo(
-            color = accents.warning,
-            label = "OLDER STABLE",
-            detail = apkInfo.suggestedVersion
-                ?.let { "Newer stable v$it available" }
-                ?: "A newer stable version is available"
-        )
-
-        VersionStatus.LATEST_EXPERIMENTAL -> StatusInfo(
-            color = accents.warning,
-            label = "EXPERIMENTAL",
-            detail = "Supported, but may not work properly"
-        )
-
-        VersionStatus.OLDER_EXPERIMENTAL -> StatusInfo(
-            color = accents.warning,
-            label = "OLDER EXPERIMENTAL",
-            detail = apkInfo.suggestedVersion
-                ?.let { "Newer experimental v$it available" }
-                ?: "A newer experimental build is available"
-        )
-
-        VersionStatus.TOO_NEW -> StatusInfo(
-            color = errorColor,
-            label = "VERSION TOO NEW",
-            detail = "Not officially supported, patches will most likely fail"
-        )
-
-        VersionStatus.TOO_OLD -> StatusInfo(
-            color = errorColor,
-            label = "VERSION TOO OLD",
-            detail = "Not officially supported, patches will most likely fail"
-        )
-
-        VersionStatus.UNSUPPORTED_BETWEEN -> StatusInfo(
-            color = errorColor,
-            label = "UNSUPPORTED VERSION",
-            detail = "Not officially supported, patches will most likely fail"
-        )
-
-        VersionStatus.UNKNOWN -> null
-    }
-}
-
-@Composable
 private fun StatusBar(
-    statusInfo: StatusInfo,
+    label: String,
+    detail: String?,
+    color: Color,
     mono: androidx.compose.ui.text.font.FontFamily,
     borderColor: Color
 ) {
@@ -433,32 +358,31 @@ private fun StatusBar(
                     strokeWidth = 1f
                 )
             }
-            .background(statusInfo.color.copy(alpha = 0.04f))
+            .background(color.copy(alpha = 0.04f))
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Status dot
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(statusInfo.color, RoundedCornerShape(1.dp))
+                .background(color, RoundedCornerShape(1.dp))
         )
 
         Spacer(Modifier.width(10.dp))
 
         Text(
-            text = statusInfo.label,
+            text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = mono,
-            color = statusInfo.color,
+            color = color,
             letterSpacing = 1.sp
         )
 
-        if (statusInfo.detail != null) {
+        if (detail != null) {
             Spacer(Modifier.width(12.dp))
             Text(
-                text = statusInfo.detail,
+                text = detail,
                 fontSize = 11.sp,
                 fontFamily = mono,
                 fontWeight = FontWeight.Normal,
@@ -467,24 +391,5 @@ private fun StatusBar(
                 overflow = TextOverflow.Ellipsis
             )
         }
-    }
-}
-
-@Composable
-private fun statusAccentColor(apkInfo: ApkInfo, accents: app.morphe.gui.ui.theme.MorpheAccentColors): Color {
-    if (apkInfo.checksumStatus is ChecksumStatus.Mismatch) {
-        return MaterialTheme.colorScheme.error
-    }
-    return when (apkInfo.versionStatus) {
-        VersionStatus.LATEST_STABLE,
-        VersionStatus.UNKNOWN -> accents.primary
-
-        VersionStatus.OLDER_STABLE,
-        VersionStatus.LATEST_EXPERIMENTAL,
-        VersionStatus.OLDER_EXPERIMENTAL -> accents.warning
-
-        VersionStatus.TOO_NEW,
-        VersionStatus.TOO_OLD,
-        VersionStatus.UNSUPPORTED_BETWEEN -> MaterialTheme.colorScheme.error
     }
 }
