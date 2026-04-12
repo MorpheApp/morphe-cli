@@ -222,7 +222,19 @@ object PatchEngine {
                 // 7. Sign APK (unless unsigned)
                 val tempOutput = File(tempDir, config.outputApk.name)
                 if (!config.unsigned) {
-                    onProgress("Signing APK...")
+                    val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
+                        File(tempDir, "morphe.keystore"),
+                        null,
+                        Config.DEFAULT_KEYSTORE_ALIAS,
+                        Config.DEFAULT_KEYSTORE_PASSWORD,
+                    )
+
+                    if (config.keystoreDetails != null) {
+                        onProgress("Signing APK with custom keystore: ${keystoreDetails.keyStore.name}")
+                    } else {
+                        onProgress("Signing APK...")
+                    }
+
                     try {
                         fun signApk(details: ApkUtils.KeyStoreDetails) {
                             ApkUtils.signApk(
@@ -233,16 +245,9 @@ object PatchEngine {
                             )
                         }
 
-                        val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
-                            File(tempDir, "morphe.keystore"),
-                            null,
-                            Config.DEFAULT_KEYSTORE_ALIAS,
-                            Config.DEFAULT_KEYSTORE_PASSWORD,
-                        )
-
                         try {
                             signApk(keystoreDetails)
-                        } catch (e: Exception){
+                        } catch (e: Exception) {
                             // Retry with legacy keystore defaults.
                             if (config.keystoreDetails == null && keystoreDetails.keyStore.exists()) {
                                 logger.info("Using legacy keystore credentials")

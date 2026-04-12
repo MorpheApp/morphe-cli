@@ -48,6 +48,7 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.Patch
+import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
@@ -55,6 +56,7 @@ import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.screens.patching.PatchingScreen
+import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -92,7 +94,21 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val navigator = LocalNavigator.currentOrThrow
+    val configRepository: ConfigRepository = koinInject()
     val uiState by viewModel.uiState.collectAsState()
+
+    // Load keystore config for CLI preview
+    var keystorePath by remember { mutableStateOf<String?>(null) }
+    var keystorePassword by remember { mutableStateOf<String?>(null) }
+    var keystoreAlias by remember { mutableStateOf<String?>(null) }
+    var keystoreEntryPassword by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val config = configRepository.loadConfig()
+        keystorePath = config.keystorePath
+        keystorePassword = config.keystorePassword
+        keystoreAlias = config.keystoreAlias
+        keystoreEntryPassword = config.keystoreEntryPassword
+    }
 
     var showErrorDialog by remember { mutableStateOf(false) }
     var currentError by remember { mutableStateOf<String?>(null) }
@@ -330,8 +346,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
 
         // Command preview — collapsible
         if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
-            val commandPreview = remember(uiState.selectedPatches, uiState.selectedArchitectures, cleanMode, continueOnError) {
-                viewModel.getCommandPreview(cleanMode, continueOnError)
+            val commandPreview = remember(uiState.selectedPatches, uiState.selectedArchitectures, cleanMode, continueOnError, keystorePath) {
+                viewModel.getCommandPreview(cleanMode, continueOnError, keystorePath, keystorePassword, keystoreAlias, keystoreEntryPassword)
             }
             AnimatedVisibility(
                 visible = showCommandPreview,

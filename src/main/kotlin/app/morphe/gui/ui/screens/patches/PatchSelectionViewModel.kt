@@ -268,7 +268,14 @@ class PatchSelectionViewModel(
      * Generate a preview of the CLI command that will be executed.
      * @param cleanMode If true, formats with newlines for readability. If false, compact single-line format.
      */
-    fun getCommandPreview(cleanMode: Boolean = false, continueOnError: Boolean = false): String {
+    fun getCommandPreview(
+        cleanMode: Boolean = false,
+        continueOnError: Boolean = false,
+        keystorePath: String? = null,
+        keystorePassword: String? = null,
+        keystoreAlias: String? = null,
+        keystoreEntryPassword: String? = null
+    ): String {
         val inputFile = File(apkPath)
         val patchesFile = File(actualPatchesFilePath)
         val appFolderName = apkName.replace(" ", "-")
@@ -295,6 +302,9 @@ class PatchSelectionViewModel(
             null
         }
 
+        // Keystore flags (only if custom keystore is set)
+        val hasCustomKeystore = keystorePath != null
+
         return if (cleanMode) {
             val sb = StringBuilder()
             sb.append("java -jar morphe-cli.jar patch \\\n")
@@ -312,6 +322,19 @@ class PatchSelectionViewModel(
 
             if (striplibsArg != null) {
                 sb.append("  --striplibs $striplibsArg \\\n")
+            }
+
+            if (hasCustomKeystore) {
+                sb.append("  --keystore \"$keystorePath\" \\\n")
+                if (keystorePassword != null) {
+                    sb.append("  --keystore-password \"$keystorePassword\" \\\n")
+                }
+                if (keystoreAlias != null && keystoreAlias != "Morphe") {
+                    sb.append("  --keystore-entry-alias \"$keystoreAlias\" \\\n")
+                }
+                if (keystoreEntryPassword != null && keystoreEntryPassword != "Morphe") {
+                    sb.append("  --keystore-entry-password \"$keystoreEntryPassword\" \\\n")
+                }
             }
 
             val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
@@ -335,7 +358,14 @@ class PatchSelectionViewModel(
             val exclusivePart = if (useExclusive) " --exclusive" else ""
             val striplibsPart = if (striplibsArg != null) " --striplibs $striplibsArg" else ""
             val continueOnErrorPart = if (continueOnError) " --continue-on-error" else ""
-            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --force$continueOnErrorPart$exclusivePart$striplibsPart $patches ${inputFile.name}"
+            val keystorePart = if (hasCustomKeystore) {
+                val parts = mutableListOf(" --keystore \"$keystorePath\"")
+                if (keystorePassword != null) parts.add("--keystore-password \"$keystorePassword\"")
+                if (keystoreAlias != null && keystoreAlias != "Morphe") parts.add("--keystore-entry-alias \"$keystoreAlias\"")
+                if (keystoreEntryPassword != null && keystoreEntryPassword != "Morphe") parts.add("--keystore-entry-password \"$keystoreEntryPassword\"")
+                parts.joinToString(" ")
+            } else ""
+            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --force$continueOnErrorPart$exclusivePart$striplibsPart$keystorePart $patches ${inputFile.name}"
         }
     }
 

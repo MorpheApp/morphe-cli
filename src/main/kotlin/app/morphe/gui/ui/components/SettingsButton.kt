@@ -57,6 +57,10 @@ fun SettingsButton(
     var autoCleanupTempFiles by remember { mutableStateOf(true) }
     var patchSources by remember { mutableStateOf<List<PatchSource>>(emptyList()) }
     var activePatchSourceId by remember { mutableStateOf("") }
+    var keystorePath by remember { mutableStateOf<String?>(null) }
+    var keystorePassword by remember { mutableStateOf<String?>(null) }
+    var keystoreAlias by remember { mutableStateOf("Morphe") }
+    var keystoreEntryPassword by remember { mutableStateOf("Morphe") }
 
     LaunchedEffect(showSettingsDialog) {
         if (showSettingsDialog) {
@@ -64,6 +68,10 @@ fun SettingsButton(
             autoCleanupTempFiles = config.autoCleanupTempFiles
             patchSources = config.patchSource
             activePatchSourceId = config.activePatchSourceId
+            keystorePath = config.keystorePath
+            keystorePassword = config.keystorePassword
+            keystoreAlias = config.keystoreAlias
+            keystoreEntryPassword = config.keystoreEntryPassword
         }
     }
 
@@ -150,6 +158,27 @@ fun SettingsButton(
             },
             onCacheCleared = {
                 patchSourceManager.notifyCacheCleared()
+            },
+            keystorePath = keystorePath,
+            keystorePassword = keystorePassword,
+            keystoreAlias = keystoreAlias,
+            keystoreEntryPassword = keystoreEntryPassword,
+            onKeystorePathChange = { path ->
+                keystorePath = path
+                scope.launch { configRepository.setKeystorePath(path) }
+            },
+            onKeystoreCredentialsChange = { pwd, alias, entryPwd ->
+                keystorePassword = pwd
+                keystoreAlias = alias
+                keystoreEntryPassword = entryPwd
+                scope.launch {
+                    configRepository.setKeystoreDetails(
+                        path = keystorePath,
+                        password = pwd,
+                        alias = alias,
+                        entryPassword = entryPwd
+                    )
+                }
             }
         )
     }

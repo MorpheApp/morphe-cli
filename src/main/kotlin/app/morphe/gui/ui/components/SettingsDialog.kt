@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,10 +40,15 @@ import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
+import app.morphe.patcher.apk.ApkSigner
 import java.awt.Desktop
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.cert.X509Certificate
+import java.text.SimpleDateFormat
 import java.util.UUID
 
 @Composable
@@ -61,7 +68,13 @@ fun SettingsDialog(
     onAddPatchSource: (PatchSource) -> Unit = {},
     onEditPatchSource: (PatchSource) -> Unit = {},
     onRemovePatchSource: (String) -> Unit = {},
-    onCacheCleared: () -> Unit = {}
+    onCacheCleared: () -> Unit = {},
+    keystorePath: String? = null,
+    keystorePassword: String? = null,
+    keystoreAlias: String = "Morphe",
+    keystoreEntryPassword: String = "Morphe",
+    onKeystorePathChange: (String?) -> Unit = {},
+    onKeystoreCredentialsChange: (password: String?, alias: String, entryPassword: String) -> Unit = { _, _, _ -> }
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -172,6 +185,22 @@ fun SettingsDialog(
                     onCheckedChange = onAutoCleanupChange,
                     accentColor = accents.primary,
                     mono = mono,
+                    enabled = !isPatching
+                )
+
+                SettingsDivider(borderColor)
+
+                // ── Signing / Keystore ──
+                SigningSection(
+                    keystorePath = keystorePath,
+                    keystorePassword = keystorePassword,
+                    keystoreAlias = keystoreAlias,
+                    keystoreEntryPassword = keystoreEntryPassword,
+                    onKeystorePathChange = onKeystorePathChange,
+                    onCredentialsChange = onKeystoreCredentialsChange,
+                    mono = mono,
+                    accentColor = accents.primary,
+                    borderColor = borderColor,
                     enabled = !isPatching
                 )
 
@@ -400,6 +429,72 @@ private fun SectionLabel(
 }
 
 @Composable
+private fun CollapsibleSection(
+    title: String,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    initiallyExpanded: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    val corners = LocalMorpheCorners.current
+    var expanded by remember { mutableStateOf(initiallyExpanded) }
+    val rotationAngle by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (expanded) -90f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(200)
+    )
+    val hoverInteraction = remember { MutableInteractionSource() }
+    val isHovered by hoverInteraction.collectIsHoveredAsState()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(corners.small))
+            .hoverable(hoverInteraction)
+            .background(
+                if (isHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                else Color.Transparent
+            )
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.6f else 0.4f),
+            letterSpacing = 1.5.sp
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer { rotationZ = rotationAngle },
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.5f else 0.3f)
+        )
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = expanded,
+        enter = androidx.compose.animation.expandVertically(
+            expandFrom = Alignment.Top,
+            animationSpec = androidx.compose.animation.core.tween(200)
+        ) + androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(200)),
+        exit = androidx.compose.animation.shrinkVertically(
+            shrinkTowards = Alignment.Top,
+            animationSpec = androidx.compose.animation.core.tween(200)
+        ) + androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(150))
+    ) {
+        Column {
+            Spacer(Modifier.height(8.dp))
+            content()
+        }
+    }
+}
+
+@Composable
 private fun SettingsDivider(borderColor: Color) {
     Spacer(Modifier.height(14.dp))
     HorizontalDivider(color = borderColor)
@@ -515,8 +610,8 @@ private fun PatchSourcesSection(
     val corners = LocalMorpheCorners.current
     val alpha = if (enabled) 1f else 0.4f
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SectionLabel("PATCH SOURCES", mono)
-        Spacer(Modifier.height(2.dp))
+        CollapsibleSection("PATCH SOURCES", mono) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = if (!enabled) "Disabled while patching" else "Select where patches are loaded from",
             fontSize = 11.sp,
@@ -639,6 +734,8 @@ private fun PatchSourcesSection(
                 letterSpacing = 0.5.sp
             )
         }
+        } // inner Column
+        } // CollapsibleSection
     }
 }
 
@@ -1026,6 +1123,663 @@ private fun EditPatchSourceDialog(
             }
         }
     )
+}
+
+// ── Signing / Keystore Section ──
+
+@Composable
+private fun SigningSection(
+    keystorePath: String?,
+    keystorePassword: String?,
+    keystoreAlias: String,
+    keystoreEntryPassword: String,
+    onKeystorePathChange: (String?) -> Unit,
+    onCredentialsChange: (password: String?, alias: String, entryPassword: String) -> Unit,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    accentColor: Color,
+    borderColor: Color,
+    enabled: Boolean = true
+) {
+    val corners = LocalMorpheCorners.current
+    val alpha = if (enabled) 1f else 0.4f
+
+    var localPassword by remember(keystorePassword) { mutableStateOf(keystorePassword ?: "") }
+    var localAlias by remember(keystoreAlias) { mutableStateOf(keystoreAlias) }
+    var localEntryPassword by remember(keystoreEntryPassword) { mutableStateOf(keystoreEntryPassword) }
+    var showPassword by remember { mutableStateOf(false) }
+    var showEntryPassword by remember { mutableStateOf(false) }
+    var showKeystoreInfo by remember { mutableStateOf(false) }
+    var keystoreError by remember { mutableStateOf<String?>(null) }
+
+    val keystoreFile = keystorePath?.let { File(it) }
+    val keystoreExists = keystoreFile?.exists() == true
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        CollapsibleSection("SIGNING", mono) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = if (!enabled) "Disabled while patching"
+                   else "Keystore used to sign patched APKs",
+            fontSize = 11.sp,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Keystore path row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(corners.small))
+                    .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = if (keystorePath != null) {
+                        keystoreFile?.name ?: keystorePath
+                    } else "Default (auto-generated)",
+                    fontSize = 11.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f * alpha),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val dialog = FileDialog(null as Frame?, "Select Keystore", FileDialog.LOAD).apply {
+                        setFilenameFilter { _, n ->
+                            n.lowercase().let {
+                                it.endsWith(".keystore") || it.endsWith(".jks") ||
+                                it.endsWith(".bks") || it.endsWith(".p12") || it.endsWith(".pfx")
+                            }
+                        }
+                        isVisible = true
+                    }
+                    if (dialog.directory != null && dialog.file != null) {
+                        val selected = File(dialog.directory, dialog.file)
+                        val validExtensions = listOf(".keystore", ".jks", ".bks", ".p12", ".pfx")
+                        if (validExtensions.any { selected.name.lowercase().endsWith(it) }) {
+                            keystoreError = null
+                            onKeystorePathChange(selected.absolutePath)
+                        } else {
+                            keystoreError = "Invalid file type. Expected: ${validExtensions.joinToString(", ")}"
+                        }
+                    }
+                },
+                enabled = enabled,
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, borderColor),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    "BROWSE",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            if (keystorePath != null) {
+                OutlinedButton(
+                    onClick = { onKeystorePathChange(null) },
+                    enabled = enabled,
+                    shape = RoundedCornerShape(corners.small),
+                    border = BorderStroke(1.dp, borderColor),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        "RESET",
+                        fontFamily = mono,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 9.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+
+        // Warning if keystore path set but file doesn't exist
+        if (keystorePath != null && !keystoreExists) {
+            Text(
+                text = "Keystore not found — will be created on next patch",
+                fontSize = 10.sp,
+                fontFamily = mono,
+                color = Color(0xFFE0A030)
+            )
+        }
+
+        // Error for invalid file type selection
+        keystoreError?.let {
+            Text(
+                text = it,
+                fontSize = 10.sp,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        // Full path tooltip
+        if (keystorePath != null) {
+            Text(
+                text = keystorePath,
+                fontSize = 9.sp,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Keystore password
+        OutlinedTextField(
+            value = localPassword,
+            onValueChange = {
+                localPassword = it
+                onCredentialsChange(it.ifEmpty { null }, localAlias, localEntryPassword)
+            },
+            label = { Text("Keystore password", fontFamily = mono, fontSize = 10.sp) },
+            singleLine = true,
+            enabled = enabled,
+            visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None
+                                   else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(
+                    onClick = { showPassword = !showPassword },
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Icon(
+                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = if (showPassword) "Hide" else "Show",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(corners.small)
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        // Key alias
+        OutlinedTextField(
+            value = localAlias,
+            onValueChange = {
+                localAlias = it
+                onCredentialsChange(localPassword.ifEmpty { null }, it, localEntryPassword)
+            },
+            label = { Text("Key alias", fontFamily = mono, fontSize = 10.sp) },
+            singleLine = true,
+            enabled = enabled,
+            textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(corners.small)
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        // Key entry password
+        OutlinedTextField(
+            value = localEntryPassword,
+            onValueChange = {
+                localEntryPassword = it
+                onCredentialsChange(localPassword.ifEmpty { null }, localAlias, it)
+            },
+            label = { Text("Key password", fontFamily = mono, fontSize = 10.sp) },
+            singleLine = true,
+            enabled = enabled,
+            visualTransformation = if (showEntryPassword) androidx.compose.ui.text.input.VisualTransformation.None
+                                   else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(
+                    onClick = { showEntryPassword = !showEntryPassword },
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Icon(
+                        imageVector = if (showEntryPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = if (showEntryPassword) "Hide" else "Show",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            textStyle = LocalTextStyle.current.copy(fontFamily = mono, fontSize = 12.sp),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(corners.small)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Generate button (only when no keystore exists yet)
+        var generateError by remember { mutableStateOf<String?>(null) }
+        var generateSuccess by remember { mutableStateOf(false) }
+
+        if (!keystoreExists) {
+            OutlinedButton(
+                onClick = {
+                    generateError = null
+                    generateSuccess = false
+
+                    // If no path set, ask the user where to save
+                    val path = keystorePath ?: run {
+                        val dialog = FileDialog(null as Frame?, "Save Keystore", FileDialog.SAVE).apply {
+                            file = "morphe.keystore"
+                            isVisible = true
+                        }
+                        if (dialog.directory != null && dialog.file != null) {
+                            val chosen = File(dialog.directory, dialog.file).absolutePath
+                            onKeystorePathChange(chosen)
+                            chosen
+                        } else {
+                            return@OutlinedButton // user cancelled
+                        }
+                    }
+
+                    try {
+                        val file = File(path)
+                        file.parentFile?.mkdirs()
+                        val keyPair = ApkSigner.newPrivateKeyCertificatePair("Morphe", java.util.Date(System.currentTimeMillis() + 8L * 365 * 24 * 60 * 60 * 1000))
+                        val ks = ApkSigner.newKeyStore(setOf(
+                            ApkSigner.KeyStoreEntry(
+                                localAlias.ifEmpty { "Morphe" },
+                                localEntryPassword.ifEmpty { "Morphe" },
+                                keyPair
+                            )
+                        ))
+                        file.outputStream().use {
+                            ks.store(it, localPassword.ifEmpty { null }?.toCharArray())
+                        }
+                        // Save credentials to config
+                        onCredentialsChange(
+                            localPassword.ifEmpty { null },
+                            localAlias.ifEmpty { "Morphe" },
+                            localEntryPassword.ifEmpty { "Morphe" }
+                        )
+                        generateSuccess = true
+                    } catch (e: Exception) {
+                        generateError = "Failed to generate: ${e.message}"
+                        Logger.error("Failed to generate keystore", e)
+                    }
+                },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, if (generateSuccess) MorpheColors.Teal.copy(alpha = 0.4f) else accentColor.copy(alpha = 0.3f)),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = if (generateSuccess) MorpheColors.Teal else accentColor
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (generateSuccess) "KEYSTORE GENERATED" else "GENERATE KEYSTORE",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.5.sp,
+                    color = if (generateSuccess) MorpheColors.Teal else accentColor
+                )
+            }
+
+            generateError?.let {
+                Text(
+                    text = it,
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+        }
+
+        // Action buttons row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // Certificate info
+            OutlinedButton(
+                onClick = { showKeystoreInfo = true },
+                enabled = enabled && keystoreExists,
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, borderColor),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "CERTIFICATE",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            // Export
+            OutlinedButton(
+                onClick = {
+                    val sourceFile = keystoreFile ?: return@OutlinedButton
+                    if (!sourceFile.exists()) return@OutlinedButton
+                    val dialog = FileDialog(null as Frame?, "Export Keystore", FileDialog.SAVE).apply {
+                        file = sourceFile.name
+                        isVisible = true
+                    }
+                    if (dialog.directory != null && dialog.file != null) {
+                        try {
+                            sourceFile.copyTo(File(dialog.directory, dialog.file), overwrite = true)
+                        } catch (e: Exception) {
+                            Logger.error("Failed to export keystore", e)
+                        }
+                    }
+                },
+                enabled = enabled && keystoreExists,
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, borderColor),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "EXPORT",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
+        } // inner Column
+        } // CollapsibleSection
+    }
+
+    // Certificate info dialog
+    if (showKeystoreInfo && keystorePath != null) {
+        KeystoreInfoDialog(
+            keystorePath = keystorePath,
+            password = keystorePassword,
+            alias = keystoreAlias,
+            entryPassword = keystoreEntryPassword,
+            onDismiss = { showKeystoreInfo = false }
+        )
+    }
+}
+
+@Composable
+private fun KeystoreInfoDialog(
+    keystorePath: String,
+    password: String?,
+    alias: String,
+    entryPassword: String,
+    onDismiss: () -> Unit
+) {
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+
+    val info = remember(keystorePath, password, alias, entryPassword) {
+        readKeystoreInfo(keystorePath, password, alias, entryPassword)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(corners.medium),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                "CERTIFICATE INFO",
+                fontFamily = mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                letterSpacing = 1.sp
+            )
+        },
+        text = {
+            if (info != null) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.widthIn(min = 300.dp)
+                ) {
+                    // Show warnings first if there are any
+                    if (info.warnings.isNotEmpty()) {
+                        info.warnings.forEach { warning ->
+                            Text(
+                                text = warning,
+                                fontSize = 10.sp,
+                                fontFamily = mono,
+                                color = Color(0xFFE0A030),
+                                lineHeight = 14.sp
+                            )
+                        }
+                        // If no cert data (alias not found), stop here
+                        if (info.sha256Fingerprint.isEmpty()) return@Column
+                        HorizontalDivider(color = borderColor)
+                    }
+
+                    CertInfoRow("Alias", info.alias, mono)
+                    CertInfoRow("Issuer", info.issuer, mono)
+                    CertInfoRow("Valid from", info.validFrom, mono)
+                    CertInfoRow("Valid until", info.validTo, mono)
+
+                    HorizontalDivider(color = borderColor)
+
+                    Text(
+                        "SHA-256 FINGERPRINT",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = mono,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        letterSpacing = 1.sp
+                    )
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(
+                            text = info.sha256Fingerprint,
+                            fontSize = 10.sp,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    HorizontalDivider(color = borderColor)
+
+                    Text(
+                        "SHA-1 FINGERPRINT",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = mono,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        letterSpacing = 1.sp
+                    )
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(
+                            text = info.sha1Fingerprint,
+                            fontSize = 10.sp,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "Could not read keystore. Check the password and alias.",
+                    fontSize = 12.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        confirmButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, borderColor)
+            ) {
+                Text(
+                    "CLOSE",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    )
+}
+
+@Composable
+private fun CertInfoRow(
+    label: String,
+    value: String,
+    mono: androidx.compose.ui.text.font.FontFamily
+) {
+    Column {
+        Text(
+            text = label.uppercase(),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = value,
+            fontSize = 11.sp,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        )
+    }
+}
+
+private data class KeystoreInfoResult(
+    val alias: String,
+    val issuer: String,
+    val validFrom: String,
+    val validTo: String,
+    val sha256Fingerprint: String,
+    val sha1Fingerprint: String,
+    val warnings: List<String> = emptyList()
+)
+
+private fun readKeystoreInfo(
+    keystorePath: String,
+    password: String?,
+    alias: String,
+    entryPassword: String? = null
+): KeystoreInfoResult? {
+    val file = File(keystorePath)
+    if (!file.exists()) return null
+
+    val passwordChars = password?.toCharArray() ?: charArrayOf()
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd")
+
+    // Ensure BouncyCastle provider is registered (needed for BKS keystores)
+    try {
+        if (java.security.Security.getProvider("BC") == null) {
+            java.security.Security.addProvider(
+                Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider")
+                    .getDeclaredConstructor().newInstance() as java.security.Provider
+            )
+        }
+    } catch (_: Exception) {
+        // BC not on classpath — BKS keystores won't be readable, but JKS/PKCS12 still work
+    }
+
+    // Try multiple keystore types: BKS (what Morphe generates), then JKS, then PKCS12
+    // BKS requires BouncyCastle provider — try with provider name, fall back without
+    val types = listOf("BKS" to "BC", "BKS" to null, "JKS" to null, "PKCS12" to null)
+    for ((type, provider) in types) {
+        try {
+            val ks = if (provider != null) {
+                KeyStore.getInstance(type, provider)
+            } else {
+                KeyStore.getInstance(type)
+            }
+
+            file.inputStream().use { ks.load(it, passwordChars) }
+
+            val warnings = mutableListOf<String>()
+
+            // Alias must match exactly
+            if (!ks.containsAlias(alias)) {
+                return KeystoreInfoResult(
+                    alias = alias,
+                    issuer = "",
+                    validFrom = "",
+                    validTo = "",
+                    sha256Fingerprint = "",
+                    sha1Fingerprint = "",
+                    warnings = listOf("Alias \"$alias\" not found in keystore")
+                )
+            }
+
+            val cert = ks.getCertificate(alias) as? X509Certificate ?: continue
+
+            // Verify the entry password actually works
+            try {
+                ks.getKey(alias, entryPassword?.toCharArray() ?: charArrayOf())
+            } catch (_: Exception) {
+                return KeystoreInfoResult(
+                    alias = alias,
+                    issuer = "",
+                    validFrom = "",
+                    validTo = "",
+                    sha256Fingerprint = "",
+                    sha1Fingerprint = "",
+                    warnings = listOf("Key password is incorrect for alias \"$alias\"")
+                )
+            }
+
+            val sha256 = MessageDigest.getInstance("SHA-256")
+                .digest(cert.encoded)
+                .joinToString(":") { "%02X".format(it) }
+
+            val sha1 = MessageDigest.getInstance("SHA-1")
+                .digest(cert.encoded)
+                .joinToString(":") { "%02X".format(it) }
+
+            return KeystoreInfoResult(
+                alias = alias,
+                issuer = cert.issuerDN.name,
+                validFrom = dateFormat.format(cert.notBefore),
+                validTo = dateFormat.format(cert.notAfter),
+                sha256Fingerprint = sha256,
+                sha1Fingerprint = sha1,
+                warnings = warnings
+            )
+        } catch (_: Exception) {
+            continue
+        }
+    }
+    return null
 }
 
 private fun ThemePreference.toDisplayName(): String {

@@ -128,6 +128,32 @@ class ConfigRepository {
     }
 
     /**
+     * Update keystore path only (used for auto-remember on first creation).
+     */
+    suspend fun setKeystorePath(path: String?) {
+        val current = loadConfig()
+        saveConfig(current.copy(keystorePath = path))
+    }
+
+    /**
+     * Update all keystore details at once.
+     */
+    suspend fun setKeystoreDetails(
+        path: String?,
+        password: String?,
+        alias: String,
+        entryPassword: String
+    ) {
+        val current = loadConfig()
+        saveConfig(current.copy(
+            keystorePath = path,
+            keystorePassword = password,
+            keystoreAlias = alias,
+            keystoreEntryPassword = entryPassword
+        ))
+    }
+
+    /**
      * Get the currently active patch source.
      */
     suspend fun getActivePatchSource(): PatchSource {

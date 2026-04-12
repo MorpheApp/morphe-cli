@@ -30,7 +30,11 @@ data class AppConfig(
     val autoCleanupTempFiles: Boolean = true,  // Default ON
     val useSimplifiedMode: Boolean = true, // Default to Quick/Simplified mode
     val patchSource: List<PatchSource> = listOf(DEFAULT_PATCH_SOURCE),
-    val activePatchSourceId: String = "morphe-default"
+    val activePatchSourceId: String = "morphe-default",
+    val keystorePath: String? = null,
+    val keystorePassword: String? = null,
+    val keystoreAlias: String = "Morphe",
+    val keystoreEntryPassword: String = "Morphe"
 ) {
     fun getThemePreference(): ThemePreference {
         return try {

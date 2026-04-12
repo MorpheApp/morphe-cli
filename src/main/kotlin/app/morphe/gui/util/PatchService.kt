@@ -14,6 +14,7 @@ import app.morphe.patcher.patch.loadPatchesFromJar
 import app.morphe.patcher.resource.CpuArchitecture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import app.morphe.patcher.apk.ApkUtils
 import java.io.File
 import kotlin.reflect.KType
 import app.morphe.patcher.patch.Patch as LibraryPatch
@@ -85,6 +86,10 @@ class PatchService {
         exclusiveMode: Boolean = false,
         keepArchitectures: Set<CpuArchitecture> = emptySet(),
         continueOnError: Boolean = false,
+        keystorePath: String? = null,
+        keystorePassword: String? = null,
+        keystoreAlias: String? = null,
+        keystoreEntryPassword: String? = null,
         onProgress: (String) -> Unit = {}
     ): Result<PatchResult> = withContext(Dispatchers.IO) {
         try {
@@ -114,6 +119,15 @@ class PatchService {
                         .mapValues { it.value as Any? }
                 }.filter { it.value.isNotEmpty() }
 
+                val keystoreDetails = if (keystorePath != null) {
+                    ApkUtils.KeyStoreDetails(
+                        keyStore = File(keystorePath),
+                        keyStorePassword = keystorePassword,
+                        alias = keystoreAlias ?: PatchEngine.Config.DEFAULT_KEYSTORE_ALIAS,
+                        password = keystoreEntryPassword ?: PatchEngine.Config.DEFAULT_KEYSTORE_PASSWORD,
+                    )
+                } else null
+
                 val config = PatchEngine.Config(
                     inputApk = inputApk,
                     patches = loadedPatches,
@@ -125,6 +139,7 @@ class PatchService {
                     patchOptions = patchOptions,
                     architecturesToKeep = keepArchitectures,
                     failOnError = !continueOnError,
+                    keystoreDetails = keystoreDetails,
                 )
 
                 val engineResult = PatchEngine.patch(config, onProgress)

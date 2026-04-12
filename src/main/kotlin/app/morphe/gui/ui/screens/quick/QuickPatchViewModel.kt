@@ -463,6 +463,15 @@ class QuickPatchViewModel(
             val outputFileName = "$baseName-Morphe-${apkInfo.versionName}${patchesSuffix}.apk"
             val outputPath = File(outputDir, outputFileName).absolutePath
 
+            // Resolve keystore: use saved path, or derive from output APK location
+            val appConfig = configRepository.loadConfig()
+            val resolvedKeystorePath = appConfig.keystorePath
+                ?: File(outputPath).let { out ->
+                    out.resolveSibling(out.nameWithoutExtension + ".keystore").absolutePath
+                }.also { path ->
+                    configRepository.setKeystorePath(path)
+                }
+
             // Use PatchService for direct library patching (no CLI subprocess)
             // exclusiveMode = false means the library's patch.use field determines defaults
             val patchResult = patchService.patch(
@@ -473,6 +482,10 @@ class QuickPatchViewModel(
                 disabledPatches = emptyList(),
                 options = emptyMap(),
                 exclusiveMode = false,
+                keystorePath = resolvedKeystorePath,
+                keystorePassword = appConfig.keystorePassword,
+                keystoreAlias = appConfig.keystoreAlias,
+                keystoreEntryPassword = appConfig.keystoreEntryPassword,
                 onProgress = { message ->
                     _uiState.value = _uiState.value.copy(statusMessage = message.take(60))
                     parseProgress(message)

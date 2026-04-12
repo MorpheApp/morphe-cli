@@ -52,6 +52,15 @@ class PatchingViewModel(
             addLog("Output: ${File(config.outputApkPath).name}", LogLevel.INFO)
             addLog("Patches: ${config.enabledPatches.size} enabled", LogLevel.INFO)
 
+            // Resolve keystore: use saved path, or derive from output APK location
+            val appConfig = configRepository.loadConfig()
+            val resolvedKeystorePath = appConfig.keystorePath
+                ?: File(config.outputApkPath).let { out ->
+                    out.resolveSibling(out.nameWithoutExtension + ".keystore").absolutePath
+                }.also { path ->
+                    configRepository.setKeystorePath(path)
+                }
+
             // Use PatchService for direct library patching
             val result = patchService.patch(
                 patchesFilePath = config.patchesFilePath,
@@ -63,6 +72,10 @@ class PatchingViewModel(
                 exclusiveMode = config.useExclusiveMode,
                 keepArchitectures = config.keepArchitectures,
                 continueOnError = config.continueOnError,
+                keystorePath = resolvedKeystorePath,
+                keystorePassword = appConfig.keystorePassword,
+                keystoreAlias = appConfig.keystoreAlias,
+                keystoreEntryPassword = appConfig.keystoreEntryPassword,
                 onProgress = { message ->
                     parseAndAddLog(message)
                 }
