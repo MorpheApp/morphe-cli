@@ -1169,16 +1169,18 @@ private fun SigningSection(
 
         // Keystore path row
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(corners.small))
                     .border(1.dp, borderColor, RoundedCornerShape(corners.small))
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     text = if (keystorePath != null) {
@@ -1217,7 +1219,8 @@ private fun SigningSection(
                 enabled = enabled,
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                contentPadding = PaddingValues(horizontal = 10.dp),
+                modifier = Modifier.fillMaxHeight()
             ) {
                 Text(
                     "BROWSE",
@@ -1234,7 +1237,8 @@ private fun SigningSection(
                     enabled = enabled,
                     shape = RoundedCornerShape(corners.small),
                     border = BorderStroke(1.dp, borderColor),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                    modifier = Modifier.fillMaxHeight()
                 ) {
                     Text(
                         "RESET",
@@ -1360,6 +1364,75 @@ private fun SigningSection(
             shape = RoundedCornerShape(corners.small)
         )
 
+        // Verify credentials button
+        var verifyResult by remember { mutableStateOf<String?>(null) }
+        var verifySuccess by remember { mutableStateOf(false) }
+
+        if (keystoreExists) {
+            Spacer(Modifier.height(6.dp))
+            OutlinedButton(
+                onClick = {
+                    verifyResult = null
+                    verifySuccess = false
+                    val path = keystorePath ?: return@OutlinedButton
+                    val result = readKeystoreInfo(
+                        path,
+                        localPassword.ifEmpty { null },
+                        localAlias.ifEmpty { "Morphe" },
+                        localEntryPassword.ifEmpty { "Morphe" }
+                    )
+                    if (result == null) {
+                        verifyResult = "Could not open keystore — check keystore password"
+                        verifySuccess = false
+                    } else if (result.warnings.isNotEmpty()) {
+                        verifyResult = result.warnings.first()
+                        verifySuccess = false
+                    } else {
+                        verifyResult = "Credentials valid"
+                        verifySuccess = true
+                    }
+                },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(
+                    1.dp,
+                    when {
+                        verifySuccess -> MorpheColors.Teal.copy(alpha = 0.4f)
+                        verifyResult != null -> Color(0xFFE0A030).copy(alpha = 0.4f)
+                        else -> borderColor
+                    }
+                ),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "VERIFY CREDENTIALS",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            verifyResult?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = it,
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = if (verifySuccess) MorpheColors.Teal else Color(0xFFE0A030),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
 
         // Generate button (only when no keystore exists yet)
@@ -1442,6 +1515,17 @@ private fun SigningSection(
                     fontSize = 10.sp,
                     fontFamily = mono,
                     color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            if (!generateSuccess) {
+                Text(
+                    text = "Uses the credentials entered above",
+                    fontSize = 9.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
 

@@ -358,7 +358,7 @@ private fun resolveStatus(apkInfo: ApkInfo): StatusInfo? {
             is ChecksumStatus.Mismatch -> StatusInfo(
                 color = errorColor,
                 label = "CHECKSUM MISMATCH",
-                detail = "File may be corrupted — re-download from APKMirror"
+                detail = "File may be corrupted, re-download from APKMirror"
             )
             is ChecksumStatus.Error -> StatusInfo(
                 color = accents.warning,
@@ -397,19 +397,19 @@ private fun resolveStatus(apkInfo: ApkInfo): StatusInfo? {
         VersionStatus.TOO_NEW -> StatusInfo(
             color = errorColor,
             label = "VERSION TOO NEW",
-            detail = "Not officially supported — patches will most likely fail"
+            detail = "Not officially supported, patches will most likely fail"
         )
 
         VersionStatus.TOO_OLD -> StatusInfo(
             color = errorColor,
             label = "VERSION TOO OLD",
-            detail = "Not officially supported — patches will most likely fail"
+            detail = "Not officially supported, patches will most likely fail"
         )
 
         VersionStatus.UNSUPPORTED_BETWEEN -> StatusInfo(
             color = errorColor,
             label = "UNSUPPORTED VERSION",
-            detail = "Not officially supported — patches will most likely fail"
+            detail = "Not officially supported, patches will most likely fail"
         )
 
         VersionStatus.UNKNOWN -> null

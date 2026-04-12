@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 
 // Morphe Brand Colors
 object MorpheColors {
-    val Blue = Color(0xFF2D62DD)
-    val Teal = Color(0xFF00A797)
+    val Blue = Color(0xFF3B7BF7)
+    val Teal = Color(0xFF00D1B2)
     val Cyan = Color(0xFF62E1FF)
     val DeepBlack = Color(0xFF121212)
     val SurfaceDark = Color(0xFF1E1E1E)
@@ -53,8 +53,8 @@ private val DarkAccents = MorpheAccentColors(
 
 /** Amoled — slightly brighter accents to pop on pure black. */
 private val AmoledAccents = MorpheAccentColors(
-    primary = Color(0xFF4A7FFF),   // Brighter blue for pure black
-    secondary = Color(0xFF00BFA5), // Brighter teal
+    primary = Color(0xFF5B9AFF),   // Punchy blue for pure black
+    secondary = Color(0xFF00E8C6), // Vivid teal for pure black
 )
 
 /** Morphe Light — brand colors work fine on light backgrounds. */
@@ -65,18 +65,18 @@ private val LightAccents = MorpheAccentColors(
 
 /** Nord — native Nord palette. Arctic frost + aurora. */
 private val NordAccents = MorpheAccentColors(
-    primary = Color(0xFF88C0D0),   // Nord Frost
-    secondary = Color(0xFFA3BE8C), // Nord Aurora Green
-    tertiary = Color(0xFF81A1C1),  // Nord Frost Blue
-    warning = Color(0xFFEBCB8B),   // Nord Aurora Yellow
+    primary = Color(0xFF5EC4DB),   // Nord Frost — saturated
+    secondary = Color(0xFF8FD46E), // Nord Aurora Green — vivid
+    tertiary = Color(0xFF6AA3D9),  // Nord Frost Blue — punchy
+    warning = Color(0xFFE8BF5A),   // Nord Aurora Yellow — stronger
 )
 
 /** Catppuccin Mocha — native Catppuccin palette. Mauve + teal. */
 private val CatppuccinAccents = MorpheAccentColors(
-    primary = Color(0xFFCBA6F7),   // Mauve
-    secondary = Color(0xFF94E2D5), // Teal
-    tertiary = Color(0xFF89B4FA),  // Blue
-    warning = Color(0xFFFAB387),   // Peach
+    primary = Color(0xFFB47BFF),   // Mauve — saturated, less pastel
+    secondary = Color(0xFF4EECD5), // Teal — vivid
+    tertiary = Color(0xFF6A9FFF),  // Blue — punchy
+    warning = Color(0xFFFF9A5C),   // Peach — stronger
 )
 
 /** Sakura — triadic: cherry blossom pink, spring sage, wisteria dusk. */

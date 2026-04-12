@@ -380,7 +380,7 @@ private fun ChannelSelector(
             count = stableCount,
             isSelected = selectedChannel == ReleaseChannel.STABLE,
             onClick = { onChannelSelected(ReleaseChannel.STABLE) },
-            accentColor = accents.tertiary,
+            accentColor = accents.primary,
             modifier = Modifier.weight(1f)
         )
         ChannelChip(
@@ -388,7 +388,7 @@ private fun ChannelSelector(
             count = devCount,
             isSelected = selectedChannel == ReleaseChannel.DEV,
             onClick = { onChannelSelected(ReleaseChannel.DEV) },
-            accentColor = accents.tertiary,
+            accentColor = accents.primary,
             modifier = Modifier.weight(1f)
         )
     }
@@ -479,7 +479,7 @@ private fun ReleaseCard(
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val selectedColor = accents.tertiary
+    val selectedColor = accents.primary
     val downloadedColor = accents.secondary
     val accentColor = when {
         isSelected -> selectedColor
