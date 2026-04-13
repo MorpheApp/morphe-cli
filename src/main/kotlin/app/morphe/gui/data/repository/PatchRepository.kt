@@ -116,23 +116,20 @@ class PatchRepository(
     }
 
     /**
-     * Find the patch asset (.mpp or .jar) in a release.
+     * Find the patch .mpp asset in a release.
      */
     fun findPatchAsset(release: Release): ReleaseAsset? {
-        // Prefer .mpp, fall back to .jar
-        val asset = release.assets.find { it.isMpp() }
-            ?: release.assets.find { it.isJar() }
-        return asset
+        return release.assets.find { it.isPatchFile() }
     }
 
     /**
-     * Download the patch file (.mpp or .jar) from a release.
+     * Download the patch .mpp file from a release.
      * Returns the path to the downloaded file.
      */
     suspend fun downloadPatches(release: Release, onProgress: (Float) -> Unit = {}): Result<File> = withContext(Dispatchers.IO) {
         val asset = findPatchAsset(release)
         if (asset == null) {
-            val error = "No patch file (.mpp or .jar) found in release ${release.tagName}"
+            val error = "No .mpp patch files found in release ${release.tagName}"
             Logger.error(error)
             return@withContext Result.failure(Exception(error))
         }
@@ -190,7 +187,7 @@ class PatchRepository(
     }
 
     private fun isPatchFileName(name: String): Boolean {
-        return name.endsWith(".mpp", ignoreCase = true) || name.endsWith(".jar", ignoreCase = true)
+        return name.endsWith(".mpp", ignoreCase = true)
     }
 
     /**

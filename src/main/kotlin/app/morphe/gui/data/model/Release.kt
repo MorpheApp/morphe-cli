@@ -55,19 +55,9 @@ data class ReleaseAsset(
     val contentType: String
 ) {
     /**
-     * Check if this is a JAR file
+     * Check if this is a patch file (.mpp)
      */
-    fun isJar(): Boolean = name.endsWith(".jar", ignoreCase = true)
-
-    /**
-     * Check if this is an MPP (Morphe Patches) file
-     */
-    fun isMpp(): Boolean = name.endsWith(".mpp", ignoreCase = true)
-
-    /**
-     * Check if this is a patch file (.mpp or .jar)
-     */
-    fun isPatchFile(): Boolean = isMpp() || isJar()
+    fun isPatchFile(): Boolean = name.endsWith(".mpp", ignoreCase = true)
 
     /**
      * Get human-readable file size

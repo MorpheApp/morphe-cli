@@ -6,7 +6,6 @@
 package app.morphe.gui.util
 
 import java.io.File
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.zip.ZipFile
 
@@ -17,6 +16,14 @@ import java.util.zip.ZipFile
 object FileUtils {
 
     private const val APP_NAME = "morphe-gui"
+
+    /**
+     * All modern Android architectures. Obsolete architectures such as Mips are not included.
+     */
+    private val ANDROID_ARCHITECTURES = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+
+    private val EXTENSION_APK_BUNDLES = setOf("apkm", "xapk", "apks")
+    private val EXTENSION_APK_ANY = EXTENSION_APK_BUNDLES + "apk"
 
     /**
      * Get the app data directory based on OS.
@@ -151,14 +158,14 @@ object FileUtils {
      */
     fun isApkFile(file: File): Boolean {
         val ext = getExtension(file)
-        return file.isFile && ext in setOf("apk", "apkm", "xapk", "apks")
+        return file.isFile && ext in EXTENSION_APK_ANY
     }
 
     /**
      * Check if file is a split APK bundle (.apkm, .xapk, or .apks).
      */
     fun isBundleFormat(file: File): Boolean {
-        return file.extension.lowercase() in setOf("apkm", "xapk", "apks")
+        return file.extension.lowercase() in EXTENSION_APK_BUNDLES
     }
 
     /**
@@ -232,13 +239,12 @@ object FileUtils {
 
                 // For bundles: detect arch from split APK names (e.g. split_config.arm64_v8a.apk)
                 if (archDirs.isEmpty()) {
-                    val knownArchs = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
                     zip.entries().asSequence()
                         .map { it.name }
                         .filter { it.endsWith(".apk") }
                         .forEach { name ->
                             val normalized = name.replace("_", "-")
-                            knownArchs.filter { arch -> normalized.contains(arch) }
+                            ANDROID_ARCHITECTURES.filter { arch -> normalized.contains(arch) }
                                 .forEach { archDirs.add(it) }
                         }
                 }

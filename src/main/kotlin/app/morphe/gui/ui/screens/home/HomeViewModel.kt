@@ -451,7 +451,6 @@ class HomeViewModel(
                 // Get app display name - prefer dynamic, fallback to hardcoded, then package name
                 val appName = dynamicSupportedApp?.displayName
                     ?: SupportedApp.resolveDisplayName(packageName, meta.label)
-                    ?: packageName
 
                 // Resolve the version against the supported app's stable +
                 // experimental version lists.

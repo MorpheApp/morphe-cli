@@ -308,51 +308,51 @@ class PatchSelectionViewModel(
         val hasCustomKeystore = keystorePath != null
 
         return if (cleanMode) {
-            val sb = StringBuilder()
-            sb.append("java -jar morphe-cli.jar patch \\\n")
-            sb.append("  -p ${patchesFile.name} \\\n")
-            sb.append("  -o ${outputFileName} \\\n")
-            sb.append("  --force \\\n")
+            buildString {
+                appendLine(
+                    """
+                        java -jar morphe-cli.jar patch \
+                          -p ${patchesFile.name} \
+                          -o $outputFileName \
+                          --force \
+                    """.trimIndent()
+                )
 
-            if (continueOnError) {
-                sb.append("  --continue-on-error \\\n")
-            }
-
-            if (useExclusive) {
-                sb.append("  --exclusive \\\n")
-            }
-
-            if (striplibsArg != null) {
-                sb.append("  --striplibs $striplibsArg \\\n")
-            }
-
-            if (hasCustomKeystore) {
-                sb.append("  --keystore \"$keystorePath\" \\\n")
-                if (keystorePassword != null) {
-                    sb.append("  --keystore-password \"$keystorePassword\" \\\n")
+                if (continueOnError) {
+                    appendLine("  --continue-on-error \\")
                 }
-                if (keystoreAlias != null && keystoreAlias != DEFAULT_KEYSTORE_ALIAS) {
-                    sb.append("  --keystore-entry-alias \"$keystoreAlias\" \\\n")
+
+                if (useExclusive) {
+                    appendLine("  --exclusive \\")
                 }
-                if (keystoreEntryPassword != null && keystoreEntryPassword != DEFAULT_KEYSTORE_PASSWORD) {
-                    sb.append("  --keystore-entry-password \"$keystoreEntryPassword\" \\\n")
+
+                striplibsArg?.let {
+                    appendLine("  --striplibs $it \\")
                 }
+
+                if (hasCustomKeystore) {
+                    appendLine("  --keystore \"$keystorePath\" \\")
+                    keystorePassword?.let {
+                        appendLine("  --keystore-password \"$it\" \\")
+                    }
+                    if (keystoreAlias != null && keystoreAlias != DEFAULT_KEYSTORE_ALIAS) {
+                        appendLine("  --keystore-entry-alias \"$keystoreAlias\" \\")
+                    }
+                    if (keystoreEntryPassword != null && keystoreEntryPassword != DEFAULT_KEYSTORE_PASSWORD) {
+                        appendLine("  --keystore-entry-password \"$keystoreEntryPassword\" \\")
+                    }
+                }
+
+                val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
+                val flag = if (useExclusive) "-e" else "-d"
+
+                flagPatches.forEachIndexed { index, patch ->
+                    val suffix = if (index == flagPatches.lastIndex) "" else " \\"
+                    appendLine("  $flag \"$patch\"$suffix")
+                }
+
+                append("  ${inputFile.name}")
             }
-
-            val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
-            val flag = if (useExclusive) "-e" else "-d"
-
-            flagPatches.forEachIndexed { index, patch ->
-                val isLast = index == flagPatches.lastIndex
-                sb.append("  $flag \"$patch\"")
-                if (!isLast) {
-                    sb.append(" \\")
-                }
-                sb.append("\n")
-            }
-
-            sb.append("  ${inputFile.name}")
-            sb.toString()
         } else {
             val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
             val flag = if (useExclusive) "-e" else "-d"
