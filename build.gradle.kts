@@ -158,6 +158,8 @@ tasks {
             exclude(dependency("io.insert-koin:.*"))
             // Coroutines Swing provides Dispatchers.Main via ServiceLoader
             exclude(dependency("org.jetbrains.kotlinx:kotlinx-coroutines-swing"))
+            // JNA uses reflection + native loading for DWM title bar tinting
+            exclude(dependency("net.java.dev.jna:.*"))
         }
 
         mergeServiceFiles()
