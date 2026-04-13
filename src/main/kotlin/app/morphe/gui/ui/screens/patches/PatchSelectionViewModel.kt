@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.patches
 
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.gui.data.model.Patch
@@ -329,10 +331,10 @@ class PatchSelectionViewModel(
                 if (keystorePassword != null) {
                     sb.append("  --keystore-password \"$keystorePassword\" \\\n")
                 }
-                if (keystoreAlias != null && keystoreAlias != "Morphe") {
+                if (keystoreAlias != null && keystoreAlias != DEFAULT_KEYSTORE_ALIAS) {
                     sb.append("  --keystore-entry-alias \"$keystoreAlias\" \\\n")
                 }
-                if (keystoreEntryPassword != null && keystoreEntryPassword != "Morphe") {
+                if (keystoreEntryPassword != null && keystoreEntryPassword != DEFAULT_KEYSTORE_PASSWORD) {
                     sb.append("  --keystore-entry-password \"$keystoreEntryPassword\" \\\n")
                 }
             }

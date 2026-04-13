@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
@@ -71,8 +73,8 @@ fun SettingsDialog(
     onCacheCleared: () -> Unit = {},
     keystorePath: String? = null,
     keystorePassword: String? = null,
-    keystoreAlias: String = "Morphe",
-    keystoreEntryPassword: String = "Morphe",
+    keystoreAlias: String = DEFAULT_KEYSTORE_ALIAS,
+    keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD,
     onKeystorePathChange: (String?) -> Unit = {},
     onKeystoreCredentialsChange: (password: String?, alias: String, entryPassword: String) -> Unit = { _, _, _ -> }
 ) {
@@ -1378,8 +1380,8 @@ private fun SigningSection(
                     val result = readKeystoreInfo(
                         path,
                         localPassword.ifEmpty { null },
-                        localAlias.ifEmpty { "Morphe" },
-                        localEntryPassword.ifEmpty { "Morphe" }
+                        localAlias.ifEmpty { DEFAULT_KEYSTORE_ALIAS },
+                        localEntryPassword.ifEmpty { DEFAULT_KEYSTORE_PASSWORD }
                     )
                     if (result == null) {
                         verifyResult = "Could not open keystore — check keystore password"
@@ -1463,11 +1465,13 @@ private fun SigningSection(
                     try {
                         val file = File(path)
                         file.parentFile?.mkdirs()
-                        val keyPair = ApkSigner.newPrivateKeyCertificatePair("Morphe", java.util.Date(System.currentTimeMillis() + 8L * 365 * 24 * 60 * 60 * 1000))
+                        val keyPair = ApkSigner.newPrivateKeyCertificatePair(
+                            "Morphe",
+                            java.util.Date(System.currentTimeMillis() + 8L * 365 * 24 * 60 * 60 * 1000))
                         val ks = ApkSigner.newKeyStore(setOf(
                             ApkSigner.KeyStoreEntry(
-                                localAlias.ifEmpty { "Morphe" },
-                                localEntryPassword.ifEmpty { "Morphe" },
+                                localAlias.ifEmpty { DEFAULT_KEYSTORE_ALIAS },
+                                localEntryPassword.ifEmpty { DEFAULT_KEYSTORE_PASSWORD },
                                 keyPair
                             )
                         ))
@@ -1477,8 +1481,8 @@ private fun SigningSection(
                         // Save credentials to config
                         onCredentialsChange(
                             localPassword.ifEmpty { null },
-                            localAlias.ifEmpty { "Morphe" },
-                            localEntryPassword.ifEmpty { "Morphe" }
+                            localAlias.ifEmpty { DEFAULT_KEYSTORE_ALIAS },
+                            localEntryPassword.ifEmpty { DEFAULT_KEYSTORE_PASSWORD }
                         )
                         generateSuccess = true
                     } catch (e: Exception) {
@@ -1489,7 +1493,11 @@ private fun SigningSection(
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(corners.small),
-                border = BorderStroke(1.dp, if (generateSuccess) MorpheColors.Teal.copy(alpha = 0.4f) else accentColor.copy(alpha = 0.3f)),
+                border = BorderStroke(
+                    1.dp, if (generateSuccess)
+                        MorpheColors.Teal.copy(alpha = 0.4f)
+                    else accentColor.copy(alpha = 0.3f)
+                ),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Icon(

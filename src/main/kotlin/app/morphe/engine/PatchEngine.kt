@@ -50,7 +50,7 @@ object PatchEngine {
         val forceCompatibility: Boolean = false,
         val patchOptions: Map<String, Map<String, Any?>> = emptyMap(),
         val unsigned: Boolean = false,
-        val signerName: String = "Morphe",
+        val signerName: String = DEFAULT_SIGNER_NAME,
         val keystoreDetails: ApkUtils.KeyStoreDetails? = null,
         val architecturesToKeep: Set<CpuArchitecture> = emptySet(),
         val aaptBinaryPath: File? = null,
@@ -60,6 +60,7 @@ object PatchEngine {
         companion object {
             internal const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
             internal const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
+            internal const val DEFAULT_SIGNER_NAME = "Morphe"
             internal const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
             internal const val LEGACY_KEYSTORE_PASSWORD = ""
         }

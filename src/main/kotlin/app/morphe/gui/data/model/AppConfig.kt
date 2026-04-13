@@ -5,6 +5,8 @@
 
 package app.morphe.gui.data.model
 
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import kotlinx.serialization.Serializable
 import app.morphe.gui.ui.theme.ThemePreference
 
@@ -33,8 +35,8 @@ data class AppConfig(
     val activePatchSourceId: String = "morphe-default",
     val keystorePath: String? = null,
     val keystorePassword: String? = null,
-    val keystoreAlias: String = "Morphe",
-    val keystoreEntryPassword: String = "Morphe"
+    val keystoreAlias: String = DEFAULT_KEYSTORE_ALIAS,
+    val keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD
 ) {
     fun getThemePreference(): ThemePreference {
         return try {

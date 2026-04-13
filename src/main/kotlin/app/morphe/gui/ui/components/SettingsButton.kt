@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -59,8 +61,8 @@ fun SettingsButton(
     var activePatchSourceId by remember { mutableStateOf("") }
     var keystorePath by remember { mutableStateOf<String?>(null) }
     var keystorePassword by remember { mutableStateOf<String?>(null) }
-    var keystoreAlias by remember { mutableStateOf("Morphe") }
-    var keystoreEntryPassword by remember { mutableStateOf("Morphe") }
+    var keystoreAlias by remember { mutableStateOf(DEFAULT_KEYSTORE_ALIAS) }
+    var keystoreEntryPassword by remember { mutableStateOf(DEFAULT_KEYSTORE_PASSWORD) }
 
     LaunchedEffect(showSettingsDialog) {
         if (showSettingsDialog) {
