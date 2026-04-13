@@ -191,9 +191,9 @@ fun HomeScreenContent(
                             patchesVersion = uiState.patchesVersion!!,
                             isLatest = uiState.isUsingLatestPatches,
                             onChangePatchesClick = onChangePatchesClick,
+                            patchSourceName = uiState.patchSourceName,
                             isCompact = isCompact,
                             modifier = Modifier
-                                .widthIn(max = 400.dp)
                                 .padding(horizontal = if (isCompact) 8.dp else 16.dp)
                         )
                     } else if (uiState.isLoadingPatches) {
@@ -207,7 +207,6 @@ fun HomeScreenContent(
                             onChangePatchesClick = onChangePatchesClick,
                             isCompact = isCompact,
                             modifier = Modifier
-                                .widthIn(max = 400.dp)
                                 .padding(horizontal = if (isCompact) 8.dp else 16.dp)
                         )
                     }
@@ -217,7 +216,6 @@ fun HomeScreenContent(
                         OfflineBanner(
                             onRetry = onRetry,
                             modifier = Modifier
-                                .widthIn(max = 400.dp)
                                 .padding(horizontal = if (isCompact) 8.dp else 16.dp)
                         )
                     }
@@ -289,7 +287,6 @@ fun HomeScreenContent(
                                     onChangePatchesClick = onChangePatchesClick,
                                     isCompact = isCompact,
                                     modifier = Modifier
-                                        .widthIn(max = 400.dp)
                                         .padding(horizontal = if (isCompact) 8.dp else 16.dp)
                                 )
                             } else if (uiState.isLoadingPatches) {
@@ -303,7 +300,6 @@ fun HomeScreenContent(
                                     onChangePatchesClick = onChangePatchesClick,
                                     isCompact = isCompact,
                                     modifier = Modifier
-                                        .widthIn(max = 400.dp)
                                         .padding(horizontal = if (isCompact) 8.dp else 16.dp)
                                 )
                             }
@@ -480,7 +476,8 @@ private fun HeaderBar(
                     PatchesVersionInline(
                         patchesVersion = uiState.patchesVersion!!,
                         isLatest = uiState.isUsingLatestPatches,
-                        onChangePatchesClick = onChangePatchesClick
+                        onChangePatchesClick = onChangePatchesClick,
+                        patchSourceName = uiState.patchSourceName
                     )
                 } else if (uiState.isLoadingPatches) {
                     PatchesLoadingIndicator()
@@ -519,7 +516,8 @@ private fun HeaderBar(
 private fun PatchesVersionInline(
     patchesVersion: String,
     isLatest: Boolean,
-    onChangePatchesClick: () -> Unit
+    onChangePatchesClick: () -> Unit,
+    patchSourceName: String? = null
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -543,14 +541,19 @@ private fun PatchesVersionInline(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "PATCHES",
+            text = patchSourceName?.uppercase() ?: "PATCHES",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = mono,
             color = homeMutedTextColor(0.4f),
             letterSpacing = 1.5.sp
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = " · ",
+            fontSize = 10.sp,
+            fontFamily = mono,
+            color = homeMutedTextColor(0.25f)
+        )
         Text(
             text = patchesVersion,
             fontSize = 12.sp,
@@ -1222,6 +1225,7 @@ private fun PatchesVersionCard(
     patchesVersion: String,
     isLatest: Boolean,
     onChangePatchesClick: () -> Unit,
+    patchSourceName: String? = null,
     isCompact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -1237,53 +1241,62 @@ private fun PatchesVersionCard(
     )
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(corners.medium))
-            .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(MaterialTheme.colorScheme.surface)
-            .hoverable(hoverInteraction)
-            .clickable(onClick = onChangePatchesClick)
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = if (isCompact) 8.dp else 10.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+                .clip(RoundedCornerShape(corners.medium))
+                .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
+                .background(MaterialTheme.colorScheme.surface)
+                .hoverable(hoverInteraction)
+                .clickable(onClick = onChangePatchesClick)
         ) {
-            Text(
-                text = "PATCHES",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                letterSpacing = 1.5.sp
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = patchesVersion,
-                fontSize = if (isCompact) 12.sp else 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = mono,
-                color = accents.primary
-            )
-            if (isLatest) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                        .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "LATEST",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
-                        color = accents.secondary,
-                        letterSpacing = 1.sp
-                    )
+            // Source name + version + badge — single row
+            Row(
+                modifier = Modifier
+                    .padding(vertical = if (isCompact) 8.dp else 10.dp)
+                    .padding(start = 12.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = patchSourceName?.uppercase() ?: "PATCHES",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    letterSpacing = 1.5.sp
+                )
+                Text(
+                    text = " · ",
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+                )
+                Text(
+                    text = patchesVersion,
+                    fontSize = if (isCompact) 12.sp else 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = mono,
+                    color = accents.primary
+                )
+                if (isLatest) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                            .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "LATEST",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = mono,
+                            color = accents.secondary,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
         }

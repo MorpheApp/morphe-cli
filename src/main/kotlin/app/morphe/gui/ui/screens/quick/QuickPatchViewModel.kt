@@ -156,6 +156,7 @@ class QuickPatchViewModel(
                     isLoadingPatches = false,
                     supportedApps = supportedApps,
                     patchesVersion = release.tagName,
+                    patchSourceName = patchSourceManager.getActiveSourceName(),
                     patchLoadError = null,
                     isOffline = false
                 )
@@ -230,6 +231,7 @@ class QuickPatchViewModel(
             isLoadingPatches = false,
             supportedApps = supportedApps,
             patchesVersion = version,
+            patchSourceName = patchSourceManager.getActiveSourceName(),
             patchLoadError = null,
             isOffline = isOffline
         )
@@ -639,6 +641,7 @@ data class QuickPatchUiState(
     val isLoadingPatches: Boolean = true,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
+    val patchSourceName: String? = null,
     val patchLoadError: String? = null,
     val isOffline: Boolean = false,
     // Compatible patches for the loaded APK

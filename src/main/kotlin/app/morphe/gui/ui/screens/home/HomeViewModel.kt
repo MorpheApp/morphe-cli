@@ -188,6 +188,7 @@ class HomeViewModel(
                     supportedApps = supportedApps,
                     patchesVersion = release.tagName,
                     latestPatchesVersion = latestVersion,
+                    patchSourceName = patchSourceManager.getActiveSourceName(),
                     patchLoadError = null
                 )
             } catch (e: Exception) {
@@ -280,6 +281,7 @@ class HomeViewModel(
             supportedApps = supportedApps,
             patchesVersion = version,
             latestPatchesVersion = latestVersion,
+            patchSourceName = patchSourceManager.getActiveSourceName(),
             patchLoadError = null
         )
     }
@@ -526,7 +528,8 @@ data class HomeUiState(
     val isDefaultSource: Boolean = true,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
-    val latestPatchesVersion: String? = null,  // Track the latest available version
+    val latestPatchesVersion: String? = null,
+    val patchSourceName: String? = null,
     val patchLoadError: String? = null
 ) {
     val isUsingLatestPatches: Boolean

@@ -137,7 +137,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                     ) {
                         PatchesVersionBadge(
                             patchesVersion = uiState.patchesVersion,
-                            isLoading = uiState.isLoadingPatches
+                            isLoading = uiState.isLoadingPatches,
+                            patchSourceName = uiState.patchSourceName
                         )
                     }
 
@@ -285,7 +286,7 @@ private fun BrandingLogo() {
 }
 
 @Composable
-private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
+private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean, patchSourceName: String? = null) {
     val mono = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
     val accents = LocalMorpheAccents.current
@@ -326,14 +327,19 @@ private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "PATCHES",
+                text = patchSourceName?.uppercase() ?: "PATCHES",
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = mono,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 letterSpacing = 1.5.sp
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = " · ",
+                fontSize = 10.sp,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+            )
             Text(
                 text = patchesVersion,
                 fontSize = 12.sp,
