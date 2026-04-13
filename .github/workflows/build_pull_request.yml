@@ -27,8 +27,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      #- name: Cache Gradle
-      #  uses: burrunan/gradle-cache-action@v1
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v1
 
       - name: Build
         shell: bash
