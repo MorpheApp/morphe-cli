@@ -10,9 +10,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
@@ -1331,22 +1334,35 @@ private fun SupportedAppsRow(
     val uriHandler = LocalUriHandler.current
     val focusManager = LocalFocusManager.current
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (isDefaultSource) "Download original APK" else "Supported apps",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-        }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "SUPPORTED APPS",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            letterSpacing = 3.sp
+        )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = if (isDefaultSource) "Download the exact version from APKMirror and drop it here."
+                   else "Drop the APK for a supported app here.",
+            fontSize = 11.sp,
+            fontFamily = mono,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .widthIn(max = 500.dp)
+                .padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         when {
             isLoading -> {
@@ -1418,40 +1434,95 @@ private fun SupportedAppsRow(
                 }
 
                 if (supportedApps.size > 4) {
-                    OutlinedTextField(
+                    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+                    val searchInteraction = remember { MutableInteractionSource() }
+                    val isSearchFocused by searchInteraction.collectIsFocusedAsState()
+                    val searchBorder by animateColorAsState(
+                        if (isSearchFocused) MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                        animationSpec = tween(150)
+                    )
+
+                    BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = {
-                            Text("Search apps…", style = MaterialTheme.typography.bodySmall)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Search, null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(
-                                        Icons.Default.Clear, "Clear",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(14.dp)
-                                    )
+                        singleLine = true,
+                        interactionSource = searchInteraction,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = mono,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        cursorBrush = SolidColor(accents.primary),
+                        modifier = Modifier
+                            .widthIn(max = 260.dp)
+                            .fillMaxWidth()
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(corners.small))
+                            .border(1.dp, searchBorder, RoundedCornerShape(corners.small)),
+                        decorationBox = { innerTextField ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = muted.copy(alpha = 0.55f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            "Filter apps…",
+                                            fontSize = 11.sp,
+                                            fontFamily = mono,
+                                            color = muted.copy(alpha = 0.4f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                                if (searchQuery.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clip(RoundedCornerShape(corners.small))
+                                            .clickable { searchQuery = "" },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Clear",
+                                            tint = muted.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
                                 }
                             }
-                        },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodySmall,
-                        shape = RoundedCornerShape(corners.small),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = accents.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                        )
+                        }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (filteredApps.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No matching apps",
+                            fontSize = 11.sp,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                    }
+                    return@Column
                 }
 
                 // Horizontal scrolling cards
@@ -1469,13 +1540,6 @@ private fun SupportedAppsRow(
                 ) {
                     filteredApps.forEach { app ->
                         val url = app.apkDownloadUrl
-                        val hoverInteraction = remember { MutableInteractionSource() }
-                        val isHovered by hoverInteraction.collectIsHoveredAsState()
-                        val borderColor by animateColorAsState(
-                            if (isHovered) accents.primary.copy(alpha = 0.4f)
-                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-                            animationSpec = tween(200)
-                        )
 
                         Surface(
                             modifier = Modifier
@@ -1483,26 +1547,21 @@ private fun SupportedAppsRow(
                                     if (useScrolling) Modifier.width(170.dp)
                                     else Modifier.weight(1f)
                                 )
-                                .fillMaxHeight()
-                                .hoverable(hoverInteraction)
-                                .then(
-                                    if (isDefaultSource && url != null) {
-                                        Modifier.clickable {
-                                            openUrlAndFollowRedirects(url) { resolved ->
-                                                uriHandler.openUri(resolved)
-                                            }
-                                        }
-                                    } else Modifier
-                                ),
+                                .fillMaxHeight(),
                             shape = RoundedCornerShape(corners.small),
                             color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, borderColor)
+                            border = BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                            )
                         ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .fillMaxHeight()
                                     .padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
                                     text = app.displayName,
@@ -1511,27 +1570,77 @@ private fun SupportedAppsRow(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+
+                                if (!isDefaultSource) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+
                                 if (app.recommendedVersion != null) {
                                     Text(
-                                        text = "v${app.recommendedVersion}",
-                                        fontSize = 11.sp,
-                                        color = accents.secondary,
-                                        fontWeight = FontWeight.Medium
+                                        text = "STABLE",
+                                        fontSize = 9.sp,
+                                        fontFamily = mono,
+                                        fontWeight = FontWeight.Medium,
+                                        letterSpacing = 1.2.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                                     )
+
+                                    val pillInteraction = remember { MutableInteractionSource() }
+                                    val isPillHovered by pillInteraction.collectIsHoveredAsState()
+                                    val clickable = isDefaultSource && url != null
+                                    val pillBg by animateColorAsState(
+                                        when {
+                                            !clickable -> Color.Transparent
+                                            isPillHovered -> accents.primary.copy(alpha = 0.15f)
+                                            else -> Color.Transparent
+                                        },
+                                        animationSpec = tween(150)
+                                    )
+                                    val pillBorder by animateColorAsState(
+                                        when {
+                                            !clickable -> MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+                                            isPillHovered -> accents.primary.copy(alpha = 0.7f)
+                                            else -> accents.primary.copy(alpha = 0.35f)
+                                        },
+                                        animationSpec = tween(150)
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .hoverable(pillInteraction)
+                                            .clip(RoundedCornerShape(corners.small))
+                                            .background(pillBg, RoundedCornerShape(corners.small))
+                                            .border(
+                                                1.dp,
+                                                pillBorder,
+                                                RoundedCornerShape(corners.small)
+                                            )
+                                            .then(
+                                                if (clickable) Modifier.clickable {
+                                                    openUrlAndFollowRedirects(url!!) { resolved ->
+                                                        uriHandler.openUri(resolved)
+                                                    }
+                                                } else Modifier
+                                            )
+                                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Text(
+                                            text = if (clickable) "v${app.recommendedVersion} ↗"
+                                            else "v${app.recommendedVersion}",
+                                            fontSize = 11.sp,
+                                            fontFamily = mono,
+                                            color = accents.primary,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
                                 } else {
                                     Text(
-                                        text = "Any version",
-                                        fontSize = 11.sp,
+                                        text = "ANY VERSION",
+                                        fontSize = 9.sp,
+                                        fontFamily = mono,
+                                        fontWeight = FontWeight.Medium,
+                                        letterSpacing = 1.2.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                }
-                                if (isDefaultSource && url != null) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Download ↗",
-                                        fontSize = 10.sp,
-                                        color = accents.primary.copy(alpha = 0.7f),
-                                        fontWeight = FontWeight.Medium
                                     )
                                 }
                             }

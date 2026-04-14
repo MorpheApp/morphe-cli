@@ -1565,7 +1565,8 @@ private fun SupportedAppVerticalCard(
                 version = app.recommendedVersion,
                 downloadUrl = if (isDefaultSource) downloadUrl else null,
                 mono = mono,
-                corners = corners
+                corners = corners,
+                nullLabel = "Any version"
             )
 
             // Experimental row only for default (Morphe) patch sources.
@@ -1763,7 +1764,8 @@ private fun VersionWithDownload(
     version: String?,
     downloadUrl: String?,
     mono: androidx.compose.ui.text.font.FontFamily,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle
+    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
+    nullLabel: String = "—"
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1823,7 +1825,7 @@ private fun VersionWithDownload(
             // links but the version is real and should look like the primary
             // information on the card.
             Text(
-                text = version?.let { "v$it" } ?: "—",
+                text = version?.let { "v$it" } ?: nullLabel,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = mono,
