@@ -1501,20 +1501,8 @@ private fun SupportedAppVerticalCard(
             modifier = Modifier
                 .width(collapsedWidth)
                 .fillMaxHeight()
-                .then(
-                    // Only Morphe-source cards are expandable for now — third-party
-                    // cards don't have meaningful detail to show in the expanded
-                    // right-side panel (no experimental versions, no download links).
-                    // When we add more metadata for third-party patches (description,
-                    // source URL, etc.) this can become unconditional.
-                    if (isDefaultSource) {
-                        Modifier
-                            .hoverable(hoverInteraction)
-                            .clickable(onClick = onClick)
-                    } else {
-                        Modifier
-                    }
-                )
+                .hoverable(hoverInteraction)
+                .clickable(onClick = onClick)
                 .padding(horizontal = 14.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -1563,7 +1551,7 @@ private fun SupportedAppVerticalCard(
                 channelLabel = "STABLE LATEST",
                 channelColor = accents.primary,
                 version = app.recommendedVersion,
-                downloadUrl = if (isDefaultSource) downloadUrl else null,
+                downloadUrl = downloadUrl,
                 mono = mono,
                 corners = corners,
                 nullLabel = "Any version"
@@ -1782,7 +1770,7 @@ private fun VersionWithDownload(
 
 //        Spacer(modifier = Modifier.height(3.dp))
 
-        if (version != null && downloadUrl != null) {
+        if (downloadUrl != null) {
             val uriHandler = LocalUriHandler.current
             OutlinedButton(
                 onClick = {
@@ -1802,7 +1790,7 @@ private fun VersionWithDownload(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "v$version",
+                        text = version?.let { "v$it" } ?: nullLabel,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = mono,

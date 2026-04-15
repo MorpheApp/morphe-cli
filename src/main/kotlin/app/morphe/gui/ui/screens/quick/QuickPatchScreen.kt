@@ -1575,33 +1575,26 @@ private fun SupportedAppsRow(
                                     Spacer(modifier = Modifier.weight(1f))
                                 }
 
-                                if (app.recommendedVersion != null) {
-                                    Text(
-                                        text = "STABLE",
-                                        fontSize = 9.sp,
-                                        fontFamily = mono,
-                                        fontWeight = FontWeight.Medium,
-                                        letterSpacing = 1.2.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-                                    )
+                                Text(
+                                    text = if (app.recommendedVersion != null) "STABLE" else "ANY VERSION",
+                                    fontSize = 9.sp,
+                                    fontFamily = mono,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 1.2.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                )
 
+                                if (url != null) {
                                     val pillInteraction = remember { MutableInteractionSource() }
                                     val isPillHovered by pillInteraction.collectIsHoveredAsState()
-                                    val clickable = isDefaultSource && url != null
                                     val pillBg by animateColorAsState(
-                                        when {
-                                            !clickable -> Color.Transparent
-                                            isPillHovered -> accents.primary.copy(alpha = 0.15f)
-                                            else -> Color.Transparent
-                                        },
+                                        if (isPillHovered) accents.primary.copy(alpha = 0.15f)
+                                        else Color.Transparent,
                                         animationSpec = tween(150)
                                     )
                                     val pillBorder by animateColorAsState(
-                                        when {
-                                            !clickable -> MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
-                                            isPillHovered -> accents.primary.copy(alpha = 0.7f)
-                                            else -> accents.primary.copy(alpha = 0.35f)
-                                        },
+                                        if (isPillHovered) accents.primary.copy(alpha = 0.7f)
+                                        else accents.primary.copy(alpha = 0.35f),
                                         animationSpec = tween(150)
                                     )
 
@@ -1615,33 +1608,21 @@ private fun SupportedAppsRow(
                                                 pillBorder,
                                                 RoundedCornerShape(corners.small)
                                             )
-                                            .then(
-                                                if (clickable) Modifier.clickable {
-                                                    openUrlAndFollowRedirects(url!!) { resolved ->
-                                                        uriHandler.openUri(resolved)
-                                                    }
-                                                } else Modifier
-                                            )
+                                            .clickable {
+                                                openUrlAndFollowRedirects(url) { resolved ->
+                                                    uriHandler.openUri(resolved)
+                                                }
+                                            }
                                             .padding(horizontal = 10.dp, vertical = 5.dp)
                                     ) {
                                         Text(
-                                            text = if (clickable) "v${app.recommendedVersion} ↗"
-                                            else "v${app.recommendedVersion}",
+                                            text = app.recommendedVersion?.let { "v$it ↗" } ?: "Download ↗",
                                             fontSize = 11.sp,
                                             fontFamily = mono,
                                             color = accents.primary,
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
-                                } else {
-                                    Text(
-                                        text = "ANY VERSION",
-                                        fontSize = 9.sp,
-                                        fontFamily = mono,
-                                        fontWeight = FontWeight.Medium,
-                                        letterSpacing = 1.2.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
                                 }
                             }
                         }

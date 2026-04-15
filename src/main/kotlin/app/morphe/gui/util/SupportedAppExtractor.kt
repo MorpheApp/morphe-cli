@@ -59,7 +59,7 @@ object  SupportedAppExtractor {
                 supportedVersions = versionList,
                 experimentalVersions = experimentalList,
                 recommendedVersion = recommendedVersion,
-                apkDownloadUrl = SupportedApp.getDownloadUrl(packageName, recommendedVersion),
+                apkDownloadUrl = SupportedApp.getDownloadUrl(packageName, recommendedVersion ?: "any"),
                 experimentalDownloadUrl = SupportedApp.getDownloadUrl(packageName, latestExperimental)
             )
         }.sortedBy { it.displayName }
