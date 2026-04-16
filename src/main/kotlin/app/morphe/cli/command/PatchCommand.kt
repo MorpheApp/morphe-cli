@@ -12,6 +12,7 @@ import app.morphe.cli.command.model.*
 import app.morphe.engine.PatchEngine
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_SIGNER_NAME
 import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_PASSWORD
 import app.morphe.engine.UpdateChecker
@@ -207,7 +208,7 @@ internal object PatchCommand : Callable<Int> {
         description = ["The name of the signer to sign the patched APK file with."],
         showDefaultValue = ALWAYS,
     )
-    private var signer = "Morphe"
+    private var signer = DEFAULT_SIGNER_NAME
 
     @CommandLine.Option(
         names = ["-t", "--temporary-files-path"],

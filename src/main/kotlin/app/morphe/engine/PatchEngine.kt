@@ -51,7 +51,7 @@ object PatchEngine {
         val forceCompatibility: Boolean = false,
         val patchOptions: Map<String, Map<String, Any?>> = emptyMap(),
         val unsigned: Boolean = false,
-        val signerName: String = "Morphe",
+        val signerName: String = DEFAULT_SIGNER_NAME,
         val keystoreDetails: ApkUtils.KeyStoreDetails? = null,
         val architecturesToKeep: Set<CpuArchitecture> = emptySet(),
         val aaptBinaryPath: File? = null,
@@ -61,6 +61,7 @@ object PatchEngine {
         companion object {
             internal const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
             internal const val DEFAULT_KEYSTORE_PASSWORD = "Morphe"
+            internal const val DEFAULT_SIGNER_NAME = "Morphe"
             internal const val LEGACY_KEYSTORE_ALIAS = "Morphe Key"
             internal const val LEGACY_KEYSTORE_PASSWORD = ""
         }
@@ -224,7 +225,19 @@ object PatchEngine {
                 // 7. Sign APK (unless unsigned)
                 val tempOutput = File(tempDir, config.outputApk.name)
                 if (!config.unsigned) {
-                    onProgress("Signing APK...")
+                    val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
+                        File(tempDir, "morphe.keystore"),
+                        null,
+                        Config.DEFAULT_KEYSTORE_ALIAS,
+                        Config.DEFAULT_KEYSTORE_PASSWORD,
+                    )
+
+                    if (config.keystoreDetails != null) {
+                        onProgress("Signing APK with custom keystore: ${keystoreDetails.keyStore.name}")
+                    } else {
+                        onProgress("Signing APK...")
+                    }
+
                     try {
                         fun signApk(details: ApkUtils.KeyStoreDetails) {
                             ApkUtils.signApk(
@@ -235,16 +248,9 @@ object PatchEngine {
                             )
                         }
 
-                        val keystoreDetails = config.keystoreDetails ?: ApkUtils.KeyStoreDetails(
-                            File(tempDir, "morphe.keystore"),
-                            null,
-                            Config.DEFAULT_KEYSTORE_ALIAS,
-                            Config.DEFAULT_KEYSTORE_PASSWORD,
-                        )
-
                         try {
                             signApk(keystoreDetails)
-                        } catch (e: Exception){
+                        } catch (e: Exception) {
                             // Retry with legacy keystore defaults.
                             if (config.keystoreDetails == null && keystoreDetails.keyStore.exists()) {
                                 logger.info("Using legacy keystore credentials")

@@ -19,17 +19,20 @@ import app.morphe.gui.util.Logger
 import java.io.File
 
 /**
- * Repository for fetching Morphe patches from GitHub releases.
+ * Repository for fetching patches from GitHub releases.
+ * @param repoPath GitHub repo in "owner/repo" format (e.g. "MorpheApp/morphe-patches")
  */
 class PatchRepository(
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val repoPath: String = DEFAULT_REPO
 ) {
     companion object {
         private const val GITHUB_API_BASE = "https://api.github.com"
-        private const val PATCHES_REPO = "MorpheApp/morphe-patches"
-        private const val RELEASES_ENDPOINT = "$GITHUB_API_BASE/repos/$PATCHES_REPO/releases"
+        private const val DEFAULT_REPO = "MorpheApp/morphe-patches"
         private const val CACHE_TTL_MS = 5 * 60 * 1000L // 5 minutes
     }
+
+    private val releasesEndpoint = "$GITHUB_API_BASE/repos/$repoPath/releases"
 
     // In-memory cache so multiple callers (both modes) don't re-fetch from GitHub
     private var cachedReleases: List<Release>? = null
@@ -48,8 +51,8 @@ class PatchRepository(
         }
 
         try {
-            Logger.info("Fetching releases from $RELEASES_ENDPOINT")
-            val response: HttpResponse = httpClient.get(RELEASES_ENDPOINT) {
+            Logger.info("Fetching releases from $releasesEndpoint")
+            val response: HttpResponse = httpClient.get(releasesEndpoint) {
                 headers {
                     append(HttpHeaders.Accept, "application/vnd.github+json")
                     append("X-GitHub-Api-Version", "2022-11-28")
@@ -58,7 +61,7 @@ class PatchRepository(
 
             if (response.status.isSuccess()) {
                 val releases: List<Release> = response.body()
-                Logger.info("Fetched ${releases.size} releases")
+                Logger.info("Fetched ${releases.size} releases from $releasesEndpoint")
                 cachedReleases = releases
                 cacheTimestamp = System.currentTimeMillis()
                 Result.success(releases)
@@ -113,25 +116,26 @@ class PatchRepository(
     }
 
     /**
-     * Find the .mpp asset in a release.
+     * Find the patch .mpp asset in a release.
      */
-    fun findMppAsset(release: Release): ReleaseAsset? {
-        return release.assets.find { it.isMpp() }
+    fun findPatchAsset(release: Release): ReleaseAsset? {
+        return release.assets.find { it.isPatchFile() }
     }
 
     /**
-     * Download the .mpp patch file from a release.
+     * Download the patch .mpp file from a release.
      * Returns the path to the downloaded file.
      */
     suspend fun downloadPatches(release: Release, onProgress: (Float) -> Unit = {}): Result<File> = withContext(Dispatchers.IO) {
-        val asset = findMppAsset(release)
+        val asset = findPatchAsset(release)
         if (asset == null) {
-            val error = "No .mpp file found in release ${release.tagName}"
+            val error = "No .mpp patch files found in release ${release.tagName}"
             Logger.error(error)
             return@withContext Result.failure(Exception(error))
         }
 
-        val patchesDir = FileUtils.getPatchesDir()
+        val patchesDir = File(FileUtils.getPatchesDir(), repoPath.replace("/", "-"))
+        patchesDir.mkdirs()
         val targetFile = File(patchesDir, asset.name)
 
         // Check if already cached
@@ -176,18 +180,31 @@ class PatchRepository(
      * Get cached patch file for a specific version.
      */
     fun getCachedPatches(version: String): File? {
-        val patchesDir = FileUtils.getPatchesDir()
+        val patchesDir = File(FileUtils.getPatchesDir(), repoPath.replace("/", "-"))
         return patchesDir.listFiles()?.find {
-            it.name.contains(version) && it.name.endsWith(".mpp")
+            it.name.contains(version) && isPatchFileName(it.name)
         }
+    }
+
+    private fun isPatchFileName(name: String): Boolean {
+        return name.endsWith(".mpp", ignoreCase = true)
     }
 
     /**
      * List all cached patch versions.
      */
     fun listCachedPatches(): List<File> {
-        val patchesDir = FileUtils.getPatchesDir()
-        return patchesDir.listFiles()?.filter { it.name.endsWith(".mpp") } ?: emptyList()
+        val patchesDir = File(FileUtils.getPatchesDir(), repoPath.replace("/", "-"))
+        return patchesDir.listFiles()?.filter { isPatchFileName(it.name) } ?: emptyList()
+    }
+
+    /**
+     * Get the per-source cache directory for this repository.
+     */
+    fun getCacheDir(): File {
+        val dir = File(FileUtils.getPatchesDir(), repoPath.replace("/", "-"))
+        dir.mkdirs()
+        return dir
     }
 
     /**
@@ -197,10 +214,11 @@ class PatchRepository(
         cachedReleases = null
         cacheTimestamp = 0L
         return try {
+            val patchesDir = File(FileUtils.getPatchesDir(), repoPath.replace("/", "-"))
             var failedCount = 0
-            FileUtils.getPatchesDir().listFiles()?.forEach { file ->
+            patchesDir.listFiles()?.forEach { file ->
                 try {
-                    java.nio.file.Files.delete(file.toPath())
+                    if (!file.deleteRecursively()) throw Exception("Could not delete")
                 } catch (e: Exception) {
                     failedCount++
                     Logger.error("Failed to delete ${file.name}: ${e.message}")
@@ -210,7 +228,7 @@ class PatchRepository(
                 Logger.error("Patches cache clear incomplete: $failedCount file(s) locked")
                 false
             } else {
-                Logger.info("Patches cache cleared")
+                Logger.info("Patches cache cleared for $repoPath")
                 true
             }
         } catch (e: Exception) {

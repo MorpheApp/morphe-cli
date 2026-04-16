@@ -6,7 +6,9 @@
 package app.morphe.gui.data.repository
 
 import app.morphe.gui.data.model.AppConfig
+import app.morphe.gui.data.model.DEFAULT_PATCH_SOURCE
 import app.morphe.gui.data.model.PatchChannel
+import app.morphe.gui.data.model.PatchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -123,6 +125,90 @@ class ConfigRepository {
     suspend fun setUseSimplifiedMode(enabled: Boolean) {
         val current = loadConfig()
         saveConfig(current.copy(useSimplifiedMode = enabled))
+    }
+
+    /**
+     * Update keystore path only (used for auto-remember on first creation).
+     */
+    suspend fun setKeystorePath(path: String?) {
+        val current = loadConfig()
+        saveConfig(current.copy(keystorePath = path))
+    }
+
+    /**
+     * Update all keystore details at once.
+     */
+    suspend fun setKeystoreDetails(
+        path: String?,
+        password: String?,
+        alias: String,
+        entryPassword: String
+    ) {
+        val current = loadConfig()
+        saveConfig(current.copy(
+            keystorePath = path,
+            keystorePassword = password,
+            keystoreAlias = alias,
+            keystoreEntryPassword = entryPassword
+        ))
+    }
+
+    /**
+     * Get the currently active patch source.
+     */
+    suspend fun getActivePatchSource(): PatchSource {
+        val config = loadConfig()
+        return config.patchSource.find { it.id == config.activePatchSourceId }
+            ?: DEFAULT_PATCH_SOURCE
+    }
+
+    /**
+     * Set the active patch source by ID.
+     */
+    suspend fun setActivePatchSource(id: String) {
+        val current = loadConfig()
+        if (current.patchSource.any { it.id == id }) {
+            saveConfig(current.copy(activePatchSourceId = id))
+        }
+    }
+
+    /**
+     * Add a new patch source.
+     */
+    suspend fun addPatchSource(source: PatchSource) {
+        val current = loadConfig()
+        val updated = current.copy(patchSource = current.patchSource + source)
+        saveConfig(updated)
+    }
+
+    /**
+     * Update an existing patch source. Cannot update non-deletable sources.
+     */
+    suspend fun updatePatchSource(updated: PatchSource) {
+        val current = loadConfig()
+        val existing = current.patchSource.find { it.id == updated.id }
+        if (existing == null || !existing.deletable) return
+
+        val updatedSources = current.patchSource.map { if (it.id == updated.id) updated else it }
+        saveConfig(current.copy(patchSource = updatedSources))
+    }
+
+    /**
+     * Remove a patch source by ID. Cannot remove non-deletable sources.
+     */
+    suspend fun removePatchSource(id: String) {
+        val current = loadConfig()
+        val source = current.patchSource.find { it.id == id }
+        if (source == null || !source.deletable) return
+
+        val updatedSources = current.patchSource.filter { it.id != id }
+        // If we removed the active source, fall back to default
+        val newActiveId = if (current.activePatchSourceId == id) {
+            DEFAULT_PATCH_SOURCE.id
+        } else {
+            current.activePatchSourceId
+        }
+        saveConfig(current.copy(patchSource = updatedSources, activePatchSourceId = newActiveId))
     }
 
     /**

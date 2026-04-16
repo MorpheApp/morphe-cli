@@ -5,9 +5,11 @@
 
 package app.morphe.gui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import app.morphe.gui.ui.components.LocalFrameWindowScope
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -58,12 +60,33 @@ fun launchGui(args: Array<String>) = application {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Morphe",
+        title = "",
         state = windowState,
         icon = appIcon
     ) {
         window.minimumSize = java.awt.Dimension(600, 400)
-        App(initialSimplifiedMode = initialSimplifiedMode)
+
+        // macOS: hide the OS-drawn title bar so a Compose-rendered colored
+        // band can take its place. Traffic lights stay where the OS draws
+        // them (top-left of the client area, ~12px from each edge), and the
+        // colored band sits behind them. These three Apple AWT properties
+        // ship with every macOS JDK — no JetBrains Runtime needed.
+        //
+        // Windows / Linux: standard decorated window. The OS title bar is
+        // drawn above the client area as normal. On Windows, its color is
+        // tinted to match the active theme via DWM (see WindowTitleBarTint).
+        remember {
+            val isMac = System.getProperty("os.name")?.lowercase()?.contains("mac") == true
+            if (isMac) {
+                window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
+                window.rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
+                window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
+            }
+        }
+
+        CompositionLocalProvider(LocalFrameWindowScope provides this) {
+            App(initialSimplifiedMode = initialSimplifiedMode)
+        }
     }
 }
 
@@ -119,3 +142,4 @@ private fun loadAppIcon(): BitmapPainter? {
     }
     return null
 }
+

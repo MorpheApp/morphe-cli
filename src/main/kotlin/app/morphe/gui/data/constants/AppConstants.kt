@@ -5,6 +5,8 @@
 
 package app.morphe.gui.data.constants
 
+import java.util.Properties
+
 /**
  * Centralized configuration for supported apps.
  * This file is massively outdated. Could be used for other things in the future but kinda useless now.
@@ -19,7 +21,14 @@ object AppConstants {
     }
 
     val APP_VERSION: String by lazy {
-        pkg?.implementationVersion?.let { "v$it" } ?: "dev"
+        val resourceVersion = AppConstants::class.java
+            .getResourceAsStream("/app/morphe/cli/version.properties")
+            ?.use { stream ->
+                Properties().apply { load(stream) }.getProperty("version")
+            }
+
+        val resolvedVersion = resourceVersion ?: pkg?.implementationVersion
+        resolvedVersion?.let { "v$it" } ?: "dev"
     }
 
     // ==================== API ====================

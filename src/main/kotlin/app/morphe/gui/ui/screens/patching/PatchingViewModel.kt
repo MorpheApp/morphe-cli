@@ -8,6 +8,7 @@ package app.morphe.gui.ui.screens.patching
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.gui.data.model.PatchConfig
+import app.morphe.gui.data.repository.ConfigRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,9 +18,10 @@ import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import java.io.File
 
-class PatchingScreenModel(
+class PatchingViewModel(
     private val config: PatchConfig,
-    private val patchService: PatchService
+    private val patchService: PatchService,
+    private val configRepository: ConfigRepository
 ) : ScreenModel {
 
     private val _uiState = MutableStateFlow(PatchingUiState())
@@ -50,6 +52,15 @@ class PatchingScreenModel(
             addLog("Output: ${File(config.outputApkPath).name}", LogLevel.INFO)
             addLog("Patches: ${config.enabledPatches.size} enabled", LogLevel.INFO)
 
+            // Resolve keystore: use saved path, or derive from output APK location
+            val appConfig = configRepository.loadConfig()
+            val resolvedKeystorePath = appConfig.keystorePath
+                ?: File(config.outputApkPath).let { out ->
+                    out.resolveSibling(out.nameWithoutExtension + ".keystore").absolutePath
+                }.also { path ->
+                    configRepository.setKeystorePath(path)
+                }
+
             // Use PatchService for direct library patching
             val result = patchService.patch(
                 patchesFilePath = config.patchesFilePath,
@@ -61,6 +72,10 @@ class PatchingScreenModel(
                 exclusiveMode = config.useExclusiveMode,
                 keepArchitectures = config.keepArchitectures,
                 continueOnError = config.continueOnError,
+                keystorePath = resolvedKeystorePath,
+                keystorePassword = appConfig.keystorePassword,
+                keystoreAlias = appConfig.keystoreAlias,
+                keystoreEntryPassword = appConfig.keystoreEntryPassword,
                 onProgress = { message ->
                     parseAndAddLog(message)
                 }

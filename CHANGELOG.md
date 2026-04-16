@@ -1,3 +1,10 @@
+# [1.7.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.6.4-dev.2...v1.7.0-dev.1) (2026-04-15)
+
+
+### Features
+
+* Add GUI third party patch sources, add experimental app patching ([#98](https://github.com/MorpheApp/morphe-cli/issues/98)) ([da5ec1c](https://github.com/MorpheApp/morphe-cli/commit/da5ec1c7e2165a35f8d42b88401a19a958ee25d4))
+
 ## [1.6.4-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.6.4-dev.1...v1.6.4-dev.2) (2026-03-31)
 
 

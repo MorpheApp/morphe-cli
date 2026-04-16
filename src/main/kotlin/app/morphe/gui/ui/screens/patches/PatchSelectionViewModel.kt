@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.patches
 
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.gui.data.model.Patch
@@ -26,7 +28,8 @@ class PatchSelectionViewModel(
     private val packageName: String,
     private val apkArchitectures: List<String>,
     private val patchService: PatchService,
-    private val patchRepository: PatchRepository
+    private val patchRepository: PatchRepository,
+    private val localPatchFilePath: String? = null
 ) : ScreenModel {
 
     // Actual path to use - may differ from patchesFilePath if we had to re-download
@@ -169,6 +172,28 @@ class PatchSelectionViewModel(
     }
 
     /**
+     * Set a patch option value. Key format: "patchName.optionKey"
+     */
+    fun setOptionValue(patchName: String, optionKey: String, value: String) {
+        val key = "$patchName.$optionKey"
+        val current = _uiState.value.patchOptionValues.toMutableMap()
+        if (value.isBlank()) {
+            current.remove(key)
+        } else {
+            current[key] = value
+        }
+        _uiState.value = _uiState.value.copy(patchOptionValues = current)
+    }
+
+    /**
+     * Get a patch option value. Returns the user-set value, or the default if not set.
+     */
+    fun getOptionValue(patchName: String, optionKey: String, default: String?): String {
+        val key = "$patchName.$optionKey"
+        return _uiState.value.patchOptionValues[key] ?: default ?: ""
+    }
+
+    /**
      * Count of patches that are disabled by default (from .mpp metadata).
      */
     fun getDefaultDisabledCount(): Int {
@@ -198,9 +223,14 @@ class PatchSelectionViewModel(
             .filter { !_uiState.value.selectedPatches.contains(it.uniqueId) }
             .map { it.name }
 
-        // Only set riplibs if user deselected any architecture (keeps = selected ones)
+        // Only set striplibs if user deselected any architecture (keeps = selected ones).
+        // Note: selectedArchitectures stores display strings like "arm64-v8a" (with
+        // hyphens), so use valueOfOrNull which matches against the enum's `.arch`
+        // property — plain valueOf() only accepts the underscored Kotlin constant name.
         val striplibs = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
-            _uiState.value.selectedArchitectures.map { CpuArchitecture.valueOf(it) }.toSet()
+            _uiState.value.selectedArchitectures
+                .mapNotNull { CpuArchitecture.valueOfOrNull(it) }
+                .toSet()
         } else {
             emptySet()
         }
@@ -211,6 +241,7 @@ class PatchSelectionViewModel(
             patchesFilePath = actualPatchesFilePath,
             enabledPatches = selectedPatchNames,
             disabledPatches = disabledPatchNames,
+            patchOptions = _uiState.value.patchOptionValues,
             useExclusiveMode = true,
             keepArchitectures = striplibs,
             continueOnError = continueOnError
@@ -239,7 +270,14 @@ class PatchSelectionViewModel(
      * Generate a preview of the CLI command that will be executed.
      * @param cleanMode If true, formats with newlines for readability. If false, compact single-line format.
      */
-    fun getCommandPreview(cleanMode: Boolean = false, continueOnError: Boolean = false): String {
+    fun getCommandPreview(
+        cleanMode: Boolean = false,
+        continueOnError: Boolean = false,
+        keystorePath: String? = null,
+        keystorePassword: String? = null,
+        keystoreAlias: String? = null,
+        keystoreEntryPassword: String? = null
+    ): String {
         val inputFile = File(apkPath)
         val patchesFile = File(actualPatchesFilePath)
         val appFolderName = apkName.replace(" ", "-")
@@ -266,39 +304,55 @@ class PatchSelectionViewModel(
             null
         }
 
+        // Keystore flags (only if custom keystore is set)
+        val hasCustomKeystore = keystorePath != null
+
         return if (cleanMode) {
-            val sb = StringBuilder()
-            sb.append("java -jar morphe-cli.jar patch \\\n")
-            sb.append("  -p ${patchesFile.name} \\\n")
-            sb.append("  -o ${outputFileName} \\\n")
-            sb.append("  --force \\\n")
+            buildString {
+                appendLine(
+                    """
+                        java -jar morphe-cli.jar patch \
+                          -p ${patchesFile.name} \
+                          -o $outputFileName \
+                          --force \
+                    """.trimIndent()
+                )
 
-            if (continueOnError) {
-                sb.append("  --continue-on-error \\\n")
-            }
-
-            if (useExclusive) {
-                sb.append("  --exclusive \\\n")
-            }
-
-            if (striplibsArg != null) {
-                sb.append("  --striplibs $striplibsArg \\\n")
-            }
-
-            val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
-            val flag = if (useExclusive) "-e" else "-d"
-
-            flagPatches.forEachIndexed { index, patch ->
-                val isLast = index == flagPatches.lastIndex
-                sb.append("  $flag \"$patch\"")
-                if (!isLast) {
-                    sb.append(" \\")
+                if (continueOnError) {
+                    appendLine("  --continue-on-error \\")
                 }
-                sb.append("\n")
-            }
 
-            sb.append("  ${inputFile.name}")
-            sb.toString()
+                if (useExclusive) {
+                    appendLine("  --exclusive \\")
+                }
+
+                striplibsArg?.let {
+                    appendLine("  --striplibs $it \\")
+                }
+
+                if (hasCustomKeystore) {
+                    appendLine("  --keystore \"$keystorePath\" \\")
+                    keystorePassword?.let {
+                        appendLine("  --keystore-password \"$it\" \\")
+                    }
+                    if (keystoreAlias != null && keystoreAlias != DEFAULT_KEYSTORE_ALIAS) {
+                        appendLine("  --keystore-entry-alias \"$keystoreAlias\" \\")
+                    }
+                    if (keystoreEntryPassword != null && keystoreEntryPassword != DEFAULT_KEYSTORE_PASSWORD) {
+                        appendLine("  --keystore-entry-password \"$keystoreEntryPassword\" \\")
+                    }
+                }
+
+                val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
+                val flag = if (useExclusive) "-e" else "-d"
+
+                flagPatches.forEachIndexed { index, patch ->
+                    val suffix = if (index == flagPatches.lastIndex) "" else " \\"
+                    appendLine("  $flag \"$patch\"$suffix")
+                }
+
+                append("  ${inputFile.name}")
+            }
         } else {
             val flagPatches = if (useExclusive) selectedPatchNames else disabledPatchNames
             val flag = if (useExclusive) "-e" else "-d"
@@ -306,15 +360,33 @@ class PatchSelectionViewModel(
             val exclusivePart = if (useExclusive) " --exclusive" else ""
             val striplibsPart = if (striplibsArg != null) " --striplibs $striplibsArg" else ""
             val continueOnErrorPart = if (continueOnError) " --continue-on-error" else ""
-            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --force$continueOnErrorPart$exclusivePart$striplibsPart $patches ${inputFile.name}"
+            val keystorePart = if (hasCustomKeystore) {
+                val parts = mutableListOf(" --keystore \"$keystorePath\"")
+                if (keystorePassword != null) parts.add("--keystore-password \"$keystorePassword\"")
+                if (keystoreAlias != null && keystoreAlias != "Morphe") parts.add("--keystore-entry-alias \"$keystoreAlias\"")
+                if (keystoreEntryPassword != null && keystoreEntryPassword != "Morphe") parts.add("--keystore-entry-password \"$keystoreEntryPassword\"")
+                parts.joinToString(" ")
+            } else ""
+            "java -jar morphe-cli.jar patch -p ${patchesFile.name} -o $outputFileName --force$continueOnErrorPart$exclusivePart$striplibsPart$keystorePart $patches ${inputFile.name}"
         }
     }
 
     /**
      * Download patches file if it's missing (e.g., after cache clear).
+     * For LOCAL sources, uses the local file directly.
      * Tries to find a release matching the expected filename, or falls back to latest stable.
      */
     private suspend fun downloadMissingPatches(expectedFilename: String): Result<File> {
+        // LOCAL source: use the local file directly instead of downloading
+        if (localPatchFilePath != null) {
+            val localFile = File(localPatchFilePath)
+            return if (localFile.exists()) {
+                Result.success(localFile)
+            } else {
+                Result.failure(Exception("Local patch file not found: ${localFile.name}"))
+            }
+        }
+
         // Try to extract version from filename (e.g., "morphe-patches-1.9.0.mpp" -> "1.9.0")
         val versionRegex = Regex("""(\d+\.\d+\.\d+(?:-dev\.\d+)?)""")
         val versionMatch = versionRegex.find(expectedFilename)
@@ -363,7 +435,8 @@ data class PatchSelectionUiState(
     val showOnlySelected: Boolean = false,
     val error: String? = null,
     val apkArchitectures: List<String> = emptyList(),
-    val selectedArchitectures: Set<String> = emptySet()
+    val selectedArchitectures: Set<String> = emptySet(),
+    val patchOptionValues: Map<String, String> = emptyMap()
 ) {
     val selectedCount: Int get() = selectedPatches.size
     val totalCount: Int get() = allPatches.size

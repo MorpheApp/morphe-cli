@@ -51,7 +51,9 @@ data class Patch(
 @Serializable
 data class CompatiblePackage(
     val name: String,
-    val versions: List<String> = emptyList()
+    val displayName: String? = null,
+    val versions: List<String> = emptyList(),
+    val experimentalVersions: List<String> = emptyList()
 )
 
 @Serializable
@@ -71,7 +73,8 @@ enum class PatchOptionType {
     INT,
     LONG,
     FLOAT,
-    LIST
+    LIST,
+    FILE
 }
 
 /**
