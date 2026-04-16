@@ -8,35 +8,22 @@
 
 package app.morphe.cli.command
 
-import app.morphe.cli.command.model.FailedPatch
-import app.morphe.cli.command.model.PatchBundle
-import app.morphe.cli.command.model.PatchingResult
-import app.morphe.cli.command.model.PatchingStep
-import app.morphe.cli.command.model.addStepResult
-import app.morphe.cli.command.model.deserializeOptionValue
-import app.morphe.cli.command.model.findMatchingBundle
-import app.morphe.cli.command.model.mergeWith
-import app.morphe.cli.command.model.toPatchBundle
-import app.morphe.cli.command.model.toSerializablePatch
-import app.morphe.cli.command.model.withUpdatedBundle
+import app.morphe.cli.command.model.*
 import app.morphe.engine.PatchEngine
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_PASSWORD
 import app.morphe.engine.UpdateChecker
-import app.morphe.library.installation.installer.AdbInstaller
-import app.morphe.library.installation.installer.AdbInstallerResult
-import app.morphe.library.installation.installer.AdbRootInstaller
-import app.morphe.library.installation.installer.DeviceNotFoundException
-import app.morphe.library.installation.installer.Installer
-import app.morphe.library.installation.installer.RootInstallerResult
+import app.morphe.library.installation.installer.*
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkMerger
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patcher.dex.BytecodeMode
+import app.morphe.patcher.dex.NoOpDexVerifier
+import app.morphe.patcher.dex.SdkDexVerifier
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
@@ -337,6 +324,55 @@ internal object PatchCommand : Callable<Int> {
     }
 
     @CommandLine.Option(
+        names = ["--verify-with-sdk"],
+        description = ["Verify the patched DEX and APK files using the provided Android SDK. If not specified, the patched files will not be verified."],
+        fallbackValue = "",
+        arity = "0..1",
+    )
+    @Suppress("unused")
+    private fun setSdkToolsPath(sdkToolsPath: File?) {
+        if (sdkToolsPath != null && sdkToolsPath.path.isNotEmpty()) {
+            if (!sdkToolsPath.isDirectory) {
+                throw CommandLine.ParameterException(
+                    spec.commandLine(),
+                    "SDK path passed to --verify-with-sdk must be a directory.",
+                )
+            }
+            this.sdkToolsPath = sdkToolsPath
+            return
+        }
+
+        // Try environment variables first.
+        val envPath = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+        if (envPath != null) {
+            val envDir = File(envPath)
+            if (envDir.isDirectory) {
+                this.sdkToolsPath = envDir
+                return
+            }
+        }
+
+        // Infer default path based on OS.
+        val userHome = System.getProperty("user.home")
+        val osName = System.getProperty("os.name").lowercase()
+        val defaultPath = when {
+            osName.contains("win") -> File("$userHome/AppData/Local/Android/Sdk")
+            osName.contains("mac") -> File("$userHome/Library/Android/sdk")
+            else -> File("$userHome/Android/Sdk")
+        }
+
+        if (defaultPath.isDirectory) {
+            this.sdkToolsPath = defaultPath
+        } else {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                "Could not find Android SDK. Set ANDROID_HOME or pass a path to --verify-with-sdk.",
+            )
+        }
+    }
+    private var sdkToolsPath: File? = null
+
+    @CommandLine.Option(
         names = ["--continue-on-error"],
         description = ["Continue patching even if a patch fails. By default, patching stops on the first error."],
         showDefaultValue = ALWAYS,
@@ -413,6 +449,7 @@ internal object PatchCommand : Callable<Int> {
 
         val patchingResult = PatchingResult()
         var mergedApkToCleanup: File? = null
+        val verifier = if (sdkToolsPath == null) NoOpDexVerifier else SdkDexVerifier(sdkToolsPath!!)
 
         // Lightweight snapshot of patch metadata for use in finally block (auto-update).
         // Lightweight snapshot of current bundle metadata for use in finally block (auto-update).
@@ -504,7 +541,8 @@ internal object PatchCommand : Callable<Int> {
                     patcherTemporaryFilesPath.absolutePath,
                     useArsclib = if (aaptBinaryPath != null) { false } else { !forceApktool },
                     keepArchitectures = keepArchitectures,
-                    useBytecodeMode = bytecodeMode
+                    useBytecodeMode = bytecodeMode,
+                    verifier = verifier
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
@@ -729,6 +767,7 @@ internal object PatchCommand : Callable<Int> {
                 } else {
                     patchedApkFile.copyTo(outputFilePath, overwrite = true)
                 }
+                verifier.verifyApkFile(outputFilePath)
             }
 
             logger.info("Saved to $outputFilePath")
