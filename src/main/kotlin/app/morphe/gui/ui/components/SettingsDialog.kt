@@ -52,6 +52,8 @@ import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import java.text.SimpleDateFormat
 import java.util.UUID
+import com.mikepenz.aboutlibraries.Libs
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 
 @Composable
 fun SettingsDialog(
@@ -84,6 +86,7 @@ fun SettingsDialog(
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
 
     var showClearCacheConfirm by remember { mutableStateOf(false) }
+    var showLicensesDialog by remember { mutableStateOf(false) }
     var cacheCleared by remember { mutableStateOf(false) }
     var cacheClearFailed by remember { mutableStateOf(false) }
     var showAddSourceDialog by remember { mutableStateOf(false) }
@@ -251,6 +254,16 @@ fun SettingsDialog(
                 Spacer(Modifier.height(6.dp))
 
                 ActionButton(
+                    label = "VIEW LICENSES",
+                    icon = Icons.Default.Description,
+                    mono = mono,
+                    borderColor = borderColor,
+                    onClick = { showLicensesDialog = true }
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                ActionButton(
                     label = "OPEN APP DATA",
                     icon = Icons.Default.FolderOpen,
                     mono = mono,
@@ -401,6 +414,10 @@ fun SettingsDialog(
         )
     }
 
+    if (showLicensesDialog) {
+        LicensesDialog(onDismiss = { showLicensesDialog = false })
+    }
+
     editingSource?.let { source ->
         EditPatchSourceDialog(
             source = source,
@@ -411,6 +428,73 @@ fun SettingsDialog(
             }
         )
     }
+}
+
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+
+    val libraries = remember {
+        try {
+            val stream = Thread.currentThread().contextClassLoader.getResourceAsStream("aboutlibraries.json")
+            val json = stream?.bufferedReader()?.use { it.readText() }
+            if (json != null) Libs.Builder().withJson(json).build() else null
+        } catch (e: Exception) {
+            Logger.error("Failed to load licenses", e)
+            null
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(corners.medium),
+        containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.widthIn(max = 600.dp).heightIn(max = 600.dp),
+        title = {
+            Text(
+                "OPEN SOURCE LICENSES",
+                fontFamily = mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                letterSpacing = 1.sp
+            )
+        },
+        text = {
+            Box(modifier = Modifier.fillMaxWidth().height(400.dp)) {
+                if (libraries != null) {
+                    LibrariesContainer(
+                        libraries = libraries,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        "Failed to load licenses.",
+                        fontFamily = mono,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, borderColor)
+            ) {
+                Text(
+                    "CLOSE",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    )
 }
 
 // ── Shared building blocks ──

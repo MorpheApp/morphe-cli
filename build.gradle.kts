@@ -1,10 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.mikepenz.aboutlibraries.plugin.DuplicateMode
+import com.mikepenz.aboutlibraries.plugin.DuplicateRule
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose)
+    alias(libs.plugins.about.libraries)
     // Shadow plugin is provided by buildSrc to enable the custom NoticeMergeTransformer.
     // Applied without a version here; the version is pinned in buildSrc/build.gradle.kts.
     id("com.gradleup.shadow")
@@ -109,10 +112,23 @@ dependencies {
     // -- APK Parsing (GUI) -------------------------------------------------
     implementation(libs.apk.parser)
 
+    implementation(libs.about.libraries.core)
+    implementation(libs.about.libraries.m3)
+
     // -- Testing -----------------------------------------------------------
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.params)
     testImplementation(libs.mockk)
+}
+
+aboutLibraries {
+    collect {
+        configPath = file("aboutlibraries")
+    }
+    library {
+        duplicationMode = DuplicateMode.MERGE
+        duplicationRule = DuplicateRule.EXACT
+    }
 }
 
 // ============================================================================
@@ -136,6 +152,10 @@ tasks {
     }
 
     processResources {
+        // Make sure the licenses are generated before the resources are processed
+        dependsOn("exportLibraryDefinitions")
+        from(layout.buildDirectory.file("generated/aboutLibraries/aboutlibraries.json"))
+
         // Only expand properties files, not binary files like PNG/ICO
         filesMatching("**/*.properties") {
             expand("projectVersion" to project.version)
