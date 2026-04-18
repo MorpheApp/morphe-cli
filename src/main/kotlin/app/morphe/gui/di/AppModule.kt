@@ -71,7 +71,7 @@ val appModule = module {
     }
     factory { params ->
         val psm = get<PatchSourceManager>()
-        PatchSelectionViewModel(params.get(), params.get(), params.get(), params.get(), params.get(), get(), psm.getActiveRepositorySync(), psm.getLocalFilePath())
+        PatchSelectionViewModel(params.get(), params.get(), params.get(), params.get(), params.get(), get(), psm.getActiveRepositorySync(), get(), psm.getLocalFilePath())
     }
     factory { params -> PatchingViewModel(params.get(), get(), get()) }
 }

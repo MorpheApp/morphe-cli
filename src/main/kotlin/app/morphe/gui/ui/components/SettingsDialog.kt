@@ -78,7 +78,11 @@ fun SettingsDialog(
     keystoreAlias: String = DEFAULT_KEYSTORE_ALIAS,
     keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD,
     onKeystorePathChange: (String?) -> Unit = {},
-    onKeystoreCredentialsChange: (password: String?, alias: String, entryPassword: String) -> Unit = { _, _, _ -> }
+    onKeystoreCredentialsChange: (password: String?, alias: String, entryPassword: String) -> Unit = { _, _, _ -> },
+    keepArchitectures: Set<String> = emptySet(),
+    onKeepArchitecturesChange: (Set<String>) -> Unit = {},
+    collapsibleSectionStates: Map<String, Boolean> = emptyMap(),
+    onCollapsibleSectionToggle: (id: String, expanded: Boolean) -> Unit = { _, _ -> }
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -206,7 +210,22 @@ fun SettingsDialog(
                     mono = mono,
                     accentColor = accents.primary,
                     borderColor = borderColor,
-                    enabled = !isPatching
+                    enabled = !isPatching,
+                    expanded = collapsibleSectionStates["SIGNING"] == true,
+                    onExpandedChange = { onCollapsibleSectionToggle("SIGNING", it) }
+                )
+
+                SettingsDivider(borderColor)
+
+                // ── Strip Libs ──
+                StripLibsSection(
+                    keepArchitectures = keepArchitectures,
+                    onChange = onKeepArchitecturesChange,
+                    mono = mono,
+                    accentColor = accents.primary,
+                    enabled = !isPatching,
+                    expanded = collapsibleSectionStates["STRIP LIBS"] == true,
+                    onExpandedChange = { onCollapsibleSectionToggle("STRIP LIBS", it) }
                 )
 
                 SettingsDivider(borderColor)
@@ -225,7 +244,9 @@ fun SettingsDialog(
                     mono = mono,
                     accentColor = accents.primary,
                     borderColor = borderColor,
-                    enabled = !isPatching
+                    enabled = !isPatching,
+                    expanded = collapsibleSectionStates["PATCH SOURCES"] == true,
+                    onExpandedChange = { onCollapsibleSectionToggle("PATCH SOURCES", it) }
                 )
 
                 SettingsDivider(borderColor)
@@ -518,11 +539,11 @@ private fun SectionLabel(
 private fun CollapsibleSection(
     title: String,
     mono: androidx.compose.ui.text.font.FontFamily,
-    initiallyExpanded: Boolean = false,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     content: @Composable () -> Unit
 ) {
     val corners = LocalMorpheCorners.current
-    var expanded by remember { mutableStateOf(initiallyExpanded) }
     val rotationAngle by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (expanded) -90f else 0f,
         animationSpec = androidx.compose.animation.core.tween(200)
@@ -539,7 +560,7 @@ private fun CollapsibleSection(
                 if (isHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
                 else Color.Transparent
             )
-            .clickable { expanded = !expanded }
+            .clickable { onExpandedChange(!expanded) }
             .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -691,12 +712,19 @@ private fun PatchSourcesSection(
     mono: androidx.compose.ui.text.font.FontFamily,
     accentColor: Color,
     borderColor: Color,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    expanded: Boolean = false,
+    onExpandedChange: (Boolean) -> Unit = {}
 ) {
     val corners = LocalMorpheCorners.current
     val alpha = if (enabled) 1f else 0.4f
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        CollapsibleSection("PATCH SOURCES", mono) {
+        CollapsibleSection(
+            title = "PATCH SOURCES",
+            mono = mono,
+            expanded = expanded,
+            onExpandedChange = onExpandedChange
+        ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = if (!enabled) "Disabled while patching" else "Select where patches are loaded from",
@@ -1211,6 +1239,65 @@ private fun EditPatchSourceDialog(
     )
 }
 
+// ── Strip Libs Section ──
+
+/**
+ * Architectures exposed in the strip libs settings. Each entry has the
+ * patcher-facing value (matching CpuArchitecture.arch) and a short display name.
+ * Only modern arches are listed — legacy mips/armeabi are intentionally omitted.
+ */
+private val STRIP_LIBS_ARCHS = listOf(
+    "arm64-v8a" to "ARM 64-bit (most modern phones)",
+    "armeabi-v7a" to "ARM 32-bit (older phones)",
+    "x86_64" to "Intel 64-bit (emulators / Chromebooks)",
+    "x86" to "Intel 32-bit (legacy emulators)"
+)
+
+@Composable
+private fun StripLibsSection(
+    keepArchitectures: Set<String>,
+    onChange: (Set<String>) -> Unit,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    accentColor: Color,
+    enabled: Boolean = true,
+    expanded: Boolean = false,
+    onExpandedChange: (Boolean) -> Unit = {}
+) {
+    CollapsibleSection(
+        title = "STRIP LIBS",
+        mono = mono,
+        expanded = expanded,
+        onExpandedChange = onExpandedChange
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Uncheck architectures you don't need. When patching, the output APK will keep only the architectures present in the APK AND in this list. If none overlap, nothing is stripped to avoid broken APKs.",
+                fontSize = 11.sp,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            STRIP_LIBS_ARCHS.forEach { (arch, description) ->
+                val checked = arch in keepArchitectures
+                SettingToggleRow(
+                    label = arch,
+                    description = description,
+                    checked = checked,
+                    onCheckedChange = { keepIt ->
+                        val updated = if (keepIt) keepArchitectures + arch
+                                      else keepArchitectures - arch
+                        onChange(updated)
+                    },
+                    accentColor = accentColor,
+                    mono = mono,
+                    enabled = enabled
+                )
+            }
+        }
+    }
+}
+
 // ── Signing / Keystore Section ──
 
 @Composable
@@ -1224,7 +1311,9 @@ private fun SigningSection(
     mono: androidx.compose.ui.text.font.FontFamily,
     accentColor: Color,
     borderColor: Color,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    expanded: Boolean = false,
+    onExpandedChange: (Boolean) -> Unit = {}
 ) {
     val corners = LocalMorpheCorners.current
     val alpha = if (enabled) 1f else 0.4f
@@ -1241,7 +1330,12 @@ private fun SigningSection(
     val keystoreExists = keystoreFile?.exists() == true
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        CollapsibleSection("SIGNING", mono) {
+        CollapsibleSection(
+            title = "SIGNING",
+            mono = mono,
+            expanded = expanded,
+            onExpandedChange = onExpandedChange
+        ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = if (!enabled) "Disabled while patching"

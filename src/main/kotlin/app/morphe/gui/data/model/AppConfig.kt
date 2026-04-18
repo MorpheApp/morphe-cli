@@ -22,6 +22,17 @@ val DEFAULT_PATCH_SOURCE = PatchSource(
     deletable = false
 )
 
+/**
+ * Modern Android CPU architectures exposed in the strip-libs settings.
+ * Order matches the user-facing UI (most common first).
+ */
+val DEFAULT_KEEP_ARCHITECTURES: Set<String> = setOf(
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86_64",
+    "x86"
+)
+
 @Serializable
 data class AppConfig(
     val themePreference: String = ThemePreference.SYSTEM.name,
@@ -36,7 +47,14 @@ data class AppConfig(
     val keystorePath: String? = null,
     val keystorePassword: String? = null,
     val keystoreAlias: String = DEFAULT_KEYSTORE_ALIAS,
-    val keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD
+    val keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD,
+    // User's global keep-list for strip libs. Defaults to all common modern arches
+    // (equivalent to no stripping). Stripping is only applied when the APK contains
+    // an arch NOT in this set. See PatchSelectionViewModel.computeStripLibsStatus.
+    val keepArchitectures: Set<String> = DEFAULT_KEEP_ARCHITECTURES,
+    // Persisted expand/collapse state for each section in the Settings dialog.
+    // Keyed by section title (e.g. "STRIP LIBS"). Missing key = section starts collapsed.
+    val collapsibleSectionStates: Map<String, Boolean> = emptyMap()
 ) {
     fun getThemePreference(): ThemePreference {
         return try {

@@ -9,8 +9,10 @@ import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import app.morphe.gui.data.model.DEFAULT_KEEP_ARCHITECTURES
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchConfig
+import app.morphe.gui.data.repository.ConfigRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,7 @@ class PatchSelectionViewModel(
     private val apkArchitectures: List<String>,
     private val patchService: PatchService,
     private val patchRepository: PatchRepository,
+    private val configRepository: ConfigRepository,
     private val localPatchFilePath: String? = null
 ) : ScreenModel {
 
@@ -37,12 +40,22 @@ class PatchSelectionViewModel(
 
     private val _uiState = MutableStateFlow(PatchSelectionUiState(
         apkArchitectures = apkArchitectures,
-        selectedArchitectures = apkArchitectures.toSet()
+        stripLibsStatus = computeStripLibsStatus(apkArchitectures, DEFAULT_KEEP_ARCHITECTURES)
     ))
     val uiState: StateFlow<PatchSelectionUiState> = _uiState.asStateFlow()
 
     init {
         loadPatches()
+        loadStripLibsPreference()
+    }
+
+    private fun loadStripLibsPreference() {
+        screenModelScope.launch {
+            val config = configRepository.loadConfig()
+            _uiState.value = _uiState.value.copy(
+                stripLibsStatus = computeStripLibsStatus(apkArchitectures, config.keepArchitectures)
+            )
+        }
     }
 
     fun getApkPath(): String = apkPath
@@ -159,16 +172,12 @@ class PatchSelectionViewModel(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    fun toggleArchitecture(arch: String) {
-        val current = _uiState.value.selectedArchitectures
-        // Don't allow deselecting all architectures
-        if (current.contains(arch) && current.size <= 1) return
-        val newSelection = if (current.contains(arch)) {
-            current - arch
-        } else {
-            current + arch
-        }
-        _uiState.value = _uiState.value.copy(selectedArchitectures = newSelection)
+    /**
+     * Recompute strip-libs status from the latest settings. Called when the user
+     * closes the Settings dialog so the banner stays in sync with preference edits.
+     */
+    fun refreshStripLibsStatus() {
+        loadStripLibsPreference()
     }
 
     /**
@@ -223,17 +232,14 @@ class PatchSelectionViewModel(
             .filter { !_uiState.value.selectedPatches.contains(it.uniqueId) }
             .map { it.name }
 
-        // Only set striplibs if user deselected any architecture (keeps = selected ones).
-        // Note: selectedArchitectures stores display strings like "arm64-v8a" (with
-        // hyphens), so use valueOfOrNull which matches against the enum's `.arch`
-        // property — plain valueOf() only accepts the underscored Kotlin constant name.
-        val striplibs = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
-            _uiState.value.selectedArchitectures
-                .mapNotNull { CpuArchitecture.valueOfOrNull(it) }
-                .toSet()
-        } else {
-            emptySet()
-        }
+        // Only ship a non-empty keepArchitectures set when the current status actually
+        // prescribes stripping. All other states (no native libs, universal, keep-all,
+        // fallback) → empty set → patcher leaves native libs untouched.
+        val keepArches = (uiState.value.stripLibsStatus as? StripLibsStatus.WillStrip)
+            ?.keeping
+            ?.mapNotNull { CpuArchitecture.valueOfOrNull(it) }
+            ?.toSet()
+            ?: emptySet()
 
         return PatchConfig(
             inputApkPath = apkPath,
@@ -243,7 +249,7 @@ class PatchSelectionViewModel(
             disabledPatches = disabledPatchNames,
             patchOptions = _uiState.value.patchOptionValues,
             useExclusiveMode = true,
-            keepArchitectures = striplibs,
+            keepArchitectures = keepArches,
             continueOnError = continueOnError
         )
     }
@@ -297,12 +303,10 @@ class PatchSelectionViewModel(
         // Use whichever produces fewer flags
         val useExclusive = selectedPatchNames.size <= disabledPatchNames.size
 
-        // striplibs flag: only when user deselected at least one architecture
-        val striplibsArg = if (_uiState.value.selectedArchitectures.size < apkArchitectures.size && apkArchitectures.size > 1) {
-            _uiState.value.selectedArchitectures.joinToString(",")
-        } else {
-            null
-        }
+        // striplibs flag: only when the computed status prescribes actual stripping
+        val striplibsArg = (uiState.value.stripLibsStatus as? StripLibsStatus.WillStrip)
+            ?.keeping
+            ?.joinToString(",")
 
         // Keystore flags (only if custom keystore is set)
         val hasCustomKeystore = keystorePath != null
@@ -435,9 +439,73 @@ data class PatchSelectionUiState(
     val showOnlySelected: Boolean = false,
     val error: String? = null,
     val apkArchitectures: List<String> = emptyList(),
-    val selectedArchitectures: Set<String> = emptySet(),
+    val stripLibsStatus: StripLibsStatus = StripLibsStatus.NoNativeLibs,
     val patchOptionValues: Map<String, String> = emptyMap()
 ) {
     val selectedCount: Int get() = selectedPatches.size
     val totalCount: Int get() = allPatches.size
+}
+
+/**
+ * What the strip-libs feature will do for the currently loaded APK given the
+ * user's global keep-list preference. Computed by `computeStripLibsStatus`.
+ */
+sealed class StripLibsStatus {
+    /** APK ships no native libraries — stripping is meaningless. */
+    data object NoNativeLibs : StripLibsStatus()
+
+    /** APK ships a single `universal` native lib folder — stripping does not apply. */
+    data object Universal : StripLibsStatus()
+
+    /**
+     * User's keep-list covers every arch in the APK — nothing to strip. `notInApk`
+     * holds any extra arches in the user's keep list that don't appear in the APK,
+     * so the banner can surface "your preference for X has no effect here".
+     */
+    data class KeepAll(val notInApk: List<String>) : StripLibsStatus()
+
+    /** User's keep-list doesn't overlap with the APK's arches — skip stripping as a safety fallback. */
+    data class Fallback(val apkArches: List<String>) : StripLibsStatus()
+
+    /**
+     * Partial overlap — patcher will keep `keeping` and strip `stripping`. `notInApk`
+     * lists arches the user selected that this APK doesn't ship, so the banner can
+     * tell the user which of their preferences actually affect this APK.
+     */
+    data class WillStrip(
+        val keeping: List<String>,
+        val stripping: List<String>,
+        val notInApk: List<String>
+    ) : StripLibsStatus()
+}
+
+/**
+ * Decide what strip-libs should do given the APK's native arches and the user's
+ * global keep-list preference. Pure function — no I/O, no side effects — so the
+ * same inputs always produce the same output. Used by both the informational
+ * banner in PatchSelectionScreen and by createPatchConfig when dispatching to
+ * the patcher, guaranteeing UI and behavior stay in sync.
+ */
+internal fun computeStripLibsStatus(
+    apkArches: List<String>,
+    userKeep: Set<String>
+): StripLibsStatus {
+    if (apkArches.isEmpty()) return StripLibsStatus.NoNativeLibs
+    if (apkArches.size == 1 && apkArches[0].equals("universal", ignoreCase = true)) {
+        return StripLibsStatus.Universal
+    }
+
+    val apkSet = apkArches.toSet()
+    val overlap = apkSet.intersect(userKeep)
+    val notInApk = userKeep.filter { it !in apkSet }
+
+    return when {
+        overlap.isEmpty() -> StripLibsStatus.Fallback(apkArches)
+        overlap == apkSet -> StripLibsStatus.KeepAll(notInApk = notInApk)
+        else -> StripLibsStatus.WillStrip(
+            keeping = apkArches.filter { it in overlap },
+            stripping = apkArches.filter { it !in overlap },
+            notInApk = notInApk
+        )
+    }
 }
