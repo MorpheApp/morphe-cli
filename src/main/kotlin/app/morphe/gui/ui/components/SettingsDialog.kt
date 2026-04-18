@@ -254,16 +254,6 @@ fun SettingsDialog(
                 Spacer(Modifier.height(6.dp))
 
                 ActionButton(
-                    label = "VIEW LICENSES",
-                    icon = Icons.Default.Description,
-                    mono = mono,
-                    borderColor = borderColor,
-                    onClick = { showLicensesDialog = true }
-                )
-
-                Spacer(Modifier.height(6.dp))
-
-                ActionButton(
                     label = "OPEN APP DATA",
                     icon = Icons.Default.FolderOpen,
                     mono = mono,
@@ -278,6 +268,16 @@ fun SettingsDialog(
                             Logger.error("Failed to open app data folder", e)
                         }
                     }
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                ActionButton(
+                    label = "VIEW LICENSES",
+                    icon = Icons.Default.Description,
+                    mono = mono,
+                    borderColor = borderColor,
+                    onClick = { showLicensesDialog = true }
                 )
 
                 Spacer(Modifier.height(6.dp))
