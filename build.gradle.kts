@@ -7,11 +7,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose)
+    alias(libs.plugins.about.libraries)
     // Shadow plugin is provided by buildSrc to enable the custom NoticeMergeTransformer.
     // Applied without a version here; the version is pinned in buildSrc/build.gradle.kts.
     id("com.gradleup.shadow")
-    alias(libs.plugins.about.libraries)
-    alias(libs.plugins.about.libraries.android) apply false
     application
     `maven-publish`
     signing
