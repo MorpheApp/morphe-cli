@@ -447,11 +447,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // Architecture selector. Disabled for split APK bundles for now. Maybe we enable in the future?
-//                        val isBundleFormat = viewModel.getApkPath().lowercase().let { it.endsWith(".apkm") || it.endsWith(".xapk") || it.endsWith(".apks") }
-                        val showArchSelector = /*!isBundleFormat &&*/
-                                uiState.apkArchitectures.size > 1 &&
-                                !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
+                        // Architecture selector: Shows a selector when an apk/apkm/etc.. have multiple libs that a user can strip.
+                        val showArchSelector = uiState.apkArchitectures.size > 1
                         if (showArchSelector) {
                             item(key = "arch_selector") {
                                 ArchitectureSelectorCard(
