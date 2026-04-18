@@ -438,7 +438,7 @@ private fun LicensesDialog(onDismiss: () -> Unit) {
 
     val libraries = remember {
         try {
-            val stream = Thread.currentThread().contextClassLoader.getResourceAsStream("aboutLibraries.json")
+            val stream = Thread.currentThread().contextClassLoader.getResourceAsStream("aboutlibraries.json")
             val json = stream?.bufferedReader()?.use { it.readText() }
             if (json != null) Libs.Builder().withJson(json).build() else null
         } catch (e: Exception) {

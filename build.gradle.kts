@@ -153,6 +153,10 @@ tasks {
     }
 
     processResources {
+        // Make sure the licenses are generated before the resources are processed
+        dependsOn("exportLibraryDefinitions")
+        from(layout.buildDirectory.file("generated/aboutLibraries/aboutlibraries.json"))
+
         // Only expand properties files, not binary files like PNG/ICO
         filesMatching("**/*.properties") {
             expand("projectVersion" to project.version)
@@ -163,12 +167,6 @@ tasks {
         from(arrayOf(rootProject.file("NOTICE"), rootProject.file("LICENSE"))) {
             into("META-INF")
         }
-    }
-
-    // Make sure the licenses are generated before the resources are processed
-    processResources {
-        dependsOn("exportLibraryDefinitions")
-        from(layout.buildDirectory.file("generated/aboutLibraries/aboutlibraries.json"))
     }
 
     // -------------------------------------------------------------------------
@@ -230,8 +228,6 @@ tasks {
         // this GPL project to the Apache Software Foundation. NoticeMergeTransformer
         // (in buildSrc) is a minimal verbatim concatenator with no boilerplate.
         transform(NoticeMergeTransformer::class.java)
-
-        from(project.files("build/generated/aboutlibraries/aboutLibraries.json"))
     }
 
     distTar {
