@@ -447,21 +447,20 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // TODO: Enable the strip libs feature here after patcher's X issue is fixed.
                         // Architecture selector. Disabled for split APK bundles for now. Maybe we enable in the future?
 //                        val isBundleFormat = viewModel.getApkPath().lowercase().let { it.endsWith(".apkm") || it.endsWith(".xapk") || it.endsWith(".apks") }
-//                        val showArchSelector = !isBundleFormat &&
-//                                uiState.apkArchitectures.size > 1 &&
-//                                !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
-//                        if (showArchSelector) {
-//                            item(key = "arch_selector") {
-//                                ArchitectureSelectorCard(
-//                                    architectures = uiState.apkArchitectures,
-//                                    selectedArchitectures = uiState.selectedArchitectures,
-//                                    onToggleArchitecture = { viewModel.toggleArchitecture(it) }
-//                                )
-//                            }
-//                        }
+                        val showArchSelector = /*!isBundleFormat &&*/
+                                uiState.apkArchitectures.size > 1 &&
+                                !(uiState.apkArchitectures.size == 1 && uiState.apkArchitectures[0] == "universal")
+                        if (showArchSelector) {
+                            item(key = "arch_selector") {
+                                ArchitectureSelectorCard(
+                                    architectures = uiState.apkArchitectures,
+                                    selectedArchitectures = uiState.selectedArchitectures,
+                                    onToggleArchitecture = { viewModel.toggleArchitecture(it) }
+                                )
+                            }
+                        }
 
                         items(
                             items = uiState.filteredPatches,
