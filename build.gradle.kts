@@ -168,6 +168,7 @@ tasks {
     // Make sure the licenses are generated before the resources are processed
     processResources {
         dependsOn("exportLibraryDefinitions")
+        from(layout.buildDirectory.file("generated/aboutLibraries/aboutlibraries.json"))
     }
 
     // -------------------------------------------------------------------------
