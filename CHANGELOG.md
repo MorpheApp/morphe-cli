@@ -1,3 +1,10 @@
+# [1.8.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.2...v1.8.0-dev.3) (2026-04-18)
+
+
+### Features
+
+* Add in-app dependency license viewer ([#114](https://github.com/MorpheApp/morphe-cli/issues/114)) ([77a1dde](https://github.com/MorpheApp/morphe-cli/commit/77a1ddea595dd83331c9d0ce246620ebd64bcd22))
+
 # [1.8.0-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.1...v1.8.0-dev.2) (2026-04-18)
 
 
