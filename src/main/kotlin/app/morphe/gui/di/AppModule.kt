@@ -67,11 +67,34 @@ val appModule = module {
     }
     factory { params ->
         val psm = get<PatchSourceManager>()
-        PatchesViewModel(params.get(), params.get(), psm.getActiveRepositorySync(), get(), psm.getLocalFilePath(), psm)
+        PatchesViewModel(
+            params.get(),
+            params.get(),
+            psm.getActiveRepositorySync(),
+            get(),
+            psm.getLocalFilePath(),
+            psm
+        )
     }
     factory { params ->
         val psm = get<PatchSourceManager>()
-        PatchSelectionViewModel(params.get(), params.get(), params.get(), params.get(), params.get(), get(), psm.getActiveRepositorySync(), get(), psm.getLocalFilePath())
+        PatchSelectionViewModel(
+            params.get(),
+            params.get(),
+            params.get(),
+            params.get(),
+            params.get(),
+            get(),
+            psm.getActiveRepositorySync(),
+            get(),
+            psm.getLocalFilePath()
+        )
     }
-    factory { params -> PatchingViewModel(params.get(), get(), get()) }
+    factory { params ->
+        PatchingViewModel(
+            params.get(),
+            get(),
+            get()
+        )
+    }
 }

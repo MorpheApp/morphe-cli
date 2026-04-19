@@ -9,7 +9,6 @@ import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import app.morphe.gui.data.model.DEFAULT_KEEP_ARCHITECTURES
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchConfig
 import app.morphe.gui.data.repository.ConfigRepository
@@ -20,6 +19,7 @@ import kotlinx.coroutines.launch
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.data.repository.PatchRepository
+import app.morphe.gui.util.FileUtils.ANDROID_ARCHITECTURES
 import app.morphe.patcher.resource.CpuArchitecture
 import java.io.File
 
@@ -40,7 +40,7 @@ class PatchSelectionViewModel(
 
     private val _uiState = MutableStateFlow(PatchSelectionUiState(
         apkArchitectures = apkArchitectures,
-        stripLibsStatus = computeStripLibsStatus(apkArchitectures, DEFAULT_KEEP_ARCHITECTURES)
+        stripLibsStatus = computeStripLibsStatus(apkArchitectures, ANDROID_ARCHITECTURES)
     ))
     val uiState: StateFlow<PatchSelectionUiState> = _uiState.asStateFlow()
 
