@@ -1,3 +1,10 @@
+# [1.8.0-dev.4](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.3...v1.8.0-dev.4) (2026-04-19)
+
+
+### Bug Fixes
+
+* Update to latest patcher ([efd0cf1](https://github.com/MorpheApp/morphe-cli/commit/efd0cf16dbac6625a54e2f82881bbe16c9e8acce))
+
 # [1.8.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.2...v1.8.0-dev.3) (2026-04-18)
 
 
