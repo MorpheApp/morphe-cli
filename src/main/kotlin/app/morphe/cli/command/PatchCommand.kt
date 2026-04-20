@@ -10,6 +10,7 @@ package app.morphe.cli.command
 
 import app.morphe.cli.command.model.*
 import app.morphe.engine.PatchEngine
+import app.morphe.engine.isWindows
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_SIGNER_NAME
@@ -542,7 +543,11 @@ internal object PatchCommand : Callable<Int> {
                     patcherTemporaryFilesPath.absolutePath,
                     useArsclib = if (aaptBinaryPath != null) { false } else { !forceApktool },
                     keepArchitectures = keepArchitectures,
-                    useBytecodeMode = bytecodeMode,
+                    /*
+                    TODO: Remove Windows override once the patcher ships its proper fix
+                     (reflection-based MappedByteBuffer release + copy-instead-of-rename for output DEX files).
+                     */
+                    useBytecodeMode = if (isWindows()) { BytecodeMode.FULL } else { bytecodeMode },
                     verifier = verifier
                 ),
             ).use { patcher ->
@@ -694,9 +699,9 @@ internal object PatchCommand : Callable<Int> {
                                                 writer.toString()
                                             )
                                         )
-                                        patchingResult.success = false
 
                                         if (!continueOnError) {
+                                            patchingResult.success = false
                                             throw PatchFailedException(
                                                 "\"${patchResult.patch}\" failed",
                                                 exception

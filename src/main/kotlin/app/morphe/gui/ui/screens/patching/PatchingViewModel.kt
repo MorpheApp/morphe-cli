@@ -84,7 +84,21 @@ class PatchingViewModel(
             result.fold(
                 onSuccess = { patchResult ->
                     if (patchResult.success) {
-                        addLog("Patching completed successfully!", LogLevel.SUCCESS)
+                        // Distinguish clean success from "continue-on-error" partial success:
+                        // the APK was built, but some patches were skipped. Log the skipped
+                        // ones as a warning so the user sees what didn't apply.
+                        if (patchResult.failedPatches.isNotEmpty()) {
+                            addLog(
+                                "Patching completed with ${patchResult.failedPatches.size} patches skipped",
+                                LogLevel.WARNING
+                            )
+                            addLog(
+                                "Skipped patches: ${patchResult.failedPatches.joinToString(", ")}",
+                                LogLevel.WARNING
+                            )
+                        } else {
+                            addLog("Patching completed successfully!", LogLevel.SUCCESS)
+                        }
                         addLog("Applied ${patchResult.appliedPatches.size} patches", LogLevel.SUCCESS)
                         _uiState.value = _uiState.value.copy(
                             status = PatchingStatus.COMPLETED,
