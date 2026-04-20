@@ -128,6 +128,24 @@ class ConfigRepository {
     }
 
     /**
+     * Update the user's global keep-architectures list for strip libs.
+     */
+    suspend fun setKeepArchitectures(keep: Set<String>) {
+        val current = loadConfig()
+        saveConfig(current.copy(keepArchitectures = keep))
+    }
+
+    /**
+     * Persist the expand/collapse state of a Settings dialog section so it restores
+     * on next open instead of resetting to collapsed.
+     */
+    suspend fun setCollapsibleSectionExpanded(id: String, expanded: Boolean) {
+        val current = loadConfig()
+        val updated = current.collapsibleSectionStates + (id to expanded)
+        saveConfig(current.copy(collapsibleSectionStates = updated))
+    }
+
+    /**
      * Update keystore path only (used for auto-remember on first creation).
      */
     suspend fun setKeystorePath(path: String?) {

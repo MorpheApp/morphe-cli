@@ -7,8 +7,9 @@ package app.morphe.gui.data.model
 
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
-import kotlinx.serialization.Serializable
 import app.morphe.gui.ui.theme.ThemePreference
+import app.morphe.gui.util.FileUtils.ANDROID_ARCHITECTURES
+import kotlinx.serialization.Serializable
 
 /**
  * Application configuration stored in config.json
@@ -36,7 +37,14 @@ data class AppConfig(
     val keystorePath: String? = null,
     val keystorePassword: String? = null,
     val keystoreAlias: String = DEFAULT_KEYSTORE_ALIAS,
-    val keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD
+    val keystoreEntryPassword: String = DEFAULT_KEYSTORE_PASSWORD,
+    // User's global keep-list for strip libs. Defaults to all common modern arches
+    // (equivalent to no stripping). Stripping is only applied when the APK contains
+    // an arch NOT in this set. See PatchSelectionViewModel.computeStripLibsStatus.
+    val keepArchitectures: Set<String> = ANDROID_ARCHITECTURES,
+    // Persisted expand/collapse state for each section in the Settings dialog.
+    // Keyed by section title (e.g. "STRIP LIBS"). Missing key = section starts collapsed.
+    val collapsibleSectionStates: Map<String, Boolean> = emptyMap()
 ) {
     fun getThemePreference(): ThemePreference {
         return try {

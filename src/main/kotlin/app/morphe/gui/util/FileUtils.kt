@@ -20,7 +20,7 @@ object FileUtils {
     /**
      * All modern Android architectures. Obsolete architectures such as Mips are not included.
      */
-    private val ANDROID_ARCHITECTURES = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+    val ANDROID_ARCHITECTURES = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
     private val EXTENSION_APK_BUNDLES = setOf("apkm", "xapk", "apks")
     private val EXTENSION_APK_ANY = EXTENSION_APK_BUNDLES + "apk"
