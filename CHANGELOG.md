@@ -1,3 +1,10 @@
+# [1.8.0-dev.6](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.5...v1.8.0-dev.6) (2026-04-21)
+
+
+### Bug Fixes
+
+* continue-on-error fix + force windows to `FULL` ([#120](https://github.com/MorpheApp/morphe-cli/issues/120)) ([036faba](https://github.com/MorpheApp/morphe-cli/commit/036faba68f8f0c1f683f3c6222f08d0377217266))
+
 # [1.8.0-dev.5](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.4...v1.8.0-dev.5) (2026-04-20)
 
 
