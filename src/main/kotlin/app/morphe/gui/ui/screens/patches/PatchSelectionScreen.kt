@@ -52,6 +52,7 @@ import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
+import app.morphe.gui.ui.components.MorpheSwitch
 import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
@@ -975,15 +976,13 @@ private fun PatchOptionEditor(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Switch(
+                    MorpheSwitch(
                         checked = localChecked,
                         onCheckedChange = { newChecked ->
                             localChecked = newChecked
                             onValueChange(newChecked.toString())
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = accents.secondary
-                        )
+                        accentColor = accents.secondary
                     )
                     Text(
                         text = if (localChecked) "Enabled" else "Disabled",

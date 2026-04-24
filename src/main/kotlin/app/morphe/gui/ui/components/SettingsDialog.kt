@@ -1306,14 +1306,11 @@ private fun SettingToggleRow(
             )
         }
         Spacer(Modifier.width(12.dp))
-        Switch(
+        MorpheSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = accentColor,
-                checkedTrackColor = accentColor.copy(alpha = 0.3f)
-            )
+            accentColor = accentColor,
+            enabled = enabled
         )
     }
 }
