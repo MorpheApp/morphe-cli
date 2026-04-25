@@ -1,3 +1,10 @@
+# [1.8.0-dev.8](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.7...v1.8.0-dev.8) (2026-04-25)
+
+
+### Features
+
+* Support GitHub repo urls with `--patches` argument ([#71](https://github.com/MorpheApp/morphe-cli/issues/71)) ([2cc09a9](https://github.com/MorpheApp/morphe-cli/commit/2cc09a9fc6c61ddb210a023941b7cf528705d8cb))
+
 # [1.8.0-dev.7](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.6...v1.8.0-dev.7) (2026-04-24)
 
 
