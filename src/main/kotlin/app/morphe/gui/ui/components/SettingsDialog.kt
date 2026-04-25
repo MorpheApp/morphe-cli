@@ -47,6 +47,7 @@ import java.awt.Desktop
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
+import javax.swing.JFileChooser
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
@@ -83,6 +84,8 @@ fun SettingsDialog(
     onThemeChange: (ThemePreference) -> Unit,
     autoCleanupTempFiles: Boolean,
     onAutoCleanupChange: (Boolean) -> Unit,
+    defaultOutputDirectory: String?,
+    onDefaultOutputDirectoryChange: (String?) -> Unit,
     useExpertMode: Boolean,
     onExpertModeChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -216,6 +219,17 @@ fun SettingsDialog(
                     onCheckedChange = onAutoCleanupChange,
                     accentColor = accents.primary,
                     mono = mono,
+                    enabled = !isPatching
+                )
+
+                SettingsDivider(borderColor)
+
+                // ── Output Folder ──
+                OutputFolderSection(
+                    defaultOutputDirectory = defaultOutputDirectory,
+                    onDefaultOutputDirectoryChange = onDefaultOutputDirectoryChange,
+                    mono = mono,
+                    borderColor = borderColor,
                     enabled = !isPatching
                 )
 
@@ -1312,6 +1326,126 @@ private fun SettingToggleRow(
             accentColor = accentColor,
             enabled = enabled
         )
+    }
+}
+
+@Composable
+private fun OutputFolderSection(
+    defaultOutputDirectory: String?,
+    onDefaultOutputDirectoryChange: (String?) -> Unit,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    borderColor: Color,
+    enabled: Boolean = true
+) {
+    val corners = LocalMorpheCorners.current
+    val alpha = if (enabled) 1f else 0.4f
+    val outputDir = defaultOutputDirectory?.let { File(it) }
+    val outputDirExists = outputDir?.isDirectory == true
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        SectionLabel("OUTPUT FOLDER", mono)
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            text = if (!enabled) "Disabled while patching"
+                   else "Where patched APKs are saved. A per-app subfolder is created inside.",
+            fontSize = 11.sp,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f * alpha)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(corners.small))
+                    .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = outputDir?.name ?: "APK's folder (default)",
+                    fontSize = 11.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f * alpha),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val chooser = JFileChooser().apply {
+                        dialogTitle = "Select Output Folder"
+                        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                        isAcceptAllFileFilterUsed = false
+                        outputDir?.takeIf { it.isDirectory }?.let { currentDirectory = it }
+                    }
+                    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                        onDefaultOutputDirectoryChange(chooser.selectedFile.absolutePath)
+                    }
+                },
+                enabled = enabled,
+                shape = RoundedCornerShape(corners.small),
+                border = BorderStroke(1.dp, borderColor),
+                contentPadding = PaddingValues(horizontal = 10.dp),
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                Text(
+                    "BROWSE",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 9.sp,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            if (defaultOutputDirectory != null) {
+                OutlinedButton(
+                    onClick = { onDefaultOutputDirectoryChange(null) },
+                    enabled = enabled,
+                    shape = RoundedCornerShape(corners.small),
+                    border = BorderStroke(1.dp, borderColor),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    Text(
+                        "RESET",
+                        fontFamily = mono,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 9.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+
+        if (defaultOutputDirectory != null && !outputDirExists) {
+            Text(
+                text = "Folder not found — will be created on next patch",
+                fontSize = 10.sp,
+                fontFamily = mono,
+                color = Color(0xFFE0A030)
+            )
+        }
+
+        if (defaultOutputDirectory != null) {
+            Text(
+                text = defaultOutputDirectory,
+                fontSize = 9.sp,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

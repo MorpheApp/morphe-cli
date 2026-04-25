@@ -38,6 +38,9 @@ class PatchSelectionViewModel(
     // Actual path to use - may differ from patchesFilePath if we had to re-download
     private var actualPatchesFilePath: String = patchesFilePath
 
+    // User-configured output folder; null means save next to the input APK.
+    private var defaultOutputDirectory: String? = null
+
     private val _uiState = MutableStateFlow(PatchSelectionUiState(
         apkArchitectures = apkArchitectures,
         stripLibsStatus = computeStripLibsStatus(apkArchitectures, ANDROID_ARCHITECTURES)
@@ -52,6 +55,7 @@ class PatchSelectionViewModel(
     private fun loadStripLibsPreference() {
         screenModelScope.launch {
             val config = configRepository.loadConfig()
+            defaultOutputDirectory = config.defaultOutputDirectory
             _uiState.value = _uiState.value.copy(
                 stripLibsStatus = computeStripLibsStatus(apkArchitectures, config.keepArchitectures)
             )
@@ -210,10 +214,10 @@ class PatchSelectionViewModel(
     }
 
     fun createPatchConfig(continueOnError: Boolean = false): PatchConfig {
-        // Create app folder in the same location as the input APK
         val inputFile = File(apkPath)
         val appFolderName = apkName.replace(" ", "-")
-        val outputDir = File(inputFile.parentFile, appFolderName)
+        val baseOutputDir = defaultOutputDirectory?.let { File(it) } ?: inputFile.parentFile
+        val outputDir = File(baseOutputDir, appFolderName)
         outputDir.mkdirs()
 
         // Extract version from APK filename and patches version for output name

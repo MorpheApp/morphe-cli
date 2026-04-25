@@ -58,6 +58,7 @@ fun SettingsButton(
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var autoCleanupTempFiles by remember { mutableStateOf(true) }
+    var defaultOutputDirectory by remember { mutableStateOf<String?>(null) }
     var patchSources by remember { mutableStateOf<List<PatchSource>>(emptyList()) }
     var activePatchSourceId by remember { mutableStateOf("") }
     var keystorePath by remember { mutableStateOf<String?>(null) }
@@ -71,6 +72,7 @@ fun SettingsButton(
         if (showSettingsDialog) {
             val config = configRepository.loadConfig()
             autoCleanupTempFiles = config.autoCleanupTempFiles
+            defaultOutputDirectory = config.defaultOutputDirectory
             patchSources = config.patchSource
             activePatchSourceId = config.activePatchSourceId
             keystorePath = config.keystorePath
@@ -118,6 +120,11 @@ fun SettingsButton(
                 scope.launch {
                     configRepository.setAutoCleanupTempFiles(enabled)
                 }
+            },
+            defaultOutputDirectory = defaultOutputDirectory,
+            onDefaultOutputDirectoryChange = { path ->
+                defaultOutputDirectory = path
+                scope.launch { configRepository.setDefaultOutputDirectory(path) }
             },
             useExpertMode = !modeState.isSimplified,
             onExpertModeChange = { enabled ->

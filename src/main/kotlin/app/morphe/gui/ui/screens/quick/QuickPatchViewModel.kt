@@ -458,8 +458,12 @@ class QuickPatchViewModel(
             )
 
             // Generate output path
-            val outputDir = apkFile.parentFile ?: File(System.getProperty("user.home"))
+            val appConfig = configRepository.loadConfig()
             val baseName = apkInfo.displayName.replace(" ", "-")
+            val baseOutputDir = appConfig.defaultOutputDirectory?.let { File(it) }
+                ?: apkFile.parentFile
+                ?: File(System.getProperty("user.home"))
+            val outputDir = File(baseOutputDir, baseName).also { it.mkdirs() }
             val patchesVersion = Regex("""(\d+\.\d+\.\d+(?:-dev\.\d+)?)""")
                 .find(patchFile.name)?.groupValues?.get(1)
             val patchesSuffix = if (patchesVersion != null) "-patches-$patchesVersion" else ""
@@ -467,7 +471,6 @@ class QuickPatchViewModel(
             val outputPath = File(outputDir, outputFileName).absolutePath
 
             // Resolve keystore: use saved path, or derive from output APK location
-            val appConfig = configRepository.loadConfig()
             val resolvedKeystorePath = appConfig.keystorePath
                 ?: File(outputPath).let { out ->
                     out.resolveSibling(out.nameWithoutExtension + ".keystore").absolutePath
