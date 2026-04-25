@@ -54,6 +54,7 @@ import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.MorpheSwitch
 import app.morphe.gui.ui.components.SettingsButton
+import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.screens.patching.PatchingScreen
@@ -481,7 +482,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
 
                     androidx.compose.foundation.VerticalScrollbar(
                         modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                        adapter = androidx.compose.foundation.rememberScrollbarAdapter(lazyListState)
+                        adapter = androidx.compose.foundation.rememberScrollbarAdapter(lazyListState),
+                        style = morpheScrollbarStyle()
                     )
                 }
 

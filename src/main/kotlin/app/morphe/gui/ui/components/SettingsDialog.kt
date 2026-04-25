@@ -630,7 +630,8 @@ private fun LicensesDialog(onDismiss: () -> Unit) {
                                     .align(Alignment.CenterEnd)
                                     .fillMaxHeight()
                                     .padding(vertical = 6.dp),
-                                adapter = rememberScrollbarAdapter(listState)
+                                adapter = rememberScrollbarAdapter(listState),
+                                style = morpheScrollbarStyle()
                             )
                         }
                     }
@@ -1118,7 +1119,8 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
                                 .padding(vertical = 6.dp),
-                            adapter = rememberScrollbarAdapter(scrollState)
+                            adapter = rememberScrollbarAdapter(scrollState),
+                            style = morpheScrollbarStyle()
                         )
                     } else {
                         Column(

@@ -45,6 +45,7 @@ import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.components.TopBarRow
+import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.theme.*
 import app.morphe.gui.util.ChecksumStatus
@@ -1527,10 +1528,11 @@ private fun SupportedAppsRow(
 
                 // Horizontal scrolling cards
                 val useScrolling = filteredApps.size > 4
+                val cardsScrollState = rememberScrollState()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .then(if (useScrolling) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
+                        .then(if (useScrolling) Modifier.horizontalScroll(cardsScrollState) else Modifier)
                         .height(IntrinsicSize.Max)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -1627,6 +1629,15 @@ private fun SupportedAppsRow(
                             }
                         }
                     }
+                }
+
+                if (useScrolling && cardsScrollState.maxValue > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    HorizontalScrollbar(
+                        adapter = rememberScrollbarAdapter(cardsScrollState),
+                        modifier = Modifier.fillMaxWidth(),
+                        style = morpheScrollbarStyle()
+                    )
                 }
             }
         }

@@ -15,8 +15,11 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -45,6 +48,7 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.SettingsButton
+import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.components.OfflineBanner
@@ -310,25 +314,37 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                 }
                 else -> {
                     // Releases list
-                    LazyColumn(
+                    val releasesListState = rememberLazyListState()
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .fillMaxWidth()
                     ) {
-                        items(
-                            items = uiState.currentReleases,
-                            key = { it.tagName }
-                        ) { release ->
-                            ReleaseCard(
-                                release = release,
-                                isSelected = release.tagName == uiState.selectedRelease?.tagName,
-                                isDownloaded = release.tagName in uiState.cachedReleaseVersions,
-                                isOffline = uiState.isOffline,
-                                onClick = { viewModel.selectRelease(release) }
-                            )
+                        LazyColumn(
+                            state = releasesListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(
+                                items = uiState.currentReleases,
+                                key = { it.tagName }
+                            ) { release ->
+                                ReleaseCard(
+                                    release = release,
+                                    isSelected = release.tagName == uiState.selectedRelease?.tagName,
+                                    isDownloaded = release.tagName in uiState.cachedReleaseVersions,
+                                    isOffline = uiState.isOffline,
+                                    onClick = { viewModel.selectRelease(release) }
+                                )
+                            }
                         }
+
+                        VerticalScrollbar(
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            adapter = rememberScrollbarAdapter(releasesListState),
+                            style = morpheScrollbarStyle()
+                        )
                     }
 
                     // Bottom action bar
