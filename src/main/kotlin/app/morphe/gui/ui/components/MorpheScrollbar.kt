@@ -7,6 +7,7 @@ package app.morphe.gui.ui.components
 
 import androidx.compose.foundation.ScrollbarStyle
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -28,7 +29,7 @@ fun morpheScrollbarStyle(
     return ScrollbarStyle(
         minimalHeight = minimalHeight,
         thickness = thickness,
-        shape = RoundedCornerShape(corners.small),
+        shape = if (corners.small >= 8.dp) RoundedCornerShape(corners.small) else RectangleShape,
         hoverDurationMillis = 0,
         unhoverColor = accent.copy(alpha = idleAlpha),
         hoverColor = accent
