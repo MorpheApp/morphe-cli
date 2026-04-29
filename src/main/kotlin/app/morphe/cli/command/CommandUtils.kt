@@ -1,7 +1,19 @@
 package app.morphe.cli.command
 
 import picocli.CommandLine
-import kotlin.text.iterator
+import picocli.CommandLine.Model.CommandSpec
+import java.io.File
+
+internal fun checkFileExistsOrIsUrl(files: Set<File>, spec: CommandSpec) : Set<File> {
+    files.firstOrNull {
+        !it.exists() && !it.toString().let {
+            it.startsWith("http:/") || it.startsWith("https:/")
+        }
+    }?.let {
+        throw CommandLine.ParameterException(spec.commandLine(), "${it.name} can not be found")
+    }
+    return files
+}
 
 class OptionKeyConverter : CommandLine.ITypeConverter<String> {
     override fun convert(value: String): String = value

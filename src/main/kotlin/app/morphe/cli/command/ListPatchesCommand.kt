@@ -3,7 +3,7 @@
  * https://github.com/MorpheApp/morphe-cli
  *
  * Original hard forked code:
- * https://github.com/revanced/revanced-cli
+ * https://github.com/ReVanced/revanced-cli/tree/731865e167ee449be15fff3dde7a476faea0c2de
  */
 
 package app.morphe.cli.command
@@ -11,8 +11,11 @@ package app.morphe.cli.command
 import app.morphe.patcher.patch.Package
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
+import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
+import picocli.CommandLine.Spec
+import picocli.CommandLine.Model.CommandSpec
 import picocli.CommandLine.Help.Visibility.ALWAYS
 import java.io.File
 import java.util.logging.Logger
@@ -28,11 +31,22 @@ internal object ListPatchesCommand : Runnable {
     // Patches is now flag based rather than position based
     @Option(
         names = ["--patches"],
-        description = ["One or more paths to MPP files."],
+        description = ["Path to a MPP file or a GitHub repo url such as https://github.com/MorpheApp/morphe-patches"],
         arity = "1..*",
         required = true
     )
-    private lateinit var patchFiles: Set<File>
+    @Suppress("unused")
+    private fun setPatchesFile(patchesFiles: Set<File>) {
+        this.patchesFiles = checkFileExistsOrIsUrl(patchesFiles, spec)
+    }
+    private var patchesFiles = emptySet<File>()
+
+    @Option(
+        names = ["--prerelease"],
+        description = ["Fetch the latest dev pre-release instead of the stable main release from the repo provided in --patches."],
+        showDefaultValue = ALWAYS,
+    )
+    private var prerelease: Boolean = false
 
     @Option(
         names = ["--out"],
@@ -46,6 +60,12 @@ internal object ListPatchesCommand : Runnable {
         showDefaultValue = ALWAYS,
     )
     private var withDescriptions: Boolean = true
+
+    @Option(
+        names = ["-t", "--temporary-files-path"],
+        description = ["Path to store temporary files."],
+    )
+    private var temporaryFilesPath: File? = null
 
     @Option(
         names = ["-p", "--with-packages"],
@@ -87,6 +107,9 @@ internal object ListPatchesCommand : Runnable {
         description = ["Filter patches by package name."],
     )
     private var packageName: String? = null
+
+    @Spec
+    private lateinit var spec: CommandSpec
 
     override fun run() {
         fun Package.buildString(): String {
@@ -157,7 +180,23 @@ internal object ListPatchesCommand : Runnable {
                 compatiblePackageName == name
             } ?: withUniversalPatches
 
-        val patches = loadPatchesFromJar(patchFiles).withIndex().toList()
+
+        val temporaryFilesPath = temporaryFilesPath ?: File("").absoluteFile.resolve("morphe-temporary-files")
+
+        try {
+            patchesFiles = PatchFileResolver.resolve(
+                patchesFiles,
+                prerelease,
+                temporaryFilesPath
+            )
+        } catch (e: IllegalArgumentException) {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                e.message ?: "Failed to resolve patch URL"
+            )
+        }
+
+        val patches = loadPatchesFromJar(patchesFiles).withIndex().toList()
 
         val filtered = packageName?.let {
             patches.filter { (_, patch) ->
@@ -172,7 +211,7 @@ internal object ListPatchesCommand : Runnable {
         val finalOutput = filtered.joinToString("\n\n") {it.buildString()}
 
         if (filtered.isEmpty()) {
-            logger.warning("No compatible patches found in: $patchFiles")
+            logger.warning("No compatible patches found in: $patchesFiles")
         } else {
             if (outputFile == null) {
                 logger.info(finalOutput)

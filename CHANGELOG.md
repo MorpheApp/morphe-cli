@@ -1,3 +1,66 @@
+# [1.8.0-dev.9](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.8...v1.8.0-dev.9) (2026-04-29)
+
+
+### Features
+
+* Custom output path + better GUI scrollbars ([#127](https://github.com/MorpheApp/morphe-cli/issues/127)) ([70e2721](https://github.com/MorpheApp/morphe-cli/commit/70e27218a87a09c26edc96fd7cb7c38dcba9c79c))
+
+# [1.8.0-dev.8](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.7...v1.8.0-dev.8) (2026-04-25)
+
+
+### Features
+
+* Support GitHub repo urls with `--patches` argument ([#71](https://github.com/MorpheApp/morphe-cli/issues/71)) ([2cc09a9](https://github.com/MorpheApp/morphe-cli/commit/2cc09a9fc6c61ddb210a023941b7cf528705d8cb))
+
+# [1.8.0-dev.7](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.6...v1.8.0-dev.7) (2026-04-24)
+
+
+### Features
+
+* Add search function to license viewer ([#124](https://github.com/MorpheApp/morphe-cli/issues/124)) ([d3d9feb](https://github.com/MorpheApp/morphe-cli/commit/d3d9feb477d5b5c3281e066efc7a935573a47090))
+
+# [1.8.0-dev.6](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.5...v1.8.0-dev.6) (2026-04-21)
+
+
+### Bug Fixes
+
+* continue-on-error fix + force windows to `FULL` ([#120](https://github.com/MorpheApp/morphe-cli/issues/120)) ([036faba](https://github.com/MorpheApp/morphe-cli/commit/036faba68f8f0c1f683f3c6222f08d0377217266))
+
+# [1.8.0-dev.5](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.4...v1.8.0-dev.5) (2026-04-20)
+
+
+### Bug Fixes
+
+* Re-enable strip libs feature ([#117](https://github.com/MorpheApp/morphe-cli/issues/117)) ([6d2bb94](https://github.com/MorpheApp/morphe-cli/commit/6d2bb94425e3fa040cc0d00261b77559d69e4470))
+
+# [1.8.0-dev.4](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.3...v1.8.0-dev.4) (2026-04-19)
+
+
+### Bug Fixes
+
+* Update to latest patcher ([efd0cf1](https://github.com/MorpheApp/morphe-cli/commit/efd0cf16dbac6625a54e2f82881bbe16c9e8acce))
+
+# [1.8.0-dev.3](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.2...v1.8.0-dev.3) (2026-04-18)
+
+
+### Features
+
+* Add in-app dependency license viewer ([#114](https://github.com/MorpheApp/morphe-cli/issues/114)) ([77a1dde](https://github.com/MorpheApp/morphe-cli/commit/77a1ddea595dd83331c9d0ce246620ebd64bcd22))
+
+# [1.8.0-dev.2](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.1...v1.8.0-dev.2) (2026-04-18)
+
+
+### Bug Fixes
+
+* Include Notice and License files in shadow jar release ([#113](https://github.com/MorpheApp/morphe-cli/issues/113)) ([a9a2402](https://github.com/MorpheApp/morphe-cli/commit/a9a2402209bd0ddd273c0aa5185888b74c69d118))
+
+# [1.8.0-dev.1](https://github.com/MorpheApp/morphe-cli/compare/v1.7.0...v1.8.0-dev.1) (2026-04-18)
+
+
+### Features
+
+* Faster dex rebuilding + reduced memory requirements  ([#108](https://github.com/MorpheApp/morphe-cli/issues/108)) ([ed8918e](https://github.com/MorpheApp/morphe-cli/commit/ed8918eb8d26634f717e09b58aa174c1d1353a07))
+
 # [1.7.0](https://github.com/MorpheApp/morphe-cli/compare/v1.6.3...v1.7.0) (2026-04-16)
 
 

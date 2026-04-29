@@ -46,7 +46,8 @@ import app.morphe.gui.ui.theme.LocalThemeState
 fun SettingsButton(
     modifier: Modifier = Modifier,
     allowCacheClear: Boolean = true,
-    isPatching: Boolean = false
+    isPatching: Boolean = false,
+    onDismiss: () -> Unit = {}
 ) {
     val corners = LocalMorpheCorners.current
     val themeState = LocalThemeState.current
@@ -57,23 +58,29 @@ fun SettingsButton(
 
     var showSettingsDialog by remember { mutableStateOf(false) }
     var autoCleanupTempFiles by remember { mutableStateOf(true) }
+    var defaultOutputDirectory by remember { mutableStateOf<String?>(null) }
     var patchSources by remember { mutableStateOf<List<PatchSource>>(emptyList()) }
     var activePatchSourceId by remember { mutableStateOf("") }
     var keystorePath by remember { mutableStateOf<String?>(null) }
     var keystorePassword by remember { mutableStateOf<String?>(null) }
     var keystoreAlias by remember { mutableStateOf(DEFAULT_KEYSTORE_ALIAS) }
     var keystoreEntryPassword by remember { mutableStateOf(DEFAULT_KEYSTORE_PASSWORD) }
+    var keepArchitectures by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var collapsibleSectionStates by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
     LaunchedEffect(showSettingsDialog) {
         if (showSettingsDialog) {
             val config = configRepository.loadConfig()
             autoCleanupTempFiles = config.autoCleanupTempFiles
+            defaultOutputDirectory = config.defaultOutputDirectory
             patchSources = config.patchSource
             activePatchSourceId = config.activePatchSourceId
             keystorePath = config.keystorePath
             keystorePassword = config.keystorePassword
             keystoreAlias = config.keystoreAlias
             keystoreEntryPassword = config.keystoreEntryPassword
+            keepArchitectures = config.keepArchitectures
+            collapsibleSectionStates = config.collapsibleSectionStates
         }
     }
 
@@ -114,11 +121,19 @@ fun SettingsButton(
                     configRepository.setAutoCleanupTempFiles(enabled)
                 }
             },
+            defaultOutputDirectory = defaultOutputDirectory,
+            onDefaultOutputDirectoryChange = { path ->
+                defaultOutputDirectory = path
+                scope.launch { configRepository.setDefaultOutputDirectory(path) }
+            },
             useExpertMode = !modeState.isSimplified,
             onExpertModeChange = { enabled ->
                 modeState.onChange(!enabled)
             },
-            onDismiss = { showSettingsDialog = false },
+            onDismiss = {
+                showSettingsDialog = false
+                onDismiss()
+            },
             allowCacheClear = allowCacheClear,
             isPatching = isPatching,
             patchSources = patchSources,
@@ -181,6 +196,16 @@ fun SettingsButton(
                         entryPassword = entryPwd
                     )
                 }
+            },
+            keepArchitectures = keepArchitectures,
+            onKeepArchitecturesChange = { updated ->
+                keepArchitectures = updated
+                scope.launch { configRepository.setKeepArchitectures(updated) }
+            },
+            collapsibleSectionStates = collapsibleSectionStates,
+            onCollapsibleSectionToggle = { id, expanded ->
+                collapsibleSectionStates = collapsibleSectionStates + (id to expanded)
+                scope.launch { configRepository.setCollapsibleSectionExpanded(id, expanded) }
             }
         )
     }

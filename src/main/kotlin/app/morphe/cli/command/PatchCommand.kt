@@ -3,40 +3,29 @@
  * https://github.com/MorpheApp/morphe-cli
  *
  * Original hard forked code:
- * https://github.com/revanced/revanced-cli
+ * https://github.com/ReVanced/revanced-cli/tree/731865e167ee449be15fff3dde7a476faea0c2de
  */
 
 package app.morphe.cli.command
 
-import app.morphe.cli.command.model.FailedPatch
-import app.morphe.cli.command.model.PatchBundle
-import app.morphe.cli.command.model.PatchingResult
-import app.morphe.cli.command.model.PatchingStep
-import app.morphe.cli.command.model.addStepResult
-import app.morphe.cli.command.model.deserializeOptionValue
-import app.morphe.cli.command.model.findMatchingBundle
-import app.morphe.cli.command.model.mergeWith
-import app.morphe.cli.command.model.toPatchBundle
-import app.morphe.cli.command.model.toSerializablePatch
-import app.morphe.cli.command.model.withUpdatedBundle
+import app.morphe.cli.command.model.*
 import app.morphe.engine.PatchEngine
+import app.morphe.engine.isWindows
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_SIGNER_NAME
 import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.LEGACY_KEYSTORE_PASSWORD
 import app.morphe.engine.UpdateChecker
-import app.morphe.library.installation.installer.AdbInstaller
-import app.morphe.library.installation.installer.AdbInstallerResult
-import app.morphe.library.installation.installer.AdbRootInstaller
-import app.morphe.library.installation.installer.DeviceNotFoundException
-import app.morphe.library.installation.installer.Installer
-import app.morphe.library.installation.installer.RootInstallerResult
+import app.morphe.library.installation.installer.*
 import app.morphe.patcher.Patcher
 import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkMerger
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
+import app.morphe.patcher.dex.BytecodeMode
+import app.morphe.patcher.dex.NoOpDexVerifier
+import app.morphe.patcher.dex.SdkDexVerifier
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
@@ -57,6 +46,7 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.concurrent.Callable
 import java.util.logging.Logger
+import kotlin.collections.plus
 
 @OptIn(ExperimentalSerializationApi::class)
 @VisibleForTesting
@@ -256,22 +246,26 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["-p", "--patches"],
-        description = ["One or more path to MPP files."],
+        description = ["Path to a MPP file or a GitHub repo url such as https://github.com/MorpheApp/morphe-patches"],
         required = true,
     )
     @Suppress("unused")
     private fun setPatchesFile(patchesFiles: Set<File>) {
-        patchesFiles.firstOrNull { !it.exists() }?.let {
-            throw CommandLine.ParameterException(spec.commandLine(), "${it.name} can't be found")
-        }
-        this.patchesFiles = patchesFiles
+        this.patchesFiles = checkFileExistsOrIsUrl(patchesFiles, spec)
     }
 
     private var patchesFiles = emptySet<File>()
 
     @CommandLine.Option(
+        names = ["--prerelease"],
+        description = ["Fetch the latest dev pre-release instead of the stable main release from the repo provided in --patches."],
+        showDefaultValue = ALWAYS,
+    )
+    private var prerelease: Boolean = false
+
+    @CommandLine.Option(
         names = ["--custom-aapt2-binary"],
-        description = ["Path to a custom AAPT binary to compile resources with. Only valid when --use-arsclib is not specified."],
+        description = ["apktool is deprecated. This parameter has no effect and will be removed in a future release."],
     )
     @Suppress("unused")
     private fun setAaptBinaryPath(aaptBinaryPath: File) {
@@ -286,7 +280,7 @@ internal object PatchCommand : Callable<Int> {
 
     @CommandLine.Option(
         names = ["--force-apktool"],
-        description = ["Use apktool instead of arsclib to compile resources. Implied if --custom-aapt2-binary is specified."],
+        description = ["apktool is deprecated. This parameter has no effect and will be removed in a future release."],
         showDefaultValue = ALWAYS,
     )
     private var forceApktool: Boolean = false
@@ -317,6 +311,73 @@ internal object PatchCommand : Callable<Int> {
                 )
         }.toSet()
     }
+
+    private var bytecodeMode: BytecodeMode = BytecodeMode.STRIP_FAST
+    @CommandLine.Option(
+        names = ["--bytecode-mode"],
+        description = ["Set bytecode mode. Valid options are FULL, STRIP_SAFE, and STRIP_FAST (the default)."],
+        showDefaultValue = ALWAYS,
+    )
+    @Suppress("unused")
+    private fun setBytecodeMode(desiredBytecodeMode: String) {
+        this.bytecodeMode = try {
+            BytecodeMode.valueOf(desiredBytecodeMode)
+        } catch (e: IllegalArgumentException) {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                "Invalid bytecode mode \"$desiredBytecodeMode\" in --bytecode-mode. Valid values are: FULL, STRIP_SAFE, STRIP_FAST",
+            )
+        }
+    }
+
+    @CommandLine.Option(
+        names = ["--verify-with-sdk"],
+        description = ["Verify the patched DEX and APK files using the provided Android SDK. If not specified, the patched files will not be verified."],
+        fallbackValue = "",
+        arity = "0..1",
+    )
+    @Suppress("unused")
+    private fun setSdkToolsPath(sdkToolsPath: File?) {
+        if (sdkToolsPath != null && sdkToolsPath.path.isNotEmpty()) {
+            if (!sdkToolsPath.isDirectory) {
+                throw CommandLine.ParameterException(
+                    spec.commandLine(),
+                    "SDK path passed to --verify-with-sdk must be a directory.",
+                )
+            }
+            this.sdkToolsPath = sdkToolsPath
+            return
+        }
+
+        // Try environment variables first.
+        val envPath = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+        if (envPath != null) {
+            val envDir = File(envPath)
+            if (envDir.isDirectory) {
+                this.sdkToolsPath = envDir
+                return
+            }
+        }
+
+        // Infer default path based on OS.
+        val userHome = System.getProperty("user.home")
+        val osName = System.getProperty("os.name").lowercase()
+        val defaultPath = when {
+            osName.contains("win") -> File("$userHome/AppData/Local/Android/Sdk")
+            osName.contains("mac") -> File("$userHome/Library/Android/sdk")
+            else -> File("$userHome/Android/Sdk")
+        }
+
+        if (defaultPath.isDirectory) {
+            this.sdkToolsPath = defaultPath
+        } else {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                "Could not find Android SDK. Set ANDROID_HOME or pass a path to --verify-with-sdk.",
+            )
+        }
+    }
+    private var sdkToolsPath: File? = null
 
     @CommandLine.Option(
         names = ["--continue-on-error"],
@@ -355,9 +416,7 @@ internal object PatchCommand : Callable<Int> {
             )
 
         val temporaryFilesPath =
-            temporaryFilesPath ?: outputFilePath.parentFile.resolve(
-                "${outputFilePath.nameWithoutExtension}-temporary-files",
-            )
+            temporaryFilesPath ?: File("").absoluteFile.resolve("morphe-temporary-files")
 
         val keystoreFilePath =
             keyStoreFilePath ?: outputFilePath.parentFile
@@ -395,11 +454,21 @@ internal object PatchCommand : Callable<Int> {
 
         val patchingResult = PatchingResult()
         var mergedApkToCleanup: File? = null
+        val verifier = if (sdkToolsPath == null) NoOpDexVerifier else SdkDexVerifier(sdkToolsPath!!)
 
         // Lightweight snapshot of patch metadata for use in finally block (auto-update).
         // Lightweight snapshot of current bundle metadata for use in finally block (auto-update).
         // The heavy Patch objects hold DEX classloaders and must not leak into finally.
         var patchesSnapshot: PatchBundle? = null
+
+        try {
+            patchesFiles = PatchFileResolver.resolve(patchesFiles, prerelease, temporaryFilesPath)
+        } catch (e: IllegalArgumentException) {
+            throw CommandLine.ParameterException(
+                spec.commandLine(),
+                e.message ?: "Failed to resolve patch URL"
+            )
+        }
 
         try {
             logger.info("Loading patches")
@@ -484,8 +553,14 @@ internal object PatchCommand : Callable<Int> {
                     patcherTemporaryFilesPath,
                     aaptBinaryPath?.path,
                     patcherTemporaryFilesPath.absolutePath,
-                    if (aaptBinaryPath != null) { false } else { !forceApktool },
-                    keepArchitectures
+                    useArsclib = if (aaptBinaryPath != null) { false } else { !forceApktool },
+                    keepArchitectures = keepArchitectures,
+                    /*
+                    TODO: Remove Windows override once the patcher ships its proper fix
+                     (reflection-based MappedByteBuffer release + copy-instead-of-rename for output DEX files).
+                     */
+                    useBytecodeMode = if (isWindows()) { BytecodeMode.FULL } else { bytecodeMode },
+                    verifier = verifier
                 ),
             ).use { patcher ->
                 val packageName = patcher.context.packageMetadata.packageName
@@ -636,9 +711,9 @@ internal object PatchCommand : Callable<Int> {
                                                 writer.toString()
                                             )
                                         )
-                                        patchingResult.success = false
 
                                         if (!continueOnError) {
+                                            patchingResult.success = false
                                             throw PatchFailedException(
                                                 "\"${patchResult.patch}\" failed",
                                                 exception
@@ -710,6 +785,7 @@ internal object PatchCommand : Callable<Int> {
                 } else {
                     patchedApkFile.copyTo(outputFilePath, overwrite = true)
                 }
+                verifier.verifyApkFile(outputFilePath)
             }
 
             logger.info("Saved to $outputFilePath")

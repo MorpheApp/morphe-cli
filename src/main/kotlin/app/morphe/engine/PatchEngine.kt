@@ -13,6 +13,7 @@ import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkMerger
 import app.morphe.patcher.apk.ApkUtils
 import app.morphe.patcher.apk.ApkUtils.applyTo
+import app.morphe.patcher.dex.BytecodeMode
 import app.morphe.patcher.logging.toMorpheLogger
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.setOptions
@@ -56,6 +57,7 @@ object PatchEngine {
         val aaptBinaryPath: File? = null,
         val tempDir: File? = null,
         val failOnError: Boolean = true,
+        val bytecodeMode: BytecodeMode = BytecodeMode.STRIP_FAST
     ) {
         companion object {
             internal const val DEFAULT_KEYSTORE_ALIAS = "Morphe"
@@ -125,7 +127,12 @@ object PatchEngine {
                 config.aaptBinaryPath?.path,
                 patcherTempDir.absolutePath,
                 useArsclib = true,
-                keepArchitectures = config.architecturesToKeep
+                keepArchitectures = config.architecturesToKeep,
+                /*
+                TODO: Remove Windows override once the patcher ships its proper fix
+                 (reflection-based MappedByteBuffer release + copy-instead-of-rename for output DEX files).
+                 */
+                useBytecodeMode = if (isWindows()) { BytecodeMode.FULL } else { config.bytecodeMode }
             )
 
             Patcher(patcherConfig).use { patcher ->
@@ -279,8 +286,13 @@ object PatchEngine {
 
                 onProgress("Patching complete!")
 
+                // When failOnError=false (user asked to continue on error), reaching this
+                // line means the APK was successfully rebuilt from the patches that worked,
+                // treat the run as a success. Individual failures are still reported via
+                // `failedPatches` for the UI to display. Only strict mode (failOnError=true)
+                // treats any failure as an overall failure.
                 return Result(
-                    success = failedPatches.isEmpty(),
+                    success = if (config.failOnError) failedPatches.isEmpty() else true,
                     outputPath = config.outputApk.absolutePath,
                     packageName = packageName,
                     packageVersion = packageVersion,

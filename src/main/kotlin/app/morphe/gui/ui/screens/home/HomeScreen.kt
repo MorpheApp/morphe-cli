@@ -20,7 +20,9 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.HorizontalScrollbar
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,6 +65,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.ui.components.TopBarRow
+import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.components.OfflineBanner
@@ -1402,20 +1405,33 @@ private fun SupportedAppsMasterDetail(
         val parentWidth = maxWidth
         val scrollState = rememberScrollState()
 
-        Row(
-            modifier = Modifier
-                .horizontalScroll(scrollState)
-                .widthIn(min = parentWidth)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(cardSpacing, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.Top
-        ) {
-            apps.forEach { app ->
-                SupportedAppVerticalCard(
-                    app = app,
-                    isSelected = app.packageName == selectedApp?.packageName,
-                    onClick = { onSelect(app) },
-                    isDefaultSource = isDefaultSource
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .horizontalScroll(scrollState)
+                    .widthIn(min = parentWidth)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.Top
+            ) {
+                apps.forEach { app ->
+                    SupportedAppVerticalCard(
+                        app = app,
+                        isSelected = app.packageName == selectedApp?.packageName,
+                        onClick = { onSelect(app) },
+                        isDefaultSource = isDefaultSource
+                    )
+                }
+            }
+
+            if (scrollState.maxValue > 0) {
+                Spacer(Modifier.height(6.dp))
+                HorizontalScrollbar(
+                    adapter = rememberScrollbarAdapter(scrollState),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    style = morpheScrollbarStyle()
                 )
             }
         }
