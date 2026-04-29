@@ -1,3 +1,10 @@
+# [1.8.0-dev.9](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.8...v1.8.0-dev.9) (2026-04-29)
+
+
+### Features
+
+* Custom output path + better GUI scrollbars ([#127](https://github.com/MorpheApp/morphe-cli/issues/127)) ([70e2721](https://github.com/MorpheApp/morphe-cli/commit/70e27218a87a09c26edc96fd7cb7c38dcba9c79c))
+
 # [1.8.0-dev.8](https://github.com/MorpheApp/morphe-cli/compare/v1.8.0-dev.7...v1.8.0-dev.8) (2026-04-25)
 
 
