@@ -12,6 +12,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchConfig
 import app.morphe.gui.data.repository.ConfigRepository
+import app.morphe.gui.data.repository.PatchPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,8 @@ class PatchSelectionViewModel(
     private val patchService: PatchService,
     private val patchRepository: PatchRepository,
     private val configRepository: ConfigRepository,
+    private val preferencesRepository: PatchPreferencesRepository,
+    private val patchSourceName: String,
     private val localPatchFilePath: String? = null
 ) : ScreenModel {
 
@@ -97,17 +100,53 @@ class PatchSelectionViewModel(
 
                     Logger.info("Loaded ${deduplicatedPatches.size} patches for $packageName")
 
-                    // Only select patches that are enabled by default in the .mpp file
+                    // Compute the .mpp's default selection (patches with use=true)
                     val defaultSelected = deduplicatedPatches
                         .filter { it.isEnabled }
                         .map { it.uniqueId }
                         .toSet()
 
+                    // If a saved selection exists for this source+package, silently apply it.
+                    // Otherwise fall back to .mpp defaults.
+                    val savedBundle = preferencesRepository.get(patchSourceName, packageName)
+                    val (initialSelected, savedOptions) = if (savedBundle != null) {
+                        val byName = deduplicatedPatches.associateBy { it.name }
+                        val selected = savedBundle.patches
+                            .filter { (_, entry) -> entry.enabled }
+                            .keys
+                            .mapNotNull { byName[it]?.uniqueId }
+                            .toSet()
+                        // Materialize saved option values into the patchOptionValues map
+                        // (which is keyed "patchName.optionKey" → string).
+                        val opts = mutableMapOf<String, String>()
+                        for ((patchName, entry) in savedBundle.patches) {
+                            for ((optKey, jsonValue) in entry.options) {
+                                opts["$patchName.$optKey"] = jsonValue.toString().trim('"')
+                            }
+                        }
+                        Logger.info("Applied saved patch preferences for $patchSourceName / $packageName")
+                        selected to opts.toMap()
+                    } else {
+                        defaultSelected to emptyMap<String, String>()
+                    }
+
+                    val savedSelectedIds: Set<String>? = if (savedBundle != null) {
+                        val byName = deduplicatedPatches.associateBy { it.name }
+                        savedBundle.patches
+                            .filter { (_, entry) -> entry.enabled }
+                            .keys
+                            .mapNotNull { byName[it]?.uniqueId }
+                            .toSet()
+                    } else null
+
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         allPatches = deduplicatedPatches,
                         filteredPatches = deduplicatedPatches,
-                        selectedPatches = defaultSelected
+                        selectedPatches = initialSelected,
+                        patchOptionValues = savedOptions,
+                        hasSavedSelection = savedBundle != null,
+                        savedSelectedIds = savedSelectedIds
                     )
                 },
                 onFailure = { e ->
@@ -132,12 +171,49 @@ class PatchSelectionViewModel(
     }
 
     fun selectAll() {
-        val allIds = _uiState.value.filteredPatches.map { it.uniqueId }.toSet()
+        val allIds = _uiState.value.allPatches.map { it.uniqueId }.toSet()
         _uiState.value = _uiState.value.copy(selectedPatches = allIds)
     }
 
     fun deselectAll() {
         _uiState.value = _uiState.value.copy(selectedPatches = emptySet())
+    }
+
+    /**
+     * Reset the selection to the .mpp's per-patch `use=true/false` defaults.
+     */
+    fun applyPatchDefaults() {
+        val defaults = _uiState.value.allPatches
+            .filter { it.isEnabled }
+            .map { it.uniqueId }
+            .toSet()
+        _uiState.value = _uiState.value.copy(selectedPatches = defaults)
+    }
+
+    /**
+     * Apply the user's previously-saved selection for this source+package, if any.
+     * No-op if no saved selection exists.
+     */
+    fun applySavedDefaults() {
+        screenModelScope.launch {
+            val saved = preferencesRepository.get(patchSourceName, packageName) ?: return@launch
+            val byName = _uiState.value.allPatches.associateBy { it.name }
+            val selected = saved.patches
+                .filter { (_, entry) -> entry.enabled }
+                .keys
+                .mapNotNull { byName[it]?.uniqueId }
+                .toSet()
+            val opts = mutableMapOf<String, String>()
+            for ((patchName, entry) in saved.patches) {
+                for ((optKey, jsonValue) in entry.options) {
+                    opts["$patchName.$optKey"] = jsonValue.toString().trim('"')
+                }
+            }
+            _uiState.value = _uiState.value.copy(
+                selectedPatches = selected,
+                patchOptionValues = opts
+            )
+        }
     }
 
     fun setSearchQuery(query: String) {
@@ -213,7 +289,53 @@ class PatchSelectionViewModel(
         return _uiState.value.allPatches.count { !it.isEnabled }
     }
 
+    /**
+     * Persist the current selection + option values as the user's saved preference
+     * for this source+package. Called from createPatchConfig (auto-save on Patch click).
+     */
+    private fun saveCurrentSelection() {
+        val state = _uiState.value
+        val enabledNames = state.allPatches
+            .filter { state.selectedPatches.contains(it.uniqueId) }
+            .map { it.name }
+            .toSet()
+        val disabledNames = state.allPatches
+            .filter { !state.selectedPatches.contains(it.uniqueId) }
+            .map { it.name }
+            .toSet()
+
+        // Group "patchName.optionKey" -> JsonElement under each patch name.
+        val grouped = mutableMapOf<String, MutableMap<String, kotlinx.serialization.json.JsonElement>>()
+        for ((compoundKey, value) in state.patchOptionValues) {
+            val dotIdx = compoundKey.indexOf('.')
+            if (dotIdx <= 0) continue
+            val patchName = compoundKey.substring(0, dotIdx)
+            val optKey = compoundKey.substring(dotIdx + 1)
+            grouped.getOrPut(patchName) { mutableMapOf() }[optKey] =
+                kotlinx.serialization.json.JsonPrimitive(value)
+        }
+
+        screenModelScope.launch {
+            preferencesRepository.save(
+                sourceName = patchSourceName,
+                packageName = packageName,
+                enabledPatchNames = enabledNames,
+                disabledPatchNames = disabledNames,
+                options = grouped
+            )
+            // After saving, the live selection IS the saved selection — so update
+            // the snapshot so the "YOUR DEFAULTS" chip stays highlighted post-patch.
+            _uiState.value = _uiState.value.copy(
+                hasSavedSelection = true,
+                savedSelectedIds = state.selectedPatches
+            )
+        }
+    }
+
     fun createPatchConfig(continueOnError: Boolean = false): PatchConfig {
+        // Auto-save the current selection as the user's "Your Defaults" before patching.
+        saveCurrentSelection()
+
         val inputFile = File(apkPath)
         val appFolderName = apkName.replace(" ", "-")
         val baseOutputDir = defaultOutputDirectory?.let { File(it) } ?: inputFile.parentFile
@@ -444,11 +566,37 @@ data class PatchSelectionUiState(
     val error: String? = null,
     val apkArchitectures: List<String> = emptyList(),
     val stripLibsStatus: StripLibsStatus = StripLibsStatus.NoNativeLibs,
-    val patchOptionValues: Map<String, String> = emptyMap()
+    val patchOptionValues: Map<String, String> = emptyMap(),
+    val hasSavedSelection: Boolean = false,
+    /** Snapshot of the saved-bundle's selected uniqueIds — used to highlight the
+     *  Your Defaults chip whenever the live selection happens to match. Null when
+     *  no saved selection exists. */
+    val savedSelectedIds: Set<String>? = null
 ) {
     val selectedCount: Int get() = selectedPatches.size
     val totalCount: Int get() = allPatches.size
+
+    /**
+     * Which preset (if any) the current selection matches. Drives chip highlighting:
+     * the chip whose mode equals `activeSelectionMode` gets the accent border + tint.
+     * SAVED is checked first so when the saved set happens to also be ALL or DEFAULTS,
+     * we still attribute the highlight to the user's saved preference.
+     */
+    val activeSelectionMode: SelectionMode get() {
+        if (allPatches.isEmpty()) return SelectionMode.CUSTOM
+        val all = allPatches.map { it.uniqueId }.toSet()
+        val defaults = allPatches.filter { it.isEnabled }.map { it.uniqueId }.toSet()
+        return when {
+            savedSelectedIds != null && selectedPatches == savedSelectedIds -> SelectionMode.SAVED
+            selectedPatches.isEmpty() -> SelectionMode.NONE
+            selectedPatches == all -> SelectionMode.ALL
+            selectedPatches == defaults -> SelectionMode.DEFAULTS
+            else -> SelectionMode.CUSTOM
+        }
+    }
 }
+
+enum class SelectionMode { ALL, DEFAULTS, SAVED, NONE, CUSTOM }
 
 /**
  * What the strip-libs feature will do for the currently loaded APK given the

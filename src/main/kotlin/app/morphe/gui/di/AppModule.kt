@@ -6,6 +6,7 @@
 package app.morphe.gui.di
 
 import app.morphe.gui.data.repository.ConfigRepository
+import app.morphe.gui.data.repository.PatchPreferencesRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.util.PatchService
 import io.ktor.client.*
@@ -57,6 +58,7 @@ val appModule = module {
 
     // Repositories and Services
     single { ConfigRepository() }
+    single { PatchPreferencesRepository() }
     single { PatchSourceManager(get(), get()) }
     single { PatchService() }
 
@@ -87,6 +89,8 @@ val appModule = module {
             get(),
             psm.getActiveRepositorySync(),
             get(),
+            get(),
+            psm.getActiveSourceName(),
             psm.getLocalFilePath()
         )
     }

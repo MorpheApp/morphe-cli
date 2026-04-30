@@ -26,8 +26,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.PlaylistRemove
+import androidx.compose.material.icons.filled.RemoveDone
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -213,41 +217,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 )
             }
 
-            // Select/Deselect all
-            val selectAllHover = remember { MutableInteractionSource() }
-            val isSelectAllHovered by selectAllHover.collectIsHoveredAsState()
-            val allSelected = uiState.selectedPatches.size == uiState.allPatches.size
-            val selectAllBorder by animateColorAsState(
-                if (isSelectAllHovered) accents.primary.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                animationSpec = tween(150)
-            )
-
-            Box(
-                modifier = Modifier
-                    .height(34.dp)
-                    .hoverable(selectAllHover)
-                    .clip(RoundedCornerShape(corners.small))
-                    .border(1.dp, selectAllBorder, RoundedCornerShape(corners.small))
-                    .clickable {
-                        if (allSelected) viewModel.deselectAll() else viewModel.selectAll()
-                    }
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (allSelected) "DESELECT ALL" else "SELECT ALL",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = mono,
-                    color = if (isSelectAllHovered) accents.primary
-                            else accents.primary.copy(alpha = 0.7f),
-                    letterSpacing = 1.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
             // Command preview toggle
             if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
                 val cmdHover = remember { MutableInteractionSource() }
@@ -381,21 +350,20 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
         )
 
-        // Info card about default-disabled patches
-        val defaultDisabledCount = remember(uiState.allPatches) {
-            viewModel.getDefaultDisabledCount()
-        }
-        var infoDismissed by remember { mutableStateOf(false) }
-
+        // Selection-mode chips: Your Defaults · Patch Defaults · All · None
         AnimatedVisibility(
-            visible = defaultDisabledCount > 0 && !infoDismissed && !uiState.isLoading,
+            visible = !uiState.isLoading && uiState.allPatches.isNotEmpty(),
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
-            DefaultDisabledInfoCard(
-                count = defaultDisabledCount,
-                onDismiss = { infoDismissed = true },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            SelectionModeChips(
+                hasSavedSelection = uiState.hasSavedSelection,
+                activeMode = uiState.activeSelectionMode,
+                onApplySaved = { viewModel.applySavedDefaults() },
+                onApplyDefaults = { viewModel.applyPatchDefaults() },
+                onApplyAll = { viewModel.selectAll() },
+                onApplyNone = { viewModel.deselectAll() },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
         }
 
@@ -1166,55 +1134,135 @@ private fun PatchOptionEditor(
 
 // ── Default Disabled Info Card ──
 
+/**
+ * Quick-action chip row above the patch list. Each chip is a one-click preset that
+ * sets the current selection. The chip whose state matches the current selection
+ * gets highlighted (accent border + tint) so the user can see at a glance what
+ * preset they're on.
+ */
 @Composable
-private fun DefaultDisabledInfoCard(
-    count: Int,
-    onDismiss: () -> Unit,
+private fun SelectionModeChips(
+    hasSavedSelection: Boolean,
+    activeMode: SelectionMode,
+    onApplySaved: () -> Unit,
+    onApplyDefaults: () -> Unit,
+    onApplyAll: () -> Unit,
+    onApplyNone: () -> Unit,
     modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // SAVED is computed by overlaying the saved-selection check on top of CUSTOM —
+        // when hasSavedSelection is true AND the current selection matches the saved
+        // bundle, we treat it as SAVED. The VM only knows ALL/DEFAULTS/NONE/CUSTOM, so
+        // we approximate: if hasSavedSelection is true and activeMode is CUSTOM, the
+        // user could still be on their saved set. We can't tell here without the
+        // bundle; for now SAVED highlights only when activeMode == SelectionMode.SAVED
+        // (which is set after applySavedDefaults by virtue of the chip being clicked).
+        SelectionModeChip(
+            label = "YOUR DEFAULTS",
+            icon = Icons.Default.Bookmark,
+            active = activeMode == SelectionMode.SAVED,
+            enabled = hasSavedSelection,
+            onClick = onApplySaved,
+            modifier = Modifier.weight(1f)
+        )
+        SelectionModeChip(
+            label = "PATCH DEFAULTS",
+            icon = Icons.Default.AutoAwesome,
+            active = activeMode == SelectionMode.DEFAULTS,
+            onClick = onApplyDefaults,
+            modifier = Modifier.weight(1f)
+        )
+        SelectionModeChip(
+            label = "ALL",
+            icon = Icons.Default.DoneAll,
+            active = activeMode == SelectionMode.ALL,
+            onClick = onApplyAll,
+            modifier = Modifier.weight(1f)
+        )
+        SelectionModeChip(
+            label = "NONE",
+            icon = Icons.Default.RemoveDone,
+            active = activeMode == SelectionMode.NONE,
+            onClick = onApplyNone,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SelectionModeChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
 
-    Row(
+    val hover = remember { MutableInteractionSource() }
+    val isHovered by hover.collectIsHoveredAsState()
+
+    val borderColor by animateColorAsState(
+        when {
+            !enabled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+            active -> accents.primary.copy(alpha = 0.55f)
+            isHovered -> accents.primary.copy(alpha = 0.35f)
+            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        },
+        animationSpec = tween(150)
+    )
+    val bgColor by animateColorAsState(
+        when {
+            !enabled -> Color.Transparent
+            active -> accents.primary.copy(alpha = 0.10f)
+            isHovered -> accents.primary.copy(alpha = 0.04f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(150)
+    )
+    val textColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+        active -> accents.primary
+        else -> accents.primary.copy(alpha = 0.7f)
+    }
+
+    Box(
         modifier = modifier
-            .fillMaxWidth()
+            .height(32.dp)
+            .hoverable(hover)
             .clip(RoundedCornerShape(corners.small))
-            .border(
-                1.dp,
-                accents.primary.copy(alpha = 0.15f),
-                RoundedCornerShape(corners.small)
-            )
-            .background(accents.primary.copy(alpha = 0.04f))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+            .background(bgColor, RoundedCornerShape(corners.small))
+            .let { if (enabled) it.clickable(onClick = onClick) else it }
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Info,
-            contentDescription = null,
-            tint = accents.primary.copy(alpha = 0.6f),
-            modifier = Modifier.size(16.dp)
-        )
-        Text(
-            text = "$count patch${if (count > 1) "es are" else " is"} unselected by default as they may cause issues.",
-            fontSize = 11.sp,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.weight(1f)
-        )
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(RoundedCornerShape(corners.small))
-                .clickable(onClick = onDismiss),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Dismiss",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(14.dp)
+                imageVector = icon,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = mono,
+                color = textColor,
+                letterSpacing = 1.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1387,38 +1435,30 @@ private fun StripLibsStatusBanner(
     val display: BannerDisplay = when (status) {
         is StripLibsStatus.NoNativeLibs -> BannerDisplay(
             dotColor = accents.secondary.copy(alpha = 0.4f),
-            headline = "NO NATIVE LIBRARIES",
-            detail = "This APK has no native libraries. Stripping does not apply."
+            headline = "NO NATIVE LIBS",
+            detail = "stripping does not apply"
         )
         is StripLibsStatus.Universal -> BannerDisplay(
             dotColor = accents.secondary.copy(alpha = 0.4f),
-            headline = "UNIVERSAL NATIVE LIBS",
-            detail = "This APK ships a single universal native lib folder. Stripping does not apply."
+            headline = "UNIVERSAL LIBS",
+            detail = "single universal folder · stripping does not apply"
         )
         is StripLibsStatus.KeepAll -> BannerDisplay(
             dotColor = accents.secondary.copy(alpha = 0.4f),
             headline = "NO STRIPPING NEEDED",
-            detail = if (status.notInApk.isEmpty()) {
-                "Your keep-list covers every architecture in this APK. Nothing will be stripped."
-            } else {
-                "Every architecture in this APK is in your keep list — nothing will be stripped. Some of your other preferences don't apply because this APK doesn't ship them."
-            },
+            detail = "keep-list covers every arch in this APK",
             notInApkChips = status.notInApk
         )
         is StripLibsStatus.Fallback -> BannerDisplay(
             dotColor = MaterialTheme.colorScheme.tertiary,
-            headline = "FALLBACK: KEEPING ALL",
-            detail = "None of your preferred architectures are present in this APK. Keeping everything to avoid a broken output. Review your Strip Libs settings.",
+            headline = "FALLBACK · KEEPING ALL",
+            detail = "no preferred archs present — review Strip Libs settings",
             keepChips = status.apkArches
         )
         is StripLibsStatus.WillStrip -> BannerDisplay(
             dotColor = accents.secondary,
             headline = "STRIPPING NATIVE LIBS",
-            detail = if (status.notInApk.isEmpty()) {
-                "The output APK will keep only the architectures from your preferences that this APK actually ships."
-            } else {
-                "The output APK will keep only the architectures from your preferences that this APK actually ships. Some of your other preferences don't apply because this APK doesn't ship them."
-            },
+            detail = "keeping listed archs only",
             keepChips = status.keeping,
             stripChips = status.stripping,
             notInApkChips = status.notInApk
@@ -1426,70 +1466,53 @@ private fun StripLibsStatusBanner(
     }
     val (dotColor, headline, detail, keepChips, stripChips, notInApkChips) = display
 
-    Column(
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    androidx.compose.foundation.layout.FlowRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.small))
-            .border(1.dp, dotColor.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
-            .background(dotColor.copy(alpha = 0.04f))
-            .padding(12.dp)
+            .border(1.dp, dotColor.copy(alpha = 0.18f), RoundedCornerShape(corners.small))
+            .background(dotColor.copy(alpha = 0.035f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        itemVerticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(dotColor, RoundedCornerShape(1.dp))
-            )
-            Text(
-                text = headline,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurface,
-                letterSpacing = 1.sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
         Text(
-            text = detail,
+            text = headline,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurface,
+            letterSpacing = 1.sp,
+            maxLines = 1
+        )
+        Text(
+            text = "— $detail",
             fontSize = 10.sp,
             fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
-
-        if (keepChips.isNotEmpty() || stripChips.isNotEmpty() || notInApkChips.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                keepChips.forEach { arch ->
-                    ArchChip(label = arch, accent = dotColor, role = ArchChipRole.KEEP)
-                }
-                stripChips.forEach { arch ->
-                    ArchChip(label = arch, accent = dotColor, role = ArchChipRole.STRIP)
-                }
-                notInApkChips.forEach { arch ->
-                    ArchChip(label = arch, accent = dotColor, role = ArchChipRole.NOT_IN_APK)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Change in Settings → Strip Libs",
+            text = "· Settings → Strip Libs",
             fontSize = 9.sp,
             fontFamily = mono,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            letterSpacing = 0.5.sp
+            letterSpacing = 0.5.sp,
+            maxLines = 1
         )
+        Spacer(modifier = Modifier.weight(1f))
+        keepChips.forEach { arch ->
+            ArchChip(label = arch, accent = dotColor, role = ArchChipRole.KEEP)
+        }
+        stripChips.forEach { arch ->
+            ArchChip(label = arch, accent = dotColor, role = ArchChipRole.STRIP)
+        }
+        notInApkChips.forEach { arch ->
+            ArchChip(label = arch, accent = dotColor, role = ArchChipRole.NOT_IN_APK)
+        }
     }
 }
 
@@ -1539,11 +1562,11 @@ private fun ArchChip(
                     Modifier.background(accent.copy(alpha = 0.08f), RoundedCornerShape(corners.small))
                 } else Modifier
             )
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 7.dp, vertical = 3.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(
                 text = roleLabel,
@@ -1557,7 +1580,7 @@ private fun ArchChip(
             )
             Text(
                 text = label,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 fontFamily = mono,
                 fontWeight = FontWeight.Medium,
                 color = labelColor,

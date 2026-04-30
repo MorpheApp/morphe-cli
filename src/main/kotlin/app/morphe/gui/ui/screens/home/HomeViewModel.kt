@@ -191,6 +191,7 @@ class HomeViewModel(
                     patchSourceName = patchSourceManager.getActiveSourceName(),
                     patchLoadError = null
                 )
+                reanalyzeSelectedApk()
             } catch (e: Exception) {
                 Logger.error("Failed to load patches and supported apps", e)
                 // Try to fall back to cached .mpp file
@@ -284,6 +285,18 @@ class HomeViewModel(
             patchSourceName = patchSourceManager.getActiveSourceName(),
             patchLoadError = null
         )
+        reanalyzeSelectedApk()
+    }
+
+    /**
+     * Re-runs APK analysis against the freshly-loaded `supportedApps` so the info
+     * card reflects the new patch file's version compatibility (e.g. a v23 file
+     * marks the APK "too new", but switching to v24 should clear that warning).
+     */
+    private suspend fun reanalyzeSelectedApk() {
+        val file = _uiState.value.selectedApk ?: return
+        val refreshed = withContext(Dispatchers.IO) { parseApkManifest(file) } ?: return
+        _uiState.value = _uiState.value.copy(apkInfo = refreshed)
     }
 
     /**
