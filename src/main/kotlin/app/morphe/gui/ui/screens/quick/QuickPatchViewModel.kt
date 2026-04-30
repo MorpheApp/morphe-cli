@@ -156,6 +156,7 @@ class QuickPatchViewModel(
                     isLoadingPatches = false,
                     supportedApps = supportedApps,
                     patchesVersion = release.tagName,
+                    latestPatchesVersion = release.tagName,
                     patchSourceName = patchSourceManager.getActiveSourceName(),
                     patchLoadError = null,
                     isOffline = false
@@ -644,6 +645,7 @@ data class QuickPatchUiState(
     val isLoadingPatches: Boolean = true,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
+    val latestPatchesVersion: String? = null,
     val patchSourceName: String? = null,
     val patchLoadError: String? = null,
     val isOffline: Boolean = false,

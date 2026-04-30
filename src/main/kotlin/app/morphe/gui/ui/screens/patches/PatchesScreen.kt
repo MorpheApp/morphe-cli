@@ -326,6 +326,8 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            val latestStableTag = uiState.stableReleases.firstOrNull()?.tagName
+                            val latestDevTag = uiState.devReleases.firstOrNull()?.tagName
                             items(
                                 items = uiState.currentReleases,
                                 key = { it.tagName }
@@ -335,6 +337,8 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                                     isSelected = release.tagName == uiState.selectedRelease?.tagName,
                                     isDownloaded = release.tagName in uiState.cachedReleaseVersions,
                                     isOffline = uiState.isOffline,
+                                    isLatest = release.tagName == latestStableTag ||
+                                               release.tagName == latestDevTag,
                                     onClick = { viewModel.selectRelease(release) }
                                 )
                             }
@@ -490,6 +494,7 @@ private fun ReleaseCard(
     isSelected: Boolean,
     isDownloaded: Boolean,
     isOffline: Boolean = false,
+    isLatest: Boolean = false,
     onClick: () -> Unit
 ) {
     val corners = LocalMorpheCorners.current
@@ -568,6 +573,24 @@ private fun ReleaseCard(
                                     else -> MaterialTheme.colorScheme.onSurface
                                 }
                             )
+                            if (isLatest) {
+                                val latestColor = accents.secondary
+                                Box(
+                                    modifier = Modifier
+                                        .background(latestColor.copy(alpha = 0.12f), RoundedCornerShape(corners.small))
+                                        .border(1.dp, latestColor.copy(alpha = 0.32f), RoundedCornerShape(corners.small))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "LATEST",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = mono,
+                                        color = latestColor,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                            }
                             if (release.isDevRelease()) {
                                 Box(
                                     modifier = Modifier

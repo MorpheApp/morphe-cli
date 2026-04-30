@@ -142,7 +142,11 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                         PatchesVersionBadge(
                             patchesVersion = uiState.patchesVersion,
                             isLoading = uiState.isLoadingPatches,
-                            patchSourceName = uiState.patchSourceName
+                            patchSourceName = uiState.patchSourceName,
+                            latestLabel = if (uiState.patchesVersion != null &&
+                                              uiState.patchesVersion == uiState.latestPatchesVersion) {
+                                "LATEST STABLE"
+                            } else null
                         )
                     }
 
@@ -340,7 +344,12 @@ private fun BrandingLogo() {
 }
 
 @Composable
-private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean, patchSourceName: String? = null) {
+private fun PatchesVersionBadge(
+    patchesVersion: String?,
+    isLoading: Boolean,
+    patchSourceName: String? = null,
+    latestLabel: String? = null,
+) {
     val mono = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
     val accents = LocalMorpheAccents.current
@@ -401,21 +410,23 @@ private fun PatchesVersionBadge(patchesVersion: String?, isLoading: Boolean, pat
                 fontFamily = mono,
                 color = accents.primary
             )
-            Spacer(modifier = Modifier.width(6.dp))
-            Box(
-                modifier = Modifier
-                    .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                    .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
-                    .padding(horizontal = 5.dp, vertical = 1.dp)
-            ) {
-                Text(
-                    text = "LATEST",
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.secondary,
-                    letterSpacing = 1.sp
-                )
+            if (latestLabel != null) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                        .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = latestLabel,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = mono,
+                        color = accents.secondary,
+                        letterSpacing = 1.sp
+                    )
+                }
             }
         }
     }

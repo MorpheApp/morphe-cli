@@ -117,6 +117,7 @@ class HomeViewModel(
                 // Find the latest stable release for reference
                 val latestStable = releases.firstOrNull { !it.isDevRelease() }
                 val latestVersion = latestStable?.tagName
+                val latestDevVersion = releases.firstOrNull { it.isDevRelease() }?.tagName
 
                 // 2. Find the release to use - prefer saved version, fallback to latest stable
                 val release = if (savedVersion != null) {
@@ -188,6 +189,7 @@ class HomeViewModel(
                     supportedApps = supportedApps,
                     patchesVersion = release.tagName,
                     latestPatchesVersion = latestVersion,
+                    latestDevPatchesVersion = latestDevVersion,
                     patchSourceName = patchSourceManager.getActiveSourceName(),
                     patchLoadError = null
                 )
@@ -542,11 +544,26 @@ data class HomeUiState(
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
     val latestPatchesVersion: String? = null,
+    val latestDevPatchesVersion: String? = null,
     val patchSourceName: String? = null,
     val patchLoadError: String? = null
 ) {
     val isUsingLatestPatches: Boolean
-        get() = patchesVersion != null && patchesVersion == latestPatchesVersion
+        get() = patchesVersion != null &&
+                (patchesVersion == latestPatchesVersion || patchesVersion == latestDevPatchesVersion)
+
+    /**
+     * Label for the LATEST badge — distinguishes stable vs dev so users can tell
+     * which channel they're on at a glance. Null when the loaded version isn't
+     * the newest of either channel.
+     */
+    val latestPatchesLabel: String?
+        get() = when (patchesVersion) {
+            null -> null
+            latestPatchesVersion -> "LATEST STABLE"
+            latestDevPatchesVersion -> "LATEST DEV"
+            else -> null
+        }
 }
 
 data class ApkInfo(
