@@ -162,8 +162,9 @@ private fun AppContent(
                     Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                         if (!isLoading) {
                         val patchService: PatchService = koinInject()
+                        val updateCheckRepository: app.morphe.gui.data.repository.UpdateCheckRepository = koinInject()
                         val quickViewModel = remember {
-                            QuickPatchViewModel(patchSourceManager, patchService, configRepository)
+                            QuickPatchViewModel(patchSourceManager, patchService, configRepository, updateCheckRepository)
                         }
 
                         Crossfade(targetState = isSimplifiedMode) { simplified ->

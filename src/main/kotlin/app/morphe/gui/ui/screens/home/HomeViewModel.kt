@@ -7,11 +7,13 @@ package app.morphe.gui.ui.screens.home
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import app.morphe.engine.UpdateInfo
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.data.repository.PatchSourceManager
+import app.morphe.gui.data.repository.UpdateCheckRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +33,8 @@ import java.io.File
 class HomeViewModel(
     private val patchSourceManager: PatchSourceManager,
     private val patchService: PatchService,
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
+    private val updateCheckRepository: UpdateCheckRepository,
 ) : ScreenModel {
 
     private var patchRepository: PatchRepository = patchSourceManager.getActiveRepositorySync()
@@ -50,6 +53,16 @@ class HomeViewModel(
         // Auto-fetch patches on startup
         loadPatchesAndSupportedApps()
 
+        // Background CLI update check — non-blocking, banner only.
+        screenModelScope.launch {
+            val info = updateCheckRepository.getUpdateInfo()
+            val dismissed = configRepository.loadConfig().dismissedUpdateVersion
+            _uiState.value = _uiState.value.copy(
+                updateInfo = info,
+                dismissedUpdateVersion = dismissed,
+            )
+        }
+
         // Observe source changes — drop(1) to skip the initial value
         screenModelScope.launch {
             patchSourceManager.sourceVersion.drop(1).collect {
@@ -59,9 +72,58 @@ class HomeViewModel(
                 isDefaultSource = patchSourceManager.isDefaultSource()
                 lastLoadedVersion = null
                 cachedPatchesFile = null
-                _uiState.value = HomeUiState(isDefaultSource = isDefaultSource)
+                // Preserve update banner state across source changes.
+                val carriedUpdate = _uiState.value.updateInfo
+                val carriedDismissed = _uiState.value.dismissedUpdateVersion
+                _uiState.value = HomeUiState(
+                    isDefaultSource = isDefaultSource,
+                    updateInfo = carriedUpdate,
+                    dismissedUpdateVersion = carriedDismissed,
+                )
                 loadPatchesAndSupportedApps(forceRefresh = true)
             }
+        }
+    }
+
+    /**
+     * Re-run the update check. Called by Settings after the user changes the
+     * update channel preference so the banner state matches the new channel
+     * without waiting for a restart.
+     */
+    fun refreshUpdateCheck() {
+        Logger.info("HomeVM: refreshUpdateCheck() called")
+        screenModelScope.launch {
+            updateCheckRepository.clearCache()
+            val info = updateCheckRepository.getUpdateInfo()
+            val dismissed = configRepository.loadConfig().dismissedUpdateVersion
+            Logger.info("HomeVM: refresh result — info=${info?.latestVersion}, dismissed=$dismissed")
+            _uiState.value = _uiState.value.copy(
+                updateInfo = info,
+                dismissedUpdateVersion = dismissed,
+                updateBannerSessionDismissed = false,
+            )
+        }
+    }
+
+    /**
+     * Hide the update banner for the rest of this app session only. The banner
+     * will reappear on next startup. Cheap path for users who want to be
+     * reminded but not nagged right now.
+     */
+    fun dismissUpdateForSession() {
+        _uiState.value = _uiState.value.copy(updateBannerSessionDismissed = true)
+    }
+
+    /**
+     * Hide the update banner persistently for the current available version.
+     * The banner will reappear automatically when an even newer version becomes
+     * available.
+     */
+    fun dismissUpdateForVersion() {
+        val target = _uiState.value.updateInfo?.latestVersion ?: return
+        _uiState.value = _uiState.value.copy(dismissedUpdateVersion = target)
+        screenModelScope.launch {
+            configRepository.setDismissedUpdateVersion(target)
         }
     }
 
@@ -546,8 +608,22 @@ data class HomeUiState(
     val latestPatchesVersion: String? = null,
     val latestDevPatchesVersion: String? = null,
     val patchSourceName: String? = null,
-    val patchLoadError: String? = null
+    val patchLoadError: String? = null,
+    val updateInfo: UpdateInfo? = null,
+    val dismissedUpdateVersion: String? = null,
+    /** Session-only dismiss; cleared on next app start. Not persisted. */
+    val updateBannerSessionDismissed: Boolean = false,
 ) {
+    /**
+     * Show the update banner only when an update was found AND the user hasn't
+     * dismissed THAT specific version persistently AND hasn't dismissed it for
+     * this session. A newer version invalidates the persistent dismissal.
+     */
+    val showUpdateBanner: Boolean
+        get() = updateInfo != null &&
+                updateInfo.latestVersion != dismissedUpdateVersion &&
+                !updateBannerSessionDismissed
+
     val isUsingLatestPatches: Boolean
         get() = patchesVersion != null &&
                 (patchesVersion == latestPatchesVersion || patchesVersion == latestDevPatchesVersion)

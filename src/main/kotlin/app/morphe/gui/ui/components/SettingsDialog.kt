@@ -106,6 +106,8 @@ fun SettingsDialog(
     onKeystoreCredentialsChange: (password: String?, alias: String, entryPassword: String) -> Unit = { _, _, _ -> },
     keepArchitectures: Set<String> = emptySet(),
     onKeepArchitecturesChange: (Set<String>) -> Unit = {},
+    updateChannelPreference: app.morphe.gui.data.model.UpdateChannelPreference = app.morphe.gui.data.model.UpdateChannelPreference.STABLE,
+    onUpdateChannelChange: (app.morphe.gui.data.model.UpdateChannelPreference) -> Unit = {},
     collapsibleSectionStates: Map<String, Boolean> = emptyMap(),
     onCollapsibleSectionToggle: (id: String, expanded: Boolean) -> Unit = { _, _ -> }
 ) {
@@ -220,6 +222,18 @@ fun SettingsDialog(
                     accentColor = accents.primary,
                     mono = mono,
                     enabled = !isPatching
+                )
+
+                SettingsDivider(borderColor)
+
+                // ── Update Channel ──
+                UpdateChannelRow(
+                    selected = updateChannelPreference,
+                    onChange = onUpdateChannelChange,
+                    accentColor = accents.primary,
+                    mono = mono,
+                    borderColor = borderColor,
+                    enabled = !isPatching,
                 )
 
                 SettingsDivider(borderColor)
@@ -1289,6 +1303,144 @@ private fun SettingsDivider(borderColor: Color) {
     HorizontalDivider(color = borderColor)
     Spacer(Modifier.height(14.dp))
 }
+
+/**
+ * Inline row letting the user pick which CLI release channel update checks
+ * follow. Mirrors [SettingToggleRow]'s layout — label + dynamic description
+ * on the left, chip group on the right where the switch would be.
+ */
+@Composable
+private fun UpdateChannelRow(
+    selected: app.morphe.gui.data.model.UpdateChannelPreference,
+    onChange: (app.morphe.gui.data.model.UpdateChannelPreference) -> Unit,
+    accentColor: Color,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    borderColor: Color,
+    enabled: Boolean,
+) {
+    val corners = LocalMorpheCorners.current
+    val alpha = if (enabled) 1f else 0.4f
+
+    val description = when {
+        !enabled -> "Disabled while patching"
+        selected == app.morphe.gui.data.model.UpdateChannelPreference.STABLE ->
+            "You'll see a banner when a new stable release is available"
+        selected == app.morphe.gui.data.model.UpdateChannelPreference.DEV ->
+            "You'll see a banner when a new dev or stable release is available"
+        else -> "Update checks are off. Re-enable here anytime"
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Check for updates",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = description,
+                fontSize = 11.sp,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f * alpha),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        UpdateChannelSegmentedToggle(
+            selected = selected,
+            onChange = onChange,
+            accentColor = accentColor,
+            mono = mono,
+            enabled = enabled,
+        )
+    }
+}
+
+/**
+ * Three-segment switch styled to match [MorpheSwitch]'s sharp variant — single
+ * rectangular border, a sliding accent block beneath the active label, mono
+ * labels that flip between muted and on-accent. Soft themes get the same shape
+ * with rounded corners (matching how [MorpheSwitch] rounds in soft themes).
+ */
+@Composable
+private fun UpdateChannelSegmentedToggle(
+    selected: app.morphe.gui.data.model.UpdateChannelPreference,
+    onChange: (app.morphe.gui.data.model.UpdateChannelPreference) -> Unit,
+    accentColor: Color,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    enabled: Boolean,
+) {
+    val isSoft = LocalMorpheCorners.current.medium >= 10.dp
+    val height = if (isSoft) 26.dp else 24.dp
+    // Segments sized so the longest label (STABLE) gets ~10dp horizontal
+    // breathing room on each side, matching the visual padding the OFF/ON
+    // labels have inside MorpheSwitch's 28dp halves.
+    val segWidth = 48.dp
+    val totalWidth = segWidth * 3
+    val pillShape = if (isSoft) RoundedCornerShape(height / 2) else RoundedCornerShape(0.dp)
+
+    val entries = app.morphe.gui.data.model.UpdateChannelPreference.entries
+    val activeIndex = entries.indexOf(selected)
+
+    val blockOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = segWidth * activeIndex,
+        animationSpec = androidx.compose.animation.core.tween(180),
+    )
+    val borderColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (enabled) accentColor.copy(alpha = 0.45f)
+                      else MaterialTheme.colorScheme.outline.copy(alpha = 0.18f),
+        animationSpec = androidx.compose.animation.core.tween(180),
+    )
+
+    val onBlockLabel = MaterialTheme.colorScheme.onPrimary
+    val mutedLabel = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+    val disabledAlpha = if (enabled) 1f else 0.4f
+
+    Box(
+        modifier = Modifier
+            .size(totalWidth, height)
+            .clip(pillShape)
+            .border(1.dp, borderColor, pillShape)
+            .graphicsLayer { this.alpha = disabledAlpha },
+    ) {
+        // Sliding accent block — sits behind the labels and animates between
+        // segments when the user changes selection.
+        Box(
+            modifier = Modifier
+                .offset(x = blockOffset)
+                .size(segWidth, height)
+                .background(accentColor),
+        )
+        // Labels — each tappable, color flips depending on whether it sits
+        // over the accent block.
+        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            entries.forEachIndexed { index, pref ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(enabled = enabled) { onChange(pref) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = pref.name,
+                        fontFamily = mono,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.4.sp,
+                        color = if (index == activeIndex) onBlockLabel else mutedLabel,
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun SettingToggleRow(

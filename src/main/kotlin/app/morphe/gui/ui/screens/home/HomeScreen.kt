@@ -70,6 +70,7 @@ import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.components.OfflineBanner
+import app.morphe.gui.ui.components.UpdateBanner
 import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
@@ -183,7 +184,8 @@ fun HomeScreenContent(
                         uiState = uiState,
                         isSmall = isSmall,
                         onChangePatchesClick = onChangePatchesClick,
-                        onRetry = onRetry
+                        onRetry = onRetry,
+                        onUpdateChannelChanged = { viewModel.refreshUpdateCheck() },
                     )
                 } else {
                     Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 16.dp))
@@ -269,7 +271,8 @@ fun HomeScreenContent(
                             uiState = uiState,
                             isSmall = isSmall,
                             onChangePatchesClick = onChangePatchesClick,
-                            onRetry = onRetry
+                            onRetry = onRetry,
+                            onUpdateChannelChanged = { viewModel.refreshUpdateCheck() },
                         )
                     } else {
                         Column(
@@ -329,6 +332,17 @@ fun HomeScreenContent(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = if (pinSupportedAppsToBottom) Arrangement.SpaceBetween else Arrangement.Top
                         ) {
+                            if (uiState.showUpdateBanner) {
+                                UpdateBanner(
+                                    info = uiState.updateInfo!!,
+                                    onDismissForSession = { viewModel.dismissUpdateForSession() },
+                                    onDismissForVersion = { viewModel.dismissUpdateForVersion() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = padding, end = padding, top = 8.dp)
+                                )
+                            }
+
                             // ── Main workspace area ──
                             Box(
                                 modifier = Modifier
@@ -386,7 +400,8 @@ fun HomeScreenContent(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(top = padding, end = padding),
-                        allowCacheClear = true
+                        allowCacheClear = true,
+                        onUpdateChannelChanged = { viewModel.refreshUpdateCheck() },
                     )
                 }
 
@@ -437,7 +452,8 @@ private fun HeaderBar(
     uiState: HomeUiState,
     isSmall: Boolean,
     onChangePatchesClick: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onUpdateChannelChanged: () -> Unit = {},
 ) {
     val mono = LocalMorpheFont.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
@@ -511,7 +527,10 @@ private fun HeaderBar(
                 .padding(end = 12.dp)
                 .onSizeChanged { trailingWidthPx = it.width }
         ) {
-            TopBarRow(allowCacheClear = true)
+            TopBarRow(
+                allowCacheClear = true,
+                onUpdateChannelChanged = onUpdateChannelChanged,
+            )
         }
     }
 }

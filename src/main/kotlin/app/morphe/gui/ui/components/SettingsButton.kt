@@ -33,8 +33,10 @@ import androidx.compose.ui.unit.dp
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.gui.data.model.PatchSource
+import app.morphe.gui.data.model.UpdateChannelPreference
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
+import app.morphe.gui.data.repository.UpdateCheckRepository
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,13 +49,20 @@ fun SettingsButton(
     modifier: Modifier = Modifier,
     allowCacheClear: Boolean = true,
     isPatching: Boolean = false,
-    onDismiss: () -> Unit = {}
+    onDismiss: () -> Unit = {},
+    /**
+     * Notified after the user changes the update channel preference. Hosts that
+     * own a view model with `refreshUpdateCheck()` should wire this up so the
+     * banner state matches the new channel without waiting for a restart.
+     */
+    onUpdateChannelChanged: () -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
     val themeState = LocalThemeState.current
     val modeState = LocalModeState.current
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
+    val updateCheckRepository: UpdateCheckRepository = koinInject()
     val scope = rememberCoroutineScope()
 
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -67,6 +76,7 @@ fun SettingsButton(
     var keystoreEntryPassword by remember { mutableStateOf(DEFAULT_KEYSTORE_PASSWORD) }
     var keepArchitectures by remember { mutableStateOf<Set<String>>(emptySet()) }
     var collapsibleSectionStates by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var updateChannelPreference by remember { mutableStateOf(UpdateChannelPreference.STABLE) }
 
     LaunchedEffect(showSettingsDialog) {
         if (showSettingsDialog) {
@@ -81,6 +91,11 @@ fun SettingsButton(
             keystoreEntryPassword = config.keystoreEntryPassword
             keepArchitectures = config.keepArchitectures
             collapsibleSectionStates = config.collapsibleSectionStates
+            // Resolve the smart-default if the user has never picked a channel
+            // (returns DEV when the running build is dev, STABLE otherwise).
+            updateChannelPreference = configRepository.getOrInitUpdateChannelPreference(
+                app.morphe.engine.UpdateChecker.currentVersion() ?: ""
+            )
         }
     }
 
@@ -202,6 +217,21 @@ fun SettingsButton(
                 keepArchitectures = updated
                 scope.launch { configRepository.setKeepArchitectures(updated) }
             },
+            updateChannelPreference = updateChannelPreference,
+            onUpdateChannelChange = { pref ->
+                if (pref != updateChannelPreference) {
+                    updateChannelPreference = pref
+                    scope.launch {
+                        app.morphe.gui.util.Logger.info("Settings: update channel changed to $pref, persisting + notifying host")
+                        configRepository.setUpdateChannelPreference(pref)
+                        updateCheckRepository.clearCache()
+                        // Notify the host so its view model re-pulls update info
+                        // and the banner state updates without a restart.
+                        onUpdateChannelChanged()
+                        app.morphe.gui.util.Logger.info("Settings: onUpdateChannelChanged() invoked")
+                    }
+                }
+            },
             collapsibleSectionStates = collapsibleSectionStates,
             onCollapsibleSectionToggle = { id, expanded ->
                 collapsibleSectionStates = collapsibleSectionStates + (id to expanded)
@@ -216,6 +246,7 @@ fun TopBarRow(
     modifier: Modifier = Modifier,
     allowCacheClear: Boolean = true,
     isPatching: Boolean = false,
+    onUpdateChannelChanged: () -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
     val isSoft = corners.small >= 8.dp
@@ -225,6 +256,10 @@ fun TopBarRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         DeviceIndicator()
-        SettingsButton(allowCacheClear = allowCacheClear, isPatching = isPatching)
+        SettingsButton(
+            allowCacheClear = allowCacheClear,
+            isPatching = isPatching,
+            onUpdateChannelChanged = onUpdateChannelChanged,
+        )
     }
 }

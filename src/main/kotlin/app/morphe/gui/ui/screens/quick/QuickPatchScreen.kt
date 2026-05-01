@@ -72,8 +72,9 @@ class QuickPatchScreen : Screen {
         val patchSourceManager: PatchSourceManager = koinInject()
         val patchService: PatchService = koinInject()
         val configRepository: ConfigRepository = koinInject()
+        val updateCheckRepository: app.morphe.gui.data.repository.UpdateCheckRepository = koinInject()
         val viewModel = remember {
-            QuickPatchViewModel(patchSourceManager, patchService, configRepository)
+            QuickPatchViewModel(patchSourceManager, patchService, configRepository, updateCheckRepository)
         }
         QuickPatchContent(viewModel)
     }
@@ -158,7 +159,8 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                     ) {
                         TopBarRow(
                             allowCacheClear = false,
-                            isPatching = uiState.phase == QuickPatchPhase.DOWNLOADING || uiState.phase == QuickPatchPhase.PATCHING
+                            isPatching = uiState.phase == QuickPatchPhase.DOWNLOADING || uiState.phase == QuickPatchPhase.PATCHING,
+                            onUpdateChannelChanged = { viewModel.refreshUpdateCheck() },
                         )
                     }
                 }
@@ -174,6 +176,16 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                     if (uiState.isOffline && uiState.phase == QuickPatchPhase.IDLE) {
                         OfflineBanner(
                             onRetry = { viewModel.retryLoadPatches() },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // CLI update banner
+                    if (uiState.showUpdateBanner) {
+                        app.morphe.gui.ui.components.UpdateBanner(
+                            info = uiState.updateInfo!!,
+                            onDismissForSession = { viewModel.dismissUpdateForSession() },
+                            onDismissForVersion = { viewModel.dismissUpdateForVersion() },
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                         )
                     }

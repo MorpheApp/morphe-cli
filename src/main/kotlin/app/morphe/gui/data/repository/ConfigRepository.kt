@@ -9,6 +9,7 @@ import app.morphe.gui.data.model.AppConfig
 import app.morphe.gui.data.model.DEFAULT_PATCH_SOURCE
 import app.morphe.gui.data.model.PatchChannel
 import app.morphe.gui.data.model.PatchSource
+import app.morphe.gui.data.model.UpdateChannelPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -101,6 +102,55 @@ class ConfigRepository {
     suspend fun setLastPatchesVersion(version: String) {
         val current = loadConfig()
         saveConfig(current.copy(lastPatchesVersion = version))
+    }
+
+    /**
+     * Mark the given CLI version as dismissed for the update banner. Pass null to
+     * clear (so the banner reappears for whatever the next-available version is).
+     */
+    suspend fun setDismissedUpdateVersion(version: String?) {
+        val current = loadConfig()
+        saveConfig(current.copy(dismissedUpdateVersion = version))
+    }
+
+    /**
+     * Persist the user's chosen update channel. Marks the choice as explicit
+     * so subsequent reads respect it even if the running build's channel
+     * differs. Also clears any prior [AppConfig.dismissedUpdateVersion] —
+     * that dismissal referred to a specific version on the previous channel.
+     */
+    suspend fun setUpdateChannelPreference(pref: UpdateChannelPreference) {
+        val current = loadConfig()
+        saveConfig(
+            current.copy(
+                updateChannelPreference = pref.name,
+                userDidChooseUpdateChannel = true,
+                dismissedUpdateVersion = null,
+            )
+        )
+    }
+
+    /**
+     * Resolve the update-channel preference. When the user has explicitly
+     * picked one (via Settings), respect that. Otherwise re-derive from the
+     * running build's version on every call so swapping between a stable and
+     * dev build flips the default automatically.
+     */
+    suspend fun getOrInitUpdateChannelPreference(currentVersion: String): UpdateChannelPreference {
+        val current = loadConfig()
+        val saved = current.getUpdateChannelPreference()
+        if (current.userDidChooseUpdateChannel && saved != null) {
+            return saved
+        }
+        val derived = if (currentVersion.contains("dev")) {
+            UpdateChannelPreference.DEV
+        } else {
+            UpdateChannelPreference.STABLE
+        }
+        if (saved != derived) {
+            saveConfig(current.copy(updateChannelPreference = derived.name))
+        }
+        return derived
     }
 
     /**
