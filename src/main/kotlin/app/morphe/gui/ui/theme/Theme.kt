@@ -111,6 +111,24 @@ data class MorpheCornerStyle(
 
 val LocalMorpheCorners = compositionLocalOf { MorpheCornerStyle() }
 
+/**
+ * Canonical control sizing across the app. Use these instead of hardcoded `.dp`
+ * values for buttons, text fields, search bars, and dialog action rows so the
+ * same dimensions apply everywhere — no per-screen drift.
+ *
+ * - [controlHeight]: standard interactive height (buttons, text fields, pills,
+ *   search bars). Matches the height of OPEN LOGS / OPEN APP DATA action buttons.
+ * - [iconInControl]: icon size used inside controlHeight-sized affordances.
+ * - [controlHorizontalPadding]: standard horizontal padding inside a control.
+ */
+data class MorpheDimens(
+    val controlHeight: Dp = 36.dp,
+    val iconInControl: Dp = 14.dp,
+    val controlHorizontalPadding: Dp = 12.dp,
+)
+
+val LocalMorpheDimens = compositionLocalOf { MorpheDimens() }
+
 /** Sharp corners for cyberdeck/dev themes. */
 private val SharpCorners = MorpheCornerStyle(small = 2.dp, medium = 2.dp, large = 2.dp)
 
@@ -314,7 +332,8 @@ fun MorpheTheme(
     CompositionLocalProvider(
         LocalMorpheCorners provides corners,
         LocalMorpheFont provides font,
-        LocalMorpheAccents provides accents
+        LocalMorpheAccents provides accents,
+        LocalMorpheDimens provides MorpheDimens(),
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

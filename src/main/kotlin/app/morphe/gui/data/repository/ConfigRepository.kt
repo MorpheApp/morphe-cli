@@ -97,11 +97,41 @@ class ConfigRepository {
     }
 
     /**
-     * Update last used patches version.
+     * LEGACY — kept so single-source callers don't break during the multi-source
+     * transition. New code should use [setLastPatchesVersionForSource].
      */
+    @Deprecated("Use setLastPatchesVersionForSource", ReplaceWith("setLastPatchesVersionForSource(sourceId, version)"))
     suspend fun setLastPatchesVersion(version: String) {
         val current = loadConfig()
         saveConfig(current.copy(lastPatchesVersion = version))
+    }
+
+    /**
+     * Pin a specific release tag for [sourceId]. Used by PatchesScreen when the
+     * user picks a version. Per-source = no cross-contamination across sources
+     * with overlapping tag names.
+     */
+    suspend fun setLastPatchesVersionForSource(sourceId: String, version: String) {
+        val current = loadConfig()
+        val updated = current.lastPatchesVersionBySource + (sourceId to version)
+        saveConfig(current.copy(lastPatchesVersionBySource = updated))
+    }
+
+    /**
+     * Returns the per-source version pin map, with one-time migration from the
+     * legacy [AppConfig.lastPatchesVersion] field: if the map is empty and the
+     * legacy field is set, it's mapped to the default source.
+     */
+    suspend fun getLastPatchesVersionsBySource(): Map<String, String> {
+        val current = loadConfig()
+        if (current.lastPatchesVersionBySource.isNotEmpty()) {
+            return current.lastPatchesVersionBySource
+        }
+        val legacy = current.lastPatchesVersion ?: return emptyMap()
+        // Migrate: write the legacy pin onto the default source, return the new map.
+        val migrated = mapOf(DEFAULT_PATCH_SOURCE.id to legacy)
+        saveConfig(current.copy(lastPatchesVersionBySource = migrated))
+        return migrated
     }
 
     /**
@@ -259,6 +289,44 @@ class ConfigRepository {
 
         val updatedSources = current.patchSource.map { if (it.id == updated.id) updated else it }
         saveConfig(current.copy(patchSource = updatedSources))
+    }
+
+    /**
+     * Mark the multi-source upgrade hint as dismissed. One-shot — never resets.
+     */
+    suspend fun setMultiSourceHintDismissed() {
+        val current = loadConfig()
+        if (current.multiSourceHintDismissed) return
+        saveConfig(current.copy(multiSourceHintDismissed = true))
+    }
+
+    /**
+     * Toggle enablement of a patch source. Safety net: if disabling would leave zero
+     * enabled sources, the default source is force-enabled (mirrors morphe-manager
+     * SourceManagementSheet.kt:142-149 LaunchedEffect).
+     */
+    suspend fun setPatchSourceEnabled(id: String, enabled: Boolean) {
+        val current = loadConfig()
+        val updatedSources = current.patchSource.map {
+            if (it.id == id) it.copy(enabled = enabled) else it
+        }
+        val anyEnabled = updatedSources.any { it.enabled }
+        val finalSources = if (!anyEnabled) {
+            // Safety net: force-enable the default
+            updatedSources.map {
+                if (it.id == DEFAULT_PATCH_SOURCE.id) it.copy(enabled = true) else it
+            }
+        } else {
+            updatedSources
+        }
+        saveConfig(current.copy(patchSource = finalSources))
+    }
+
+    /**
+     * Get the list of currently enabled patch sources (in config order).
+     */
+    suspend fun getEnabledPatchSources(): List<PatchSource> {
+        return loadConfig().patchSource.filter { it.enabled }
     }
 
     /**

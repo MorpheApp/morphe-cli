@@ -27,7 +27,20 @@ val DEFAULT_PATCH_SOURCE = PatchSource(
 data class AppConfig(
     val themePreference: String = ThemePreference.SYSTEM.name,
     val lastCliVersion: String? = null,
+    /**
+     * LEGACY single-source version pin. Kept only for one-version migration into
+     * [lastPatchesVersionBySource] — read it on first load if the map is empty,
+     * then phase out. Do not read this directly anywhere new — go through
+     * [ConfigRepository.getLastPatchesVersionsBySource].
+     */
     val lastPatchesVersion: String? = null,
+    /**
+     * Per-source version pin: sourceId → release tag. Absence of a key means
+     * "no pin — use that source's latest stable". Replaces the legacy single
+     * [lastPatchesVersion] which silently contaminated other sources whose tag
+     * names happened to overlap.
+     */
+    val lastPatchesVersionBySource: Map<String, String> = emptyMap(),
     val preferredPatchChannel: String = PatchChannel.STABLE.name,
     val defaultOutputDirectory: String? = null,
     val autoCleanupTempFiles: Boolean = true,  // Default ON
@@ -57,6 +70,10 @@ data class AppConfig(
     // user who swaps from a stable build to a dev build sees the right default.
     // Once they pick one in Settings, this flips to true and we respect their choice.
     val userDidChooseUpdateChannel: Boolean = false,
+    // One-shot dismissal flag for the "multiple sources are now active" hint shown
+    // after upgrading to multi-source builds. Flips to true once the user dismisses
+    // the banner, never resets.
+    val multiSourceHintDismissed: Boolean = false,
 ) {
 
     fun getUpdateChannelPreference(): UpdateChannelPreference? {
@@ -91,7 +108,10 @@ data class PatchSource (
     val type: PatchSourceType,
     val url: String? = null, // For DEFAULT (morphe) and GITHUB (other source) type
     val filePath: String? = null, // For local files
-    val deletable: Boolean = true
+    val deletable: Boolean = true,
+    // Multi-source enablement. Default true so old configs migrate to "all enabled"
+    // on first load (per user choice — see project memory).
+    val enabled: Boolean = true,
 )
 
 @Serializable

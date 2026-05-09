@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import net.dongliu.apk.parser.ApkFile
 import app.morphe.gui.util.ChecksumStatus
+import app.morphe.gui.util.EnabledSourcesLoader
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
@@ -55,6 +56,14 @@ class QuickPatchViewModel(
     private var cachedPatches: List<Patch> = emptyList()
     private var cachedSupportedApps: List<SupportedApp> = emptyList()
     private var cachedPatchesFile: File? = null
+    /** All successfully-resolved patch files across enabled sources. Single-element
+     *  in single-source mode. Used by the patching call to feed the engine the
+     *  union of patches when multiple sources are enabled. */
+    private var cachedAllPatchFiles: List<File> = emptyList()
+
+    private fun currentResolvedPatchFiles(): List<File> =
+        cachedAllPatchFiles.takeIf { it.isNotEmpty() }
+            ?: listOfNotNull(cachedPatchesFile)
 
     init {
         // Load patches on startup to get dynamic app info
@@ -132,168 +141,77 @@ class QuickPatchViewModel(
     }
 
     /**
-     * Load patches from GitHub and extract supported apps dynamically.
+     * Load patches from all enabled sources via [EnabledSourcesLoader] and build
+     * the union supported-apps list. Single-source case (default) produces output
+     * equivalent to the pre-multi-source flow.
      */
     private fun loadPatchesAndSupportedApps() {
         loadJob?.cancel()
         loadJob = screenModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingPatches = true, patchLoadError = null)
 
-            // LOCAL source: skip GitHub entirely, load directly from the .mpp file
-            if (localPatchFilePath != null) {
-                val localFile = File(localPatchFilePath)
-                if (localFile.exists()) {
-                    loadPatchesFromFile(localFile, localFile.nameWithoutExtension, isOffline = false)
-                } else {
+            try {
+                val enabled = patchSourceManager.getEnabledRepositories()
+                if (enabled.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
-                        patchLoadError = "Local patch file not found: ${localFile.name}"
+                        patchLoadError = "No patch sources enabled."
                     )
-                }
-                return@launch
-            }
-
-            try {
-                // Fetch releases
-                val releasesResult = patchRepository.fetchReleases()
-                val releases = releasesResult.getOrNull()
-
-                if (releases.isNullOrEmpty()) {
-                    // Try to fall back to cached .mpp file when offline
-                    val config = configRepository.loadConfig()
-                    val offlinePatchFile = findCachedPatchFile(config.lastPatchesVersion)
-                    if (offlinePatchFile != null) {
-                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile))
-                        return@launch
-                    }
-                    Logger.warn("Quick mode: Could not fetch releases")
-                    _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "Could not fetch releases. Check your internet connection.")
                     return@launch
                 }
 
-                // Quick mode always uses the latest stable release
-                val release = releases.firstOrNull { !it.isDevRelease() }
+                val result = EnabledSourcesLoader.loadAll(enabled, patchService)
 
-                if (release == null) {
-                    Logger.warn("Quick mode: No suitable release found")
-                    _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "No suitable release found")
+                if (!result.anyLoaded) {
+                    val firstError = result.resolved.firstNotNullOfOrNull { it.error }
+                        ?: result.loaded.perSource.firstNotNullOfOrNull { it.error?.message }
+                        ?: "Could not load any patches"
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPatches = false,
+                        patchLoadError = firstError
+                    )
                     return@launch
                 }
 
-                // Download patches
-                val patchFileResult = patchRepository.downloadPatches(release)
-                val patchFile = patchFileResult.getOrNull()
-
-                if (patchFile == null) {
-                    Logger.warn("Quick mode: Could not download patches")
-                    _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "Could not download patches")
-                    return@launch
-                }
-
-                cachedPatchesFile = patchFile
-
-                // Load patches using PatchService (direct library call)
-                val patchesResult = patchService.listPatches(patchFile.absolutePath)
-                val patches = patchesResult.getOrNull()
-
-                if (patches.isNullOrEmpty()) {
-                    Logger.warn("Quick mode: Could not load patches: ${patchesResult.exceptionOrNull()?.message}")
-                    _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "Could not load patches")
-                    return@launch
-                }
-
-                cachedPatches = patches
-
-                // Extract supported apps dynamically
-                val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
+                val supportedApps = SupportedAppExtractor.extractSupportedApps(result.unionGuiPatches)
+                cachedPatches = result.unionGuiPatches
                 cachedSupportedApps = supportedApps
+                val firstResolved = result.resolved.firstOrNull { it.patchFile != null }
+                cachedPatchesFile = firstResolved?.patchFile
+                cachedAllPatchFiles = result.resolved.mapNotNull { it.patchFile }
 
-                Logger.info("Quick mode: Loaded ${supportedApps.size} supported apps: ${supportedApps.map { "${it.displayName} (${it.recommendedVersion})" }}")
+                Logger.info(
+                    "Quick mode: Loaded ${supportedApps.size} supported apps from " +
+                            "${result.resolved.count { it.patchFile != null }} source(s)"
+                )
+
+                // Multi-source: only flag offline when EVERY resolved source is offline.
+                val resolvedSources = result.resolved.filter { it.patchFile != null }
+                val isOffline = resolvedSources.isNotEmpty() && resolvedSources.all { it.isOffline }
+                val displayVersion = firstResolved?.resolvedVersion
+                val sourceName = if (result.resolved.size == 1) {
+                    firstResolved?.source?.name ?: patchSourceManager.getActiveSourceName()
+                } else {
+                    "${result.resolved.count { it.patchFile != null }} sources"
+                }
 
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
                     supportedApps = supportedApps,
-                    patchesVersion = release.tagName,
-                    latestPatchesVersion = release.tagName,
-                    patchSourceName = patchSourceManager.getActiveSourceName(),
+                    patchesVersion = displayVersion,
+                    latestPatchesVersion = displayVersion,
+                    patchSourceName = sourceName,
                     patchLoadError = null,
-                    isOffline = false
+                    isOffline = isOffline
                 )
             } catch (e: Exception) {
                 Logger.error("Quick mode: Failed to load patches", e)
-                // Try to fall back to cached .mpp file
-                val config = configRepository.loadConfig()
-                val offlinePatchFile = findCachedPatchFile(config.lastPatchesVersion)
-                if (offlinePatchFile != null) {
-                    try {
-                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile))
-                        return@launch
-                    } catch (inner: Exception) {
-                        Logger.error("Quick mode: Failed to load cached patches fallback", inner)
-                    }
-                }
-                _uiState.value = _uiState.value.copy(isLoadingPatches = false, patchLoadError = "Failed to load patches: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    isLoadingPatches = false,
+                    patchLoadError = "Failed to load patches: ${e.message}"
+                )
             }
         }
-    }
-
-    /**
-     * Find any cached .mpp file when offline.
-     * Searches the per-source cache directory.
-     */
-    private fun findCachedPatchFile(savedVersion: String?): File? {
-        val patchesDir = patchRepository.getCacheDir()
-        val patchFiles = patchesDir.listFiles { file ->
-            val ext = file.extension.lowercase()
-            ext == "mpp" || ext == "jar"
-        }?.filter { it.length() > 0 } ?: return null
-
-        if (patchFiles.isEmpty()) return null
-
-        return if (savedVersion != null) {
-            patchFiles.firstOrNull { it.name.contains(savedVersion, ignoreCase = true) }
-                ?: patchFiles.maxByOrNull { it.lastModified() }
-        } else {
-            patchFiles.maxByOrNull { it.lastModified() }
-        }
-    }
-
-    private fun versionFromFilename(file: File): String {
-        val name = file.nameWithoutExtension
-        val match = Regex("""v?(\d+\.\d+\.\d+[^\s]*)""").find(name)
-        return match?.value ?: name
-    }
-
-    /**
-     * Load patches from a local .mpp file (offline fallback).
-     */
-    private suspend fun loadPatchesFromFile(patchFile: File, version: String, isOffline: Boolean = true) {
-        cachedPatchesFile = patchFile
-
-        val patchesResult = patchService.listPatches(patchFile.absolutePath)
-        val patches = patchesResult.getOrNull()
-
-        if (patches.isNullOrEmpty()) {
-            _uiState.value = _uiState.value.copy(
-                isLoadingPatches = false,
-                patchLoadError = "Could not load patches: ${patchesResult.exceptionOrNull()?.message}"
-            )
-            return
-        }
-
-        cachedPatches = patches
-        val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
-        cachedSupportedApps = supportedApps
-        Logger.info("Quick mode: Loaded ${supportedApps.size} supported apps from ${if (isOffline) "cached" else "local"} patches: ${patchFile.name}")
-
-        _uiState.value = _uiState.value.copy(
-            isLoadingPatches = false,
-            supportedApps = supportedApps,
-            patchesVersion = version,
-            patchSourceName = patchSourceManager.getActiveSourceName(),
-            patchLoadError = null,
-            isOffline = isOffline
-        )
     }
 
     /**
@@ -540,7 +458,7 @@ class QuickPatchViewModel(
             // Use PatchService for direct library patching (no CLI subprocess)
             // exclusiveMode = false means the library's patch.use field determines defaults
             val patchResult = patchService.patch(
-                patchesFilePath = patchFile.absolutePath,
+                patchesFilePaths = currentResolvedPatchFiles().map { it.absolutePath },
                 inputApkPath = apkFile.absolutePath,
                 outputApkPath = outputPath,
                 enabledPatches = emptyList(),

@@ -22,6 +22,9 @@ import app.morphe.gui.util.PatchService
 import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.util.FileUtils.ANDROID_ARCHITECTURES
 import app.morphe.patcher.resource.CpuArchitecture
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.io.File
 
 class PatchSelectionViewModel(
@@ -35,11 +38,18 @@ class PatchSelectionViewModel(
     private val configRepository: ConfigRepository,
     private val preferencesRepository: PatchPreferencesRepository,
     private val patchSourceName: String,
-    private val localPatchFilePath: String? = null
+    private val localPatchFilePath: String? = null,
+    /** All enabled-source .mpp file paths. Single-element in single-source mode. */
+    private val patchesFilePaths: List<String> = listOf(patchesFilePath),
+    /** Parallel to [patchesFilePaths] — display name of each source. Used to badge
+     *  patches in the list. Empty / mismatched length disables badging. */
+    private val patchSourceNames: List<String> = emptyList(),
 ) : ScreenModel {
 
-    // Actual path to use - may differ from patchesFilePath if we had to re-download
+    // Actual path to use for the primary file - may differ from patchesFilePath if we had to re-download
     private var actualPatchesFilePath: String = patchesFilePath
+    // All resolved file paths — drives multi-source patching when invoking the engine.
+    private var actualPatchesFilePaths: List<String> = patchesFilePaths
 
     // User-configured output folder; null means save next to the input APK.
     private var defaultOutputDirectory: String? = null
@@ -88,10 +98,16 @@ class PatchSelectionViewModel(
                     return@launch
                 }
                 actualPatchesFilePath = downloadResult.getOrNull()!!.absolutePath
+                // Mirror the swap into the multi-paths list so the union load uses
+                // the freshly-downloaded file rather than the missing one.
+                actualPatchesFilePaths = actualPatchesFilePaths.map {
+                    if (it == patchesFilePath) actualPatchesFilePath else it
+                }
             }
 
-            // Load patches using PatchService (direct library call)
-            val patchesResult = patchService.listPatches(actualPatchesFilePath, packageName.ifEmpty { null })
+            // Load patches from all enabled-source files in parallel and union.
+            // Single-source case = identical to today (one file, one call).
+            val patchesResult = loadFromAllPaths()
 
             patchesResult.fold(
                 onSuccess = { patches ->
@@ -159,6 +175,46 @@ class PatchSelectionViewModel(
             )
         }
     }
+
+    /**
+     * Load patches from every resolved enabled-source file in parallel and union
+     * the results. Single-element [actualPatchesFilePaths] reduces to one
+     * [PatchService.listPatches] call — identical behavior to the pre-multi-source
+     * version. Errors from individual files are surfaced only if EVERY file fails.
+     *
+     * Side effect: populates [_patchToSourceName] so the UI can badge each patch
+     * with its source.
+     */
+    private suspend fun loadFromAllPaths(): Result<List<Patch>> = coroutineScope {
+        val pkgFilter = packageName.ifEmpty { null }
+        val perFile = actualPatchesFilePaths.mapIndexed { idx, path ->
+            async { idx to patchService.listPatches(path, pkgFilter) }
+        }.awaitAll()
+
+        // Tag each patch with its source name (falls back to "" if names not provided).
+        val tagging = mutableMapOf<String, String>()
+        for ((idx, result) in perFile) {
+            val sourceName = patchSourceNames.getOrNull(idx) ?: continue
+            result.getOrNull()?.forEach { p -> tagging[p.uniqueId] = sourceName }
+        }
+        _patchToSourceName = tagging
+
+        val allPatches = perFile.flatMap { (_, r) -> r.getOrNull().orEmpty() }
+        if (allPatches.isEmpty()) {
+            val firstError = perFile.firstNotNullOfOrNull { (_, r) -> r.exceptionOrNull() }
+            return@coroutineScope if (firstError != null) {
+                Result.failure(firstError)
+            } else {
+                Result.success(emptyList())
+            }
+        }
+        Result.success(allPatches)
+    }
+
+    /** patch.uniqueId → source display name. Empty in single-source mode. */
+    private var _patchToSourceName: Map<String, String> = emptyMap()
+    fun getSourceNameFor(patchId: String): String? =
+        _patchToSourceName[patchId]?.takeIf { _patchToSourceName.values.toSet().size > 1 }
 
     fun togglePatch(patchId: String) {
         val current = _uiState.value.selectedPatches
@@ -292,6 +348,11 @@ class PatchSelectionViewModel(
     /**
      * Persist the current selection + option values as the user's saved preference
      * for this source+package. Called from createPatchConfig (auto-save on Patch click).
+     *
+     * TODO(multi-source): in multi-source mode this currently saves all selections
+     * under the primary [patchSourceName]. Once task 15 attaches sourceId to each
+     * GUI Patch, split [selectedPatches] by source and save each subset under its
+     * own source key (preferences repo already supports per-source schema).
      */
     private fun saveCurrentSelection() {
         val state = _uiState.value
@@ -370,7 +431,7 @@ class PatchSelectionViewModel(
         return PatchConfig(
             inputApkPath = apkPath,
             outputApkPath = outputPath,
-            patchesFilePath = actualPatchesFilePath,
+            patchesFilePaths = actualPatchesFilePaths,
             enabledPatches = selectedPatchNames,
             disabledPatches = disabledPatchNames,
             patchOptions = _uiState.value.patchOptionValues,

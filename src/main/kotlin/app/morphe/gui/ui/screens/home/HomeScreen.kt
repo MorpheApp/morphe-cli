@@ -30,12 +30,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +45,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +59,7 @@ import app.morphe.morphe_cli.generated.resources.Res
 import app.morphe.morphe_cli.generated.resources.morphe_dark
 import app.morphe.morphe_cli.generated.resources.morphe_light
 import app.morphe.gui.ui.theme.LocalMorpheCorners
+import app.morphe.gui.ui.theme.LocalMorpheDimens
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalThemeState
@@ -65,8 +70,12 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.model.SupportedApp
+import app.morphe.gui.data.repository.PatchSourceManager
+import app.morphe.gui.ui.components.SourceManagementSheet
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.components.morpheScrollbarStyle
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import app.morphe.gui.ui.screens.home.components.ApkInfoCard
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.components.OfflineBanner
@@ -98,9 +107,74 @@ fun HomeScreenContent(
     val navigator = LocalNavigator.currentOrThrow
     val uiState by viewModel.uiState.collectAsState()
 
+    val patchSourceManager: PatchSourceManager = koinInject()
+    val allSources by patchSourceManager.allSources.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    // Two-flag pattern for smooth navigation in/out of the sheet:
+    //  - showSourceManagementSheet: actually visible right now
+    //  - pendingReopenSheet: user navigated away from the sheet via a row click;
+    //    we should reopen it once they pop back AND the screen transition settles.
+    // rememberSaveable on both so they survive Voyager's push/pop teardown.
+    var showSourceManagementSheet by rememberSaveable { mutableStateOf(false) }
+    var pendingReopenSheet by rememberSaveable { mutableStateOf(false) }
+
+    // Re-show the sheet after the pop animation finishes, NOT immediately on
+    // re-entry. Without the delay the sheet flashes in mid-transition.
+    LaunchedEffect(Unit) {
+        if (pendingReopenSheet) {
+            kotlinx.coroutines.delay(220)
+            showSourceManagementSheet = true
+            pendingReopenSheet = false
+        }
+    }
+
     val navStackSize = navigator.items.size
     LaunchedEffect(navStackSize) {
         viewModel.refreshPatchesIfNeeded()
+    }
+
+    if (showSourceManagementSheet) {
+        val snapshot = viewModel.getResolvedSourcesSnapshot()
+        val versions: Map<String, String?> = snapshot
+            ?.resolved
+            ?.associate { it.source.id to it.resolvedVersion }
+            ?: emptyMap()
+        val channels: Map<String, app.morphe.gui.util.EnabledSourcesLoader.Channel?> = snapshot
+            ?.resolved
+            ?.associate { it.source.id to it.channel }
+            ?: emptyMap()
+        SourceManagementSheet(
+            sources = allSources,
+            sourceVersions = versions,
+            sourceChannels = channels,
+            onToggleEnabled = { id, enabled ->
+                coroutineScope.launch { patchSourceManager.setSourceEnabled(id, enabled) }
+            },
+            onAdd = { source ->
+                coroutineScope.launch { patchSourceManager.addSource(source) }
+            },
+            onEdit = { updated ->
+                coroutineScope.launch { patchSourceManager.updateSource(updated) }
+            },
+            onRemove = { id ->
+                coroutineScope.launch { patchSourceManager.removeSource(id) }
+            },
+            onOpenPatches = { sourceId ->
+                // Hide sheet immediately so it doesn't ride the push animation.
+                // Mark it as pending-reopen so it returns smoothly after pop.
+                showSourceManagementSheet = false
+                pendingReopenSheet = true
+                coroutineScope.launch {
+                    patchSourceManager.switchSource(sourceId)
+                    navigator.push(PatchesScreen(
+                        apkPath = uiState.apkInfo?.filePath ?: "",
+                        apkName = uiState.apkInfo?.appName ?: "Select APK first"
+                    ))
+                }
+            },
+            onDismiss = { showSourceManagementSheet = false },
+            enabled = !uiState.isAnalyzing,
+        )
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -148,7 +222,9 @@ fun HomeScreenContent(
                                 apkName = uiState.apkInfo!!.appName,
                                 patchesFilePath = patchesFile.absolutePath,
                                 packageName = uiState.apkInfo!!.packageName,
-                                apkArchitectures = uiState.apkInfo!!.architectures
+                                apkArchitectures = uiState.apkInfo!!.architectures,
+                                patchesFilePaths = viewModel.getAllResolvedPatchFiles().map { it.absolutePath },
+                                patchSourceNames = viewModel.getAllResolvedPatchSourceNames(),
                             ))
                         }
                     },
@@ -178,6 +254,50 @@ fun HomeScreenContent(
                 }
             }
 
+            val resolvedSnapshot = viewModel.getResolvedSourcesSnapshot()
+            val versionsBySource: Map<String, String?> = resolvedSnapshot
+                ?.resolved
+                ?.associate { it.source.id to it.resolvedVersion }
+                ?: emptyMap()
+            val channelsBySource: Map<String, app.morphe.gui.util.EnabledSourcesLoader.Channel?> =
+                resolvedSnapshot
+                    ?.resolved
+                    ?.associate { it.source.id to it.channel }
+                    ?: emptyMap()
+            // Source names whose patches target the currently-selected APK's package.
+            // Used by ApkInfoCard's "FROM" row to surface multi-source provenance.
+            val patchSourcesForSelectedApk: List<String> = uiState.apkInfo?.let { info ->
+                val snapshot = resolvedSnapshot ?: return@let null
+                snapshot.guiPatchesBySource.entries
+                    .filter { (_, patches) ->
+                        patches.any { p -> p.compatiblePackages.any { it.name == info.packageName } }
+                    }
+                    .mapNotNull { (sourceId, _) ->
+                        allSources.firstOrNull { it.id == sourceId }?.name
+                    }
+            } ?: emptyList()
+
+            // Per-package source attribution map used by the supported-apps cards.
+            // Built once per recomposition so each card just looks up its own list.
+            val sourceNamesByPackage: Map<String, List<String>> = if (resolvedSnapshot == null) {
+                emptyMap()
+            } else {
+                val sourceIdToName = allSources.associate { it.id to it.name }
+                val accum = mutableMapOf<String, MutableList<String>>()
+                resolvedSnapshot.guiPatchesBySource.forEach { (sourceId, patches) ->
+                    val name = sourceIdToName[sourceId] ?: return@forEach
+                    val packages = patches.flatMap { it.compatiblePackages.map { p -> p.name } }
+                        .filter { it.isNotBlank() }
+                        .toSet()
+                    packages.forEach { pkg ->
+                        accum.getOrPut(pkg) { mutableListOf() }.add(name)
+                    }
+                }
+                accum
+            }
+            val sourceStates: List<SourceLedState> = allSources.map { src ->
+                sourceLedState(src, channelsBySource[src.id])
+            }
             val headerContent: @Composable ColumnScope.() -> Unit = {
                 if (useHorizontalHeader) {
                     HeaderBar(
@@ -186,6 +306,8 @@ fun HomeScreenContent(
                         onChangePatchesClick = onChangePatchesClick,
                         onRetry = onRetry,
                         onUpdateChannelChanged = { viewModel.refreshUpdateCheck() },
+                        onManageSourcesClick = { showSourceManagementSheet = true },
+                        sourceStates = sourceStates,
                     )
                 } else {
                     Spacer(modifier = Modifier.height(if (isSmall) 8.dp else 16.dp))
@@ -237,7 +359,8 @@ fun HomeScreenContent(
                         patchesLoaded = patchesLoaded,
                         onClearClick = onClearClick,
                         onChangeClick = onChangeClick,
-                        onContinueClick = onContinueClick
+                        onContinueClick = onContinueClick,
+                        patchSourceNames = patchSourcesForSelectedApk,
                     )
                 }
             }
@@ -258,7 +381,8 @@ fun HomeScreenContent(
                         isDefaultSource = uiState.isDefaultSource,
                         supportedApps = uiState.supportedApps,
                         loadError = uiState.patchLoadError,
-                        onRetry = onRetry
+                        onRetry = onRetry,
+                        sourceNamesByPackage = sourceNamesByPackage,
                     )
                 }
             }
@@ -273,6 +397,8 @@ fun HomeScreenContent(
                             onChangePatchesClick = onChangePatchesClick,
                             onRetry = onRetry,
                             onUpdateChannelChanged = { viewModel.refreshUpdateCheck() },
+                            onManageSourcesClick = { showSourceManagementSheet = true },
+                            sourceStates = sourceStates,
                         )
                     } else {
                         Column(
@@ -343,6 +469,15 @@ fun HomeScreenContent(
                                 )
                             }
 
+                            if (uiState.showMultiSourceHint) {
+                                MultiSourceHintBanner(
+                                    onDismiss = { viewModel.dismissMultiSourceHint() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = padding, end = padding, top = 8.dp)
+                                )
+                            }
+
                             // ── Main workspace area ──
                             Box(
                                 modifier = Modifier
@@ -376,7 +511,8 @@ fun HomeScreenContent(
                                     isDefaultSource = uiState.isDefaultSource,
                                     supportedApps = uiState.supportedApps,
                                     loadError = uiState.patchLoadError,
-                                    onRetry = onRetry
+                                    onRetry = onRetry,
+                                    sourceNamesByPackage = sourceNamesByPackage,
                                 )
                             }
                         }
@@ -437,7 +573,9 @@ private fun handleContinue(
                 apkName = info.appName,
                 patchesFilePath = patchesFile.absolutePath,
                 packageName = info.packageName,
-                apkArchitectures = info.architectures
+                apkArchitectures = info.architectures,
+                patchesFilePaths = viewModel.getAllResolvedPatchFiles().map { it.absolutePath },
+                patchSourceNames = viewModel.getAllResolvedPatchSourceNames(),
             ))
         }
     }
@@ -454,6 +592,8 @@ private fun HeaderBar(
     onChangePatchesClick: () -> Unit,
     onRetry: () -> Unit,
     onUpdateChannelChanged: () -> Unit = {},
+    onManageSourcesClick: () -> Unit = {},
+    sourceStates: List<SourceLedState> = emptyList(),
 ) {
     val mono = LocalMorpheFont.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
@@ -495,20 +635,12 @@ private fun HeaderBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                if (!uiState.isLoadingPatches && uiState.patchesVersion != null) {
-                    PatchesVersionInline(
-                        patchesVersion = uiState.patchesVersion!!,
-                        latestLabel = uiState.latestPatchesLabel,
-                        onChangePatchesClick = onChangePatchesClick,
-                        patchSourceName = uiState.patchSourceName
-                    )
-                } else if (uiState.isLoadingPatches) {
+                if (uiState.isLoadingPatches) {
                     PatchesLoadingIndicator()
-                } else if (uiState.patchLoadError != null) {
-                    PatchesVersionInline(
-                        patchesVersion = "NOT LOADED",
-                        latestLabel = null,
-                        onChangePatchesClick = onChangePatchesClick
+                } else {
+                    SourcesCountPill(
+                        sourceStates = sourceStates,
+                        onClick = onManageSourcesClick,
                     )
                 }
 
@@ -612,6 +744,139 @@ private fun PatchesVersionInline(
     }
 }
 
+/** One-time intro banner shown when the user first sees multi-source mode.
+ *  Persists dismissal in ConfigRepository so it never reappears once dismissed. */
+@Composable
+private fun MultiSourceHintBanner(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(corners.small))
+            .border(1.dp, accents.primary.copy(alpha = 0.3f), RoundedCornerShape(corners.small))
+            .background(accents.primary.copy(alpha = 0.06f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = "MULTIPLE SOURCES ACTIVE — patches from every enabled source are unioned. Manage from the SOURCES button above.",
+            fontSize = 11.sp,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            letterSpacing = 0.2.sp,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+            Icon(
+                imageVector = Icons.Default.Clear,
+                contentDescription = "Dismiss",
+                tint = accents.primary,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
+/** Per-source LED state surfaced in [SourcesCountPill]. */
+internal enum class SourceLedState { DISABLED, STABLE_LATEST, OLDER, DEV }
+
+/** Single unified header pill that replaces the previous patches-version + add-source
+ *  pair. Renders one LED per source (color-coded by state) plus the count and a
+ *  trailing "+" affordance. Click opens [SourceManagementSheet]; per-source
+ *  navigation to PatchesScreen happens via the rows inside the sheet. */
+@Composable
+private fun SourcesCountPill(
+    sourceStates: List<SourceLedState>,
+    onClick: () -> Unit,
+) {
+    val corners = LocalMorpheCorners.current
+    val dimens = LocalMorpheDimens.current
+    val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
+    val hoverInteraction = remember { MutableInteractionSource() }
+    val isHovered by hoverInteraction.collectIsHoveredAsState()
+    val borderColor by animateColorAsState(
+        if (isHovered) accents.primary.copy(alpha = 0.4f)
+        else MaterialTheme.colorScheme.outline.copy(alpha = 0.10f),
+        animationSpec = tween(200)
+    )
+    val tint = if (isHovered) accents.primary else homeMutedTextColor(0.5f)
+    val count = sourceStates.size.coerceAtLeast(1)
+    val label = if (count == 1) "1 SOURCE" else "$count SOURCES"
+    Row(
+        modifier = Modifier
+            .height(dimens.controlHeight)
+            .clip(RoundedCornerShape(corners.small))
+            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+            .background(MaterialTheme.colorScheme.surface)
+            .hoverable(hoverInteraction)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = label,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            letterSpacing = 1.5.sp,
+            color = tint,
+        )
+        if (sourceStates.isNotEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                sourceStates.forEach { state -> SourceLed(state = state, accents = accents) }
+            }
+        }
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = "Manage patch sources",
+            tint = tint,
+            modifier = Modifier.size(12.dp)
+        )
+    }
+}
+
+@Composable
+private fun SourceLed(state: SourceLedState, accents: app.morphe.gui.ui.theme.MorpheAccentColors) {
+    val color = when (state) {
+        SourceLedState.DISABLED -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+        SourceLedState.STABLE_LATEST -> accents.primary
+        SourceLedState.OLDER -> accents.warning
+        SourceLedState.DEV -> Color(0xFFFFD43B)
+    }
+    Box(
+        modifier = Modifier
+            .size(6.dp)
+            .background(color, shape = androidx.compose.foundation.shape.CircleShape)
+    )
+}
+
+/** Map a [PatchSource] + its resolved channel to a UI LED state. */
+internal fun sourceLedState(
+    source: app.morphe.gui.data.model.PatchSource,
+    channel: app.morphe.gui.util.EnabledSourcesLoader.Channel?,
+): SourceLedState {
+    if (!source.enabled) return SourceLedState.DISABLED
+    return when (channel) {
+        app.morphe.gui.util.EnabledSourcesLoader.Channel.STABLE_LATEST -> SourceLedState.STABLE_LATEST
+        app.morphe.gui.util.EnabledSourcesLoader.Channel.STABLE_OLDER -> SourceLedState.OLDER
+        app.morphe.gui.util.EnabledSourcesLoader.Channel.DEV_LATEST,
+        app.morphe.gui.util.EnabledSourcesLoader.Channel.DEV_OLDER -> SourceLedState.DEV
+        // No load yet — assume latest until we know otherwise.
+        null, app.morphe.gui.util.EnabledSourcesLoader.Channel.UNKNOWN -> SourceLedState.STABLE_LATEST
+    }
+}
+
 @Composable
 private fun PatchesLoadingIndicator() {
     val mono = LocalMorpheFont.current
@@ -680,7 +945,8 @@ private fun MiddleContent(
     patchesLoaded: Boolean,
     onClearClick: () -> Unit,
     onChangeClick: () -> Unit,
-    onContinueClick: () -> Unit
+    onContinueClick: () -> Unit,
+    patchSourceNames: List<String> = emptyList(),
 ) {
     when {
         uiState.isAnalyzing -> {
@@ -693,7 +959,8 @@ private fun MiddleContent(
                 isCompact = isCompact,
                 onClearClick = onClearClick,
                 onChangeClick = onChangeClick,
-                onContinueClick = onContinueClick
+                onContinueClick = onContinueClick,
+                patchSourceNames = patchSourceNames,
             )
         }
         else -> {
@@ -817,7 +1084,8 @@ private fun ApkSelectedSection(
     isCompact: Boolean,
     onClearClick: () -> Unit,
     onChangeClick: () -> Unit,
-    onContinueClick: () -> Unit
+    onContinueClick: () -> Unit,
+    patchSourceNames: List<String> = emptyList(),
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -834,7 +1102,8 @@ private fun ApkSelectedSection(
         ApkInfoCard(
             apkInfo = apkInfo,
             onClearClick = onClearClick,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            patchSourceNames = patchSourceNames,
         )
 
         Spacer(modifier = Modifier.height(if (isCompact) 16.dp else 20.dp))
@@ -999,7 +1268,10 @@ private fun SupportedAppsSection(
     isDefaultSource: Boolean = true,
     supportedApps: List<SupportedApp> = emptyList(),
     loadError: String? = null,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    /** packageName → source display names contributing patches. Used to badge
+     *  cards with their source attribution in multi-source mode. */
+    sourceNamesByPackage: Map<String, List<String>> = emptyMap(),
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -1114,65 +1386,13 @@ private fun SupportedAppsSection(
                 }
 
                 if (supportedApps.size > 4) {
-                    if (isDefaultSource) {
-                        // Default search field for Morphe-source patches.
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = {
-                                Text(
-                                    "Filter apps…",
-                                    fontSize = 11.sp,
-                                    fontFamily = mono,
-                                    color = homeMutedTextColor(0.4f)
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = null,
-                                    tint = homeMutedTextColor(0.6f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(
-                                            Icons.Default.Clear,
-                                            contentDescription = "Clear",
-                                            tint = homeMutedTextColor(0.5f),
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = mono,
-                                fontSize = 11.sp
-                            ),
-                            shape = RoundedCornerShape(corners.small),
-                            modifier = Modifier
-                                .widthIn(max = 260.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                                cursorColor = accents.primary
-                            )
-                        )
-                    } else {
-                        // Slim, elongated search field for third-party patches.
-                        // Uses BasicTextField + a custom decoration so we can break
-                        // out of OutlinedTextField's 56dp minimum height.
-                        SlimSearchField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            mono = mono,
-                            corners = corners,
-                            accents = accents
-                        )
-                    }
+                    SlimSearchField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        mono = mono,
+                        corners = corners,
+                        accents = accents
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
@@ -1208,6 +1428,7 @@ private fun SupportedAppsSection(
                         onClose = { selectedApp = null },
                         isDefaultSource = isDefaultSource,
                         useVerticalLayout = useVerticalLayout,
+                        sourceNamesByPackage = sourceNamesByPackage,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = if (isCompact) 8.dp else 16.dp)
@@ -1424,7 +1645,8 @@ private fun SupportedAppsMasterDetail(
     onClose: () -> Unit,
     isDefaultSource: Boolean,
     useVerticalLayout: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sourceNamesByPackage: Map<String, List<String>> = emptyMap(),
 ) {
     val cardSpacing = 10.dp
 
@@ -1446,7 +1668,8 @@ private fun SupportedAppsMasterDetail(
                         app = app,
                         isSelected = app.packageName == selectedApp?.packageName,
                         onClick = { onSelect(app) },
-                        isDefaultSource = isDefaultSource
+                        isDefaultSource = isDefaultSource,
+                        patchSourceNames = sourceNamesByPackage[app.packageName] ?: emptyList(),
                     )
                 }
             }
@@ -1481,7 +1704,8 @@ private fun SupportedAppVerticalCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     isDefaultSource: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    patchSourceNames: List<String> = emptyList(),
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -1490,7 +1714,9 @@ private fun SupportedAppVerticalCard(
     // ── Dimensions ──
     val collapsedWidth = 188.dp
     val expandedExtraWidth = 320.dp
-    val cardHeight = if (isDefaultSource) 250.dp else 190.dp
+    // Uniform height across all cards — every card shows the EXPERIMENTAL row
+    // (with "—" when none) so they line up visually in the row.
+    val cardHeight = 250.dp
 
     // ── Animations ──
     val animatedExtraWidth by animateDpAsState(
@@ -1600,19 +1826,17 @@ private fun SupportedAppVerticalCard(
                 nullLabel = "Any version"
             )
 
-            // Experimental row only for default (Morphe) patch sources.
-            // Third-party patches don't get experimental support here.
-            if (isDefaultSource) {
-                Spacer(modifier = Modifier.height(12.dp))
-                VersionWithDownload(
-                    channelLabel = "EXPERIMENTAL LATEST",
-                    channelColor = accents.warning,
-                    version = latestExperimental,
-                    downloadUrl = if (hasExperimental) app.experimentalDownloadUrl else null,
-                    mono = mono,
-                    corners = corners
-                )
-            }
+            // Always show the EXPERIMENTAL row — when the app has no experimental
+            // version, VersionWithDownload renders "—" via its nullLabel default.
+            Spacer(modifier = Modifier.height(12.dp))
+            VersionWithDownload(
+                channelLabel = "EXPERIMENTAL LATEST",
+                channelColor = accents.warning,
+                version = if (hasExperimental) latestExperimental else null,
+                downloadUrl = if (hasExperimental) app.experimentalDownloadUrl else null,
+                mono = mono,
+                corners = corners
+            )
         }
 
         // ════════════════════════════════════════════════
@@ -1627,11 +1851,20 @@ private fun SupportedAppVerticalCard(
                     .background(borderColor)
             )
 
-            Column(
+            // Right-panel content can overflow the fixed cardHeight when an app
+            // has lots of versions or sources. Wrap in a Box with a scrollable
+            // Column + vertical scrollbar so users can reach everything.
+            val rightPanelScroll = rememberScrollState()
+            Box(
                 modifier = Modifier
                     .width((animatedExtraWidth - 1.dp).coerceAtLeast(0.dp))
                     .fillMaxHeight()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rightPanelScroll)
+                    .padding(start = 16.dp, end = 22.dp, top = 16.dp, bottom = 16.dp)
             ) {
                 // ── Package name + close ──
                 Row(
@@ -1686,6 +1919,61 @@ private fun SupportedAppVerticalCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // ── PATCHES FROM (sources contributing patches for this app) ──
+                // Always shown for visual consistency. Renders "—" if no source
+                // attribution data is available for this app.
+                Text(
+                    text = "PATCHES FROM",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = mono,
+                    color = accents.primary.copy(alpha = 0.85f),
+                    letterSpacing = 1.2.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                if (patchSourceNames.isNotEmpty()) {
+                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        patchSourceNames.forEach { name ->
+                            Box(
+                                modifier = Modifier
+                                    .border(
+                                        1.dp,
+                                        accents.primary.copy(alpha = 0.3f),
+                                        RoundedCornerShape(corners.small),
+                                    )
+                                    .background(
+                                        accents.primary.copy(alpha = 0.06f),
+                                        RoundedCornerShape(corners.small),
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = name,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = mono,
+                                    letterSpacing = 0.3.sp,
+                                    color = accents.primary,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "—",
+                        fontSize = 10.sp,
+                        fontFamily = mono,
+                        color = homeMutedTextColor(0.35f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+
                 // ── ALSO STABLE tags ──
                 Text(
                     text = "ALSO STABLE",
@@ -1730,53 +2018,64 @@ private fun SupportedAppVerticalCard(
                     )
                 }
 
-                if (isDefaultSource) {
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // ── EXPERIMENTAL tags (Morphe-source patches only) ──
-                    Text(
-                        text = "EXPERIMENTAL",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
-                        color = accents.warning.copy(alpha = 0.85f),
-                        letterSpacing = 1.2.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    if (app.experimentalVersions.isNotEmpty()) {
-                        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            app.experimentalVersions.take(8).forEach { version ->
-                                VersionPill(
-                                    version = version,
-                                    color = accents.warning,
-                                    mono = mono,
-                                    corners = corners
-                                )
-                            }
-                            if (app.experimentalVersions.size > 8) {
-                                Text(
-                                    text = "+${app.experimentalVersions.size - 8}",
-                                    fontSize = 10.sp,
-                                    fontFamily = mono,
-                                    color = homeMutedTextColor(0.5f),
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                                )
-                            }
+                // ── EXPERIMENTAL tags ──
+                // Always shown for visual consistency across cards. Renders "—"
+                // when this app has no experimental versions in the loaded patches.
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "EXPERIMENTAL",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = mono,
+                    color = accents.warning.copy(alpha = 0.85f),
+                    letterSpacing = 1.2.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                if (app.experimentalVersions.isNotEmpty()) {
+                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        app.experimentalVersions.take(8).forEach { version ->
+                            VersionPill(
+                                version = version,
+                                color = accents.warning,
+                                mono = mono,
+                                corners = corners
+                            )
                         }
-                    } else {
-                        Text(
-                            text = "none",
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            color = homeMutedTextColor(0.35f)
-                        )
+                        if (app.experimentalVersions.size > 8) {
+                            Text(
+                                text = "+${app.experimentalVersions.size - 8}",
+                                fontSize = 10.sp,
+                                fontFamily = mono,
+                                color = homeMutedTextColor(0.5f),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                            )
+                        }
                     }
+                } else {
+                    Text(
+                        text = "—",
+                        fontSize = 10.sp,
+                        fontFamily = mono,
+                        color = homeMutedTextColor(0.35f)
+                    )
                 }
+            }
+            // Vertical scrollbar — only shows when content overflows.
+            if (rightPanelScroll.maxValue > 0) {
+                VerticalScrollbar(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(vertical = 6.dp),
+                    adapter = rememberScrollbarAdapter(rightPanelScroll),
+                    style = morpheScrollbarStyle()
+                )
+            }
             }
         }
     }
@@ -1888,6 +2187,7 @@ private fun SlimSearchField(
     corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
     accents: app.morphe.gui.ui.theme.MorpheAccentColors
 ) {
+    val dimens = LocalMorpheDimens.current
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -1910,9 +2210,9 @@ private fun SlimSearchField(
         ),
         cursorBrush = SolidColor(accents.primary),
         modifier = Modifier
-            .widthIn(max = 360.dp)
+            .widthIn(max = 340.dp)
             .fillMaxWidth()
-            .height(34.dp)
+            .height(dimens.controlHeight)
             .clip(RoundedCornerShape(corners.small))
             .border(1.dp, borderColor, RoundedCornerShape(corners.small)),
         decorationBox = { innerTextField ->

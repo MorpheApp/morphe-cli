@@ -79,15 +79,25 @@ import java.io.File
 data class PatchSelectionScreen(
     val apkPath: String,
     val apkName: String,
+    /** Primary .mpp file path. Always non-null. In multi-source mode, the first
+     *  enabled source's file. Used for legacy/single-source code paths and as
+     *  the default when [patchesFilePaths] is empty. */
     val patchesFilePath: String,
     val packageName: String,
-    val apkArchitectures: List<String> = emptyList()
+    val apkArchitectures: List<String> = emptyList(),
+    /** All enabled-source .mpp file paths. Single-element in single-source mode.
+     *  Used by the patching pipeline to feed the engine the union of patches. */
+    val patchesFilePaths: List<String> = emptyList(),
+    /** Parallel to [patchesFilePaths] — display name per source. Drives badging
+     *  in the patch list. Empty disables badging (legacy single-source). */
+    val patchSourceNames: List<String> = emptyList(),
 ) : Screen {
 
     @Composable
     override fun Content() {
+        val effectiveList = patchesFilePaths.takeIf { it.isNotEmpty() } ?: listOf(patchesFilePath)
         val viewModel = koinScreenModel<PatchSelectionViewModel> {
-            parametersOf(apkPath, apkName, patchesFilePath, packageName, apkArchitectures)
+            parametersOf(apkPath, apkName, patchesFilePath, packageName, apkArchitectures, effectiveList, patchSourceNames)
         }
         PatchSelectionScreenContent(viewModel = viewModel)
     }
@@ -438,6 +448,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                                 patch = patch,
                                 isSelected = uiState.selectedPatches.contains(patch.uniqueId),
                                 onToggle = { viewModel.togglePatch(patch.uniqueId) },
+                                sourceName = viewModel.getSourceNameFor(patch.uniqueId),
                                 getOptionValue = { optionKey, default ->
                                     viewModel.getOptionValue(patch.name, optionKey, default)
                                 },
@@ -660,6 +671,7 @@ private fun PatchListItem(
     patch: Patch,
     isSelected: Boolean,
     onToggle: () -> Unit,
+    sourceName: String? = null,
     getOptionValue: (optionKey: String, default: String?) -> String = { _, d -> d ?: "" },
     onOptionValueChange: (optionKey: String, value: String) -> Unit = { _, _ -> }
 ) {
@@ -746,6 +758,32 @@ private fun PatchListItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    if (sourceName != null) {
+                        Box(
+                            modifier = Modifier
+                                .border(
+                                    1.dp,
+                                    accents.primary.copy(alpha = 0.3f),
+                                    RoundedCornerShape(corners.small)
+                                )
+                                .background(
+                                    accents.primary.copy(alpha = 0.06f),
+                                    RoundedCornerShape(corners.small)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = sourceName.uppercase(),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = mono,
+                                letterSpacing = 0.5.sp,
+                                color = accents.primary,
+                                maxLines = 1,
+                            )
+                        }
+                    }
 
                     if (patch.compatiblePackages.isNotEmpty()) {
                         val genericSegments = setOf("com", "org", "net", "android", "google", "apps", "app", "www")

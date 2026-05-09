@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.dongliu.apk.parser.ApkFile
+import app.morphe.gui.util.EnabledSourcesLoader
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
@@ -47,7 +48,24 @@ class HomeViewModel(
     // Cached patches and supported apps
     private var cachedPatches: List<Patch> = emptyList()
     private var cachedPatchesFile: File? = null
+    /** All resolved patch files across enabled sources. Single-element in
+     *  single-source mode. Exposed via [getAllResolvedPatchFiles] for screens
+     *  that navigate downstream and need to pass the full set. */
+    private var cachedAllPatchFiles: List<File> = emptyList()
     private var loadJob: Job? = null
+
+    fun getAllResolvedPatchFiles(): List<File> =
+        cachedAllPatchFiles.takeIf { it.isNotEmpty() }
+            ?: listOfNotNull(cachedPatchesFile)
+
+    /** Display names for each entry in [getAllResolvedPatchFiles], in the same
+     *  order. Used by PatchSelectionScreen to badge patches with their source. */
+    fun getAllResolvedPatchSourceNames(): List<String> =
+        cachedSourcesResult
+            ?.resolved
+            ?.filter { it.patchFile != null }
+            ?.map { it.source.name }
+            ?: emptyList()
 
     init {
         // Auto-fetch patches on startup
@@ -55,11 +73,15 @@ class HomeViewModel(
 
         // Background CLI update check — non-blocking, banner only.
         screenModelScope.launch {
+            val config = configRepository.loadConfig()
             val info = updateCheckRepository.getUpdateInfo()
-            val dismissed = configRepository.loadConfig().dismissedUpdateVersion
+            val dismissed = config.dismissedUpdateVersion
+            val multiSourceShouldShow = !config.multiSourceHintDismissed &&
+                    patchSourceManager.getEnabledSourcesSync().size > 1
             _uiState.value = _uiState.value.copy(
                 updateInfo = info,
                 dismissedUpdateVersion = dismissed,
+                showMultiSourceHint = multiSourceShouldShow,
             )
         }
 
@@ -115,6 +137,16 @@ class HomeViewModel(
     }
 
     /**
+     * Dismiss the multi-source intro hint persistently. One-shot.
+     */
+    fun dismissMultiSourceHint() {
+        _uiState.value = _uiState.value.copy(showMultiSourceHint = false)
+        screenModelScope.launch {
+            configRepository.setMultiSourceHintDismissed()
+        }
+    }
+
+    /**
      * Hide the update banner persistently for the current available version.
      * The banner will reappear automatically when an even newer version becomes
      * available.
@@ -129,108 +161,45 @@ class HomeViewModel(
 
     // Track the last loaded version to avoid reloading unnecessarily
     private var lastLoadedVersion: String? = null
+    // Snapshot of per-source pinned versions used in the last load — drives
+    // refreshPatchesIfNeeded so we reload when ANY source's pin changes.
+    private var lastLoadedVersionsBySource: Map<String, String> = emptyMap()
 
     /**
-     * Load patches from GitHub and extract supported apps.
-     * If a saved version exists in config, load that version instead of latest.
+     * Load patches from all enabled sources via [EnabledSourcesLoader] and build
+     * the union supported-apps list. Single-enabled-source case produces output
+     * equivalent to the pre-multi-source flow.
      */
     private fun loadPatchesAndSupportedApps(forceRefresh: Boolean = false) {
         loadJob?.cancel()
         loadJob = screenModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingPatches = true, patchLoadError = null)
 
-            // LOCAL source: skip GitHub entirely, load directly from the .mpp file
-            if (localPatchFilePath != null) {
-                val localFile = File(localPatchFilePath)
-                if (localFile.exists()) {
-                    loadPatchesFromFile(localFile, localFile.nameWithoutExtension, latestVersion = null, isOffline = false)
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingPatches = false,
-                        patchLoadError = "Local patch file not found: ${localFile.name}"
-                    )
-                }
-                return@launch
-            }
-
             try {
-                // Check if there's a saved patches version in config
-                val config = configRepository.loadConfig()
-                val savedVersion = config.lastPatchesVersion
-
-                // 1. Fetch all releases to find the right one
-                val releasesResult = patchRepository.fetchReleases()
-                val releases = releasesResult.getOrNull()
-
-                if (releases.isNullOrEmpty()) {
-                    // Try to fall back to cached .mpp file when offline
-                    val offlinePatchFile = findCachedPatchFile(savedVersion)
-                    if (offlinePatchFile != null) {
-                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile), latestVersion = null)
-                        return@launch
-                    }
+                val enabled = patchSourceManager.getEnabledRepositories()
+                if (enabled.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
-                        patchLoadError = "Could not fetch patches: ${releasesResult.exceptionOrNull()?.message}"
+                        patchLoadError = "No patch sources enabled. Add or enable a source from the home screen."
                     )
                     return@launch
                 }
 
-                // Find the latest stable release for reference
-                val latestStable = releases.firstOrNull { !it.isDevRelease() }
-                val latestVersion = latestStable?.tagName
-                val latestDevVersion = releases.firstOrNull { it.isDevRelease() }?.tagName
+                // Per-source pinned versions (with one-time migration from legacy
+                // single-source field). Each source's resolver looks up its own pin;
+                // no cross-source contamination.
+                val preferredVersions = configRepository.getLastPatchesVersionsBySource()
+                lastLoadedVersionsBySource = preferredVersions
+                val result = EnabledSourcesLoader.loadAll(enabled, patchService, preferredVersions)
 
-                // 2. Find the release to use - prefer saved version, fallback to latest stable
-                val release = if (savedVersion != null) {
-                    releases.find { it.tagName == savedVersion }
-                        ?: latestStable  // Fallback to latest stable
-                } else {
-                    latestStable  // Latest stable
-                }
-
-                if (release == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingPatches = false,
-                        patchLoadError = "No suitable release found"
-                    )
-                    return@launch
-                }
-
-                // Skip reload if we've already loaded this version (unless forced)
-                if (!forceRefresh && lastLoadedVersion == release.tagName && cachedPatchesFile?.exists() == true) {
-                    Logger.info("Skipping reload - already loaded version ${release.tagName}")
-                    _uiState.value = _uiState.value.copy(isLoadingPatches = false)
-                    return@launch
-                }
-
-                Logger.info("Loading patches version: ${release.tagName} (saved=$savedVersion)")
-
-                // 3. Download patches
-                val patchFileResult = patchRepository.downloadPatches(release)
-                val patchFile = patchFileResult.getOrNull()
-
-                if (patchFile == null) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingPatches = false,
-                        patchLoadError = "Could not download patches: ${patchFileResult.exceptionOrNull()?.message}"
-                    )
-                    return@launch
-                }
-
-                cachedPatchesFile = patchFile
-                lastLoadedVersion = release.tagName
-
-                // 3. Load patches using PatchService (direct library call)
-                val patchesResult = patchService.listPatches(patchFile.absolutePath)
-                val patches = patchesResult.getOrNull()
-
-                if (patches == null || patches.isEmpty()) {
-                    val rawError = patchesResult.exceptionOrNull()?.message ?: "Unknown error"
-                    val friendlyError = if (rawError.contains("zip", ignoreCase = true) || rawError.contains("END header", ignoreCase = true)) {
+                if (!result.anyLoaded) {
+                    val firstError = result.resolved.firstNotNullOfOrNull { it.error }
+                        ?: result.loaded.perSource.firstNotNullOfOrNull { it.error?.message }
+                        ?: "Could not load any patches"
+                    val friendlyError = if (firstError.contains("zip", ignoreCase = true) || firstError.contains("END header", ignoreCase = true)) {
                         "Patch file is missing or corrupted. Clear cache and re-download."
                     } else {
-                        "Could not load patches: $rawError"
+                        firstError
                     }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
@@ -239,36 +208,50 @@ class HomeViewModel(
                     return@launch
                 }
 
-                cachedPatches = patches
+                cachedPatches = result.unionGuiPatches
+                // Preserve existing single-file API for downstream navigation. In
+                // multi-source mode this points at the first resolved source; the
+                // full list is exposed via [getAllResolvedPatchFiles] and the
+                // per-source data via [getResolvedSourcesSnapshot].
+                val firstResolved = result.resolved.firstOrNull { it.patchFile != null }
+                cachedPatchesFile = firstResolved?.patchFile
+                cachedAllPatchFiles = result.resolved.mapNotNull { it.patchFile }
+                lastLoadedVersion = firstResolved?.resolvedVersion
+                cachedSourcesResult = result
 
-                // 5. Extract supported apps
-                val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
-                Logger.info("Loaded ${supportedApps.size} supported apps from patches: ${supportedApps.map { "${it.displayName} (${it.recommendedVersion})" }}")
+                val supportedApps = SupportedAppExtractor.extractSupportedApps(result.unionGuiPatches)
+                Logger.info(
+                    "Loaded ${supportedApps.size} supported apps from " +
+                            "${result.resolved.count { it.patchFile != null }} source(s): " +
+                            supportedApps.map { it.displayName }
+                )
+
+                // Only flag the whole UI as offline when EVERY successfully-resolved
+                // source had to fall back to its cache. One source being offline
+                // while others are online shouldn't make the whole screen scream
+                // "offline" — that's a per-source state, surfaced in the sheet.
+                val resolvedSources = result.resolved.filter { it.patchFile != null }
+                val isOffline = resolvedSources.isNotEmpty() && resolvedSources.all { it.isOffline }
+                val displayVersion = firstResolved?.resolvedVersion
+                val sourceName = if (result.resolved.size == 1) {
+                    firstResolved?.source?.name ?: patchSourceManager.getActiveSourceName()
+                } else {
+                    "${result.resolved.count { it.patchFile != null }} sources"
+                }
 
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
-                    isOffline = false,
+                    isOffline = isOffline,
                     supportedApps = supportedApps,
-                    patchesVersion = release.tagName,
-                    latestPatchesVersion = latestVersion,
-                    latestDevPatchesVersion = latestDevVersion,
-                    patchSourceName = patchSourceManager.getActiveSourceName(),
+                    patchesVersion = displayVersion,
+                    latestPatchesVersion = displayVersion,
+                    latestDevPatchesVersion = null,
+                    patchSourceName = sourceName,
                     patchLoadError = null
                 )
                 reanalyzeSelectedApk()
             } catch (e: Exception) {
                 Logger.error("Failed to load patches and supported apps", e)
-                // Try to fall back to cached .mpp file
-                val config = configRepository.loadConfig()
-                val offlinePatchFile = findCachedPatchFile(config.lastPatchesVersion)
-                if (offlinePatchFile != null) {
-                    try {
-                        loadPatchesFromFile(offlinePatchFile, versionFromFilename(offlinePatchFile), latestVersion = null)
-                        return@launch
-                    } catch (inner: Exception) {
-                        Logger.error("Failed to load cached patches fallback", inner)
-                    }
-                }
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
                     patchLoadError = e.message ?: "Unknown error"
@@ -278,79 +261,11 @@ class HomeViewModel(
     }
 
     /**
-     * Find any cached .mpp file when offline.
-     * Prefers the file matching savedVersion from config.
-     * Searches the per-source cache directory.
+     * Snapshot of the most recent multi-source load. Used by 9d's
+     * PatchSelectionViewModel migration to render badged per-source patches.
      */
-    private fun findCachedPatchFile(savedVersion: String?): File? {
-        val patchesDir = patchRepository.getCacheDir()
-        val patchFiles = patchesDir.listFiles { file ->
-            val ext = file.extension.lowercase()
-            ext == "mpp" || ext == "jar"
-        }?.filter { it.length() > 0 } ?: return null
-
-        if (patchFiles.isEmpty()) return null
-
-        return if (savedVersion != null) {
-            // Strip "v" prefix — savedVersion is "v1.13.0" but filenames are "patches-1.13.0.mpp"
-            val versionNumber = savedVersion.removePrefix("v")
-            patchFiles.firstOrNull { it.name.contains(versionNumber, ignoreCase = true) }
-                ?: patchFiles.maxByOrNull { it.lastModified() }
-        } else {
-            patchFiles.maxByOrNull { it.lastModified() }
-        }
-    }
-
-    /**
-     * Extract a version string from an .mpp filename (e.g. "morphe-patches-1.3.0.mpp" -> "v1.3.0").
-     */
-    private fun versionFromFilename(file: File): String {
-        val name = file.nameWithoutExtension
-        // Try to find a version pattern like 1.2.3 or v1.2.3
-        val match = Regex("""v?(\d+\.\d+\.\d+[^\s]*)""").find(name)
-        return match?.value ?: name
-    }
-
-    /**
-     * Load patches from a local .mpp file and update UI state.
-     * Used as fallback when offline with cached patches.
-     */
-    private suspend fun loadPatchesFromFile(patchFile: File, version: String, latestVersion: String?, isOffline: Boolean = true) {
-        cachedPatchesFile = patchFile
-        lastLoadedVersion = version
-
-        val patchesResult = patchService.listPatches(patchFile.absolutePath)
-        val patches = patchesResult.getOrNull()
-
-        if (patches == null || patches.isEmpty()) {
-            val rawError = patchesResult.exceptionOrNull()?.message ?: "Unknown error"
-            val friendlyError = if (rawError.contains("zip", ignoreCase = true) || rawError.contains("END header", ignoreCase = true)) {
-                "Patch file is missing or corrupted. Clear cache and re-download."
-            } else {
-                "Could not load patches: $rawError"
-            }
-            _uiState.value = _uiState.value.copy(
-                isLoadingPatches = false,
-                patchLoadError = friendlyError
-            )
-            return
-        }
-
-        cachedPatches = patches
-        val supportedApps = SupportedAppExtractor.extractSupportedApps(patches)
-        Logger.info("Loaded ${supportedApps.size} supported apps from ${if (isOffline) "cached" else "local"} patches: ${patchFile.name}")
-
-        _uiState.value = _uiState.value.copy(
-            isLoadingPatches = false,
-            isOffline = isOffline,
-            supportedApps = supportedApps,
-            patchesVersion = version,
-            latestPatchesVersion = latestVersion,
-            patchSourceName = patchSourceManager.getActiveSourceName(),
-            patchLoadError = null
-        )
-        reanalyzeSelectedApk()
-    }
+    fun getResolvedSourcesSnapshot(): EnabledSourcesLoader.Result? = cachedSourcesResult
+    private var cachedSourcesResult: EnabledSourcesLoader.Result? = null
 
     /**
      * Re-runs APK analysis against the freshly-loaded `supportedApps` so the info
@@ -371,17 +286,14 @@ class HomeViewModel(
     }
 
     /**
-     * Refresh patches if a different version was selected.
-     * Called when returning to HomeScreen from PatchesScreen.
+     * Refresh patches if any source's pinned version was changed (e.g. via
+     * PatchesScreen). Called when returning to HomeScreen from another screen.
      */
     fun refreshPatchesIfNeeded() {
         screenModelScope.launch {
-            val config = configRepository.loadConfig()
-            val savedVersion = config.lastPatchesVersion
-
-            // If saved version differs from currently loaded version, reload
-            if (savedVersion != null && savedVersion != lastLoadedVersion) {
-                Logger.info("Patches version changed: $lastLoadedVersion -> $savedVersion, reloading...")
+            val saved = configRepository.getLastPatchesVersionsBySource()
+            if (saved != lastLoadedVersionsBySource) {
+                Logger.info("Patches versions changed across sources: $lastLoadedVersionsBySource -> $saved, reloading...")
                 loadPatchesAndSupportedApps(forceRefresh = true)
             }
         }
@@ -613,6 +525,9 @@ data class HomeUiState(
     val dismissedUpdateVersion: String? = null,
     /** Session-only dismiss; cleared on next app start. Not persisted. */
     val updateBannerSessionDismissed: Boolean = false,
+    /** True when more than one source is enabled and the user hasn't dismissed
+     *  the one-time multi-source intro hint yet. */
+    val showMultiSourceHint: Boolean = false,
 ) {
     /**
      * Show the update banner only when an update was found AND the user hasn't

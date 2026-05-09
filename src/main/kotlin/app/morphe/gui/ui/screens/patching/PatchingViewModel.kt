@@ -63,7 +63,7 @@ class PatchingViewModel(
 
             // Use PatchService for direct library patching
             val result = patchService.patch(
-                patchesFilePath = config.patchesFilePath,
+                patchesFilePaths = config.patchesFilePaths,
                 inputApkPath = config.inputApkPath,
                 outputApkPath = config.outputApkPath,
                 enabledPatches = config.enabledPatches,
