@@ -308,7 +308,19 @@ private fun ExpandedBody(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 patchSourceNames.forEach { name ->
-                    Pill(text = name, color = accents.primary, mono = mono, cornerSmall = cornerSmall)
+                    // Source pills use a bright near-white label (vs. the colored
+                    // text used by version pills below) so the source name reads
+                    // crisply without feeling dimmed. The accent still shows in
+                    // the border / subtle background tint.
+                    Pill(
+                        text = name,
+                        color = accents.primary,
+                        mono = mono,
+                        cornerSmall = cornerSmall,
+                        textColor = MaterialTheme.colorScheme.onSurface,
+                        borderAlpha = 0.45f,
+                        backgroundAlpha = 0.10f,
+                    )
                 }
             }
         }
@@ -379,11 +391,14 @@ private fun Pill(
     color: Color,
     mono: androidx.compose.ui.text.font.FontFamily,
     cornerSmall: androidx.compose.ui.unit.Dp,
+    textColor: Color = color,
+    borderAlpha: Float = 0.3f,
+    backgroundAlpha: Float = 0.06f,
 ) {
     Box(
         modifier = Modifier
-            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(cornerSmall))
-            .background(color.copy(alpha = 0.06f), RoundedCornerShape(cornerSmall))
+            .border(1.dp, color.copy(alpha = borderAlpha), RoundedCornerShape(cornerSmall))
+            .background(color.copy(alpha = backgroundAlpha), RoundedCornerShape(cornerSmall))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
@@ -391,7 +406,7 @@ private fun Pill(
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
             fontFamily = mono,
-            color = color,
+            color = textColor,
             maxLines = 1,
         )
     }

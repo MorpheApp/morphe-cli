@@ -490,20 +490,32 @@ fun HomeScreenContent(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxWidth()
+                                    // Small cute padding for small cute space
+                                    // between the HeaderBar's bottom
+                                    // divider and the actual body section.
                                     .padding(
-                                        start = padding,
-                                        // Reduced right padding — push the apps
-                                        // list further toward the screen edge.
-                                        // Reduced right padding — scrollbar sits
-                                        // close to the screen edge.
-                                        end = 4.dp,
-                                        top = padding,
+                                        start = if (isCompact) 12.dp else 10.dp,
+                                        end = padding,
+                                        top = 4.dp,
                                         bottom = padding,
                                     ),
                                 horizontalArrangement = Arrangement.spacedBy(padding),
                             ) {
-                                // Left: APK info / drop zone. Content centers vertically
-                                // when it fits, scrolls when it doesn't, so the CONTINUE
+                                // Left: browse/discover supported apps (wizard step 1).
+                                SupportedAppsListPane(
+                                    supportedApps = uiState.supportedApps,
+                                    sourceNamesByPackage = sourceNamesByPackage,
+                                    isLoading = uiState.isLoadingPatches,
+                                    loadError = uiState.patchLoadError,
+                                    onRetry = onRetry,
+                                    isCompact = isCompact,
+                                    modifier = Modifier
+                                        .weight(1.2f)
+                                        .fillMaxHeight(),
+                                )
+                                // Right: APK info / drop zone (wizard step 2 — pick the
+                                // APK you want patched). Content centers vertically when
+                                // it fits, scrolls when it doesn't, so the CONTINUE
                                 // button is never clipped off the bottom.
                                 BoxWithConstraints(
                                     modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -528,17 +540,6 @@ fun HomeScreenContent(
                                         )
                                     }
                                 }
-                                SupportedAppsListPane(
-                                    supportedApps = uiState.supportedApps,
-                                    sourceNamesByPackage = sourceNamesByPackage,
-                                    isLoading = uiState.isLoadingPatches,
-                                    loadError = uiState.patchLoadError,
-                                    onRetry = onRetry,
-                                    isCompact = isCompact,
-                                    modifier = Modifier
-                                        .weight(1.2f)
-                                        .fillMaxHeight(),
-                                )
                             }
                         }
                     } else {
@@ -1313,7 +1314,7 @@ private fun SupportedAppsListPane(
         // visually aligns with the right edge of the cards.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(end = 12.dp, bottom = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(end = 12.dp, bottom = 4.dp),
         ) {
             Text(
                 text = "SUPPORTED APPS",
@@ -1420,13 +1421,21 @@ private fun SupportedAppsListPane(
             }
             else -> {
                 val listState = rememberLazyListState()
-                // Cap the list at the pane's available height (minus a rough
-                // header+search allowance) so it scrolls when there are many
-                // apps but wraps tight + lets the Column center when few.
+                // Cap the list at the pane's available height (minus a header
+                // + optional search allowance) so it scrolls when there are
+                // many apps but wraps tight + lets the Column center when few.
+                // Tight estimate: header ~22dp; search field (only shown when
+                // >4 apps) ~46dp. Anything over-budgeted leaves dead space
+                // above the list when content fills, so be precise.
+                val headerSearchAllowance =
+                    if (supportedApps.size > 4) 68.dp else 22.dp
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = (paneMaxHeight - 80.dp).coerceAtLeast(120.dp)),
+                        .heightIn(
+                            max = (paneMaxHeight - headerSearchAllowance)
+                                .coerceAtLeast(120.dp)
+                        ),
                 ) {
                     androidx.compose.foundation.lazy.LazyColumn(
                         state = listState,

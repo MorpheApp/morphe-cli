@@ -65,7 +65,7 @@ fun SourcesCountPill(
         animationSpec = tween(200)
     )
     val tint = if (isHovered && interactive) accents.primary
-               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
     val count = sourceStates.size.coerceAtLeast(1)
     val label = if (count == 1) "1 SOURCE" else "$count SOURCES"
     Row(
@@ -78,7 +78,7 @@ fun SourcesCountPill(
                 if (interactive) Modifier
                     .hoverable(hoverInteraction)
                     .pointerHoverIcon(PointerIcon.Hand)
-                    .clickable(onClick = onClick!!)
+                    .clickable(onClick = onClick)
                 else Modifier
             )
             .padding(horizontal = 10.dp),
