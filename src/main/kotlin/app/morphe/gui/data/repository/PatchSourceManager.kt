@@ -5,6 +5,8 @@
 
 package app.morphe.gui.data.repository
 
+import app.morphe.engine.patches.PatchProvider
+import app.morphe.engine.patches.RemotePatchSourceFactory
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.util.Logger
@@ -105,9 +107,23 @@ class PatchSourceManager(
      * Falls back to default repo if not yet initialized and source is not LOCAL.
      */
     fun getActiveRepositorySync(): PatchRepository {
-        return cachedActiveRepo ?: PatchRepository(httpClient).also {
+        return cachedActiveRepo ?: defaultMorpheRepository().also {
             if (!isLocalSource()) cachedActiveRepo = it
         }
+    }
+
+    /**
+     * Build the fallback PatchRepository pointed at the built-in Morphe
+     * repo (`MorpheApp/morphe-patches` on GitHub). Used when the active
+     * source isn't yet known.
+     */
+    private fun defaultMorpheRepository(): PatchRepository {
+        val remote = RemotePatchSourceFactory.build(
+            PatchProvider.GITHUB,
+            "MorpheApp/morphe-patches",
+            httpClient,
+        )
+        return PatchRepository(remote)
     }
 
     /**
@@ -128,15 +144,15 @@ class PatchSourceManager(
 
         return repositories.getOrPut(source.id) {
             val repoPath = extractRepoPath(source)
-            // DEFAULT inherits GitHub behaviour (morphe-patches lives on
-            // github.com); GITLAB uses the GitLab API surface; everything
-            // else is GitHub.
+            // Map the GUI's persisted source type to the engine's provider
+            // enum. DEFAULT inherits GitHub (Morphe Patches lives there).
             val provider = when (source.type) {
-                PatchSourceType.GITLAB -> PatchSourceType.GITLAB
-                else -> PatchSourceType.GITHUB
+                PatchSourceType.GITLAB -> PatchProvider.GITLAB
+                else -> PatchProvider.GITHUB
             }
             Logger.info("Creating PatchRepository for source '${source.name}' (repo=$repoPath, provider=$provider)")
-            PatchRepository(httpClient, repoPath, provider)
+            val remote = RemotePatchSourceFactory.build(provider, repoPath, httpClient)
+            PatchRepository(remote)
         }
     }
 

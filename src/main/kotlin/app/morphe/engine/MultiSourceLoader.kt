@@ -47,7 +47,11 @@ object MultiSourceLoader {
     data class Result(
         val perSource: List<LoadedSource>,
         val allPatches: Set<Patch<*>>,
-        val patchToSourceId: Map<Patch<*>, String>,
+        // Map a deduped patch back to ALL source IDs that contain it. When the
+        // same patch (by Patch.equals, i.e. matching name + body + options)
+        // appears in multiple bundles, this set has every contributing source
+        // so the UI can render multi-source attribution.
+        val patchToSourceIds: Map<Patch<*>, Set<String>>,
     ) {
         val hasErrors: Boolean get() = perSource.any { !it.isSuccess }
     }
@@ -62,12 +66,21 @@ object MultiSourceLoader {
             async(Dispatchers.IO) { loadOne(input) }
         }.awaitAll()
 
+        // Dedup intentional: identical patches across sources collapse into
+        // ONE entry — the UI then shows them as a single card with a multi-
+        // source attribution badge. Previously this used `.toMap()` for the
+        // source mapping which silently dropped all but the last source.
         val allPatches = loaded.flatMap { it.patches }.toSet()
-        val patchToSourceId = loaded.flatMap { src ->
-            src.patches.map { it to src.sourceId }
-        }.toMap()
+        val patchToSourceIds: Map<Patch<*>, Set<String>> = loaded
+            .flatMap { src -> src.patches.map { it to src.sourceId } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { it.value.toSet() }
 
-        Result(perSource = loaded, allPatches = allPatches, patchToSourceId = patchToSourceId)
+        Result(
+            perSource = loaded,
+            allPatches = allPatches,
+            patchToSourceIds = patchToSourceIds,
+        )
     }
 
     private suspend fun loadOne(input: SourceInput): LoadedSource = withContext(Dispatchers.IO) {

@@ -9,7 +9,7 @@ import app.morphe.cli.command.model.toPatchBundle
 import app.morphe.patcher.patch.loadPatchesFromJar
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import app.morphe.gui.data.model.Release
+import app.morphe.engine.model.Release
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import app.morphe.gui.util.Logger
-import app.morphe.gui.data.model.ReleaseAsset
+import app.morphe.engine.model.ReleaseAsset
 import java.io.File
 
 class PatchesViewModel(

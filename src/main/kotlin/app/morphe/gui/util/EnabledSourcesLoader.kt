@@ -90,7 +90,7 @@ object EnabledSourcesLoader {
             MultiSourceLoader.Result(
                 perSource = emptyList(),
                 allPatches = emptySet(),
-                patchToSourceId = emptyMap(),
+                patchToSourceIds = emptyMap(),
             )
         } else {
             MultiSourceLoader.load(inputs)

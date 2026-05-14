@@ -89,7 +89,8 @@ internal class ListCompatibleVersions : Runnable {
             patchesFiles = PatchFileResolver.resolve(
                 patchesFiles,
                 prerelease,
-                temporaryFilesPath
+                temporaryFilesPath,
+                CliHttpClient.instance
             )
         } catch (e: IllegalArgumentException) {
             throw CommandLine.ParameterException(

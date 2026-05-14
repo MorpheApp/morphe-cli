@@ -3,13 +3,18 @@
  * https://github.com/MorpheApp/morphe-cli
  */
 
-package app.morphe.gui.data.model
+package app.morphe.engine.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Represents a GitHub release (for CLI or Patches)
+ * Represents a release from a remote patch source (GitHub, GitLab, …).
+ *
+ * The on-the-wire JSON shape varies by provider. The engine's provider
+ * implementations are responsible for normalizing their response into this
+ * model so the rest of the codebase (GUI, CLI) doesn't need to know which
+ * provider produced a given release.
  */
 @Serializable
 data class Release(
@@ -38,7 +43,9 @@ data class Release(
     }
 
     /**
-     * Check if this is a dev/pre-release version
+     * Check if this is a dev/pre-release version. Providers that expose a
+     * `prerelease` flag (GitHub) set [isPrerelease] directly; providers that
+     * don't (GitLab) lean on the tag-name heuristic below.
      */
     fun isDevRelease(): Boolean {
         return isPrerelease || tagName.contains("dev", ignoreCase = true) ||

@@ -447,14 +447,9 @@ internal fun EditPatchSourceDialog(
 }
 
 /**
- * Resolves a URL to a GitHub repository URL.
- * Accepts: full https://github.com/owner/repo URL, morphe.software/add-source?github=owner/repo
- * link, or short form owner/repo. Returns the normalized URL or null.
- */
-/**
  * Result of parsing a user-entered remote source URL. The detected
- * [provider] tells the rest of the pipeline (PatchRepository et al.)
- * which API surface to talk to.
+ * [provider] is the GUI-side persisted type that will be stored on the
+ * [PatchSource] config (GITHUB or GITLAB only — never DEFAULT or LOCAL).
  */
 internal data class ResolvedRemoteSource(
     val canonicalUrl: String,
@@ -462,63 +457,19 @@ internal data class ResolvedRemoteSource(
 )
 
 /**
- * Parse any reasonable user input for a remote patch source and produce
- * a canonical "https://{host}/{owner}/{repo}" URL plus the detected
- * provider type. Returns null for inputs we can't confidently classify.
- *
- * Accepted inputs:
- *  - Full URL: `https://github.com/owner/repo[/...]` or `https://gitlab.com/owner/repo[/...]`
- *  - Bare host path: `github.com/owner/repo`, `gitlab.com/owner/repo`
- *  - Deep-link: `morphe.software/add-source?github=owner/repo` or `?gitlab=owner/repo`
- *  - Bare `owner/repo` — defaults to GitHub for backwards compatibility
- *    with the previous behavior.
+ * Thin GUI-side wrapper around the engine's [RemotePatchSourceFactory.parse].
+ * Returns `null` if the engine can't classify the input. The engine owns
+ * the actual URL-parsing logic — this function only translates the engine's
+ * [app.morphe.engine.patches.PatchProvider] back to the GUI's persisted
+ * [PatchSourceType] (which carries DEFAULT/LOCAL too).
  */
 internal fun resolveRemoteSourceUrl(input: String): ResolvedRemoteSource? {
-    val trimmed = input.trim()
-    if (trimmed.isBlank()) return null
-
-    // Deep-link: morphe.software/add-source?github=owner/repo or ?gitlab=owner/repo
-    if (trimmed.contains("morphe.software/add-source")) {
-        Regex("[?&]github=([^&]+)").find(trimmed)?.let { match ->
-            return buildRemoteSource(match.groupValues[1], PatchSourceType.GITHUB)
-        }
-        Regex("[?&]gitlab=([^&]+)").find(trimmed)?.let { match ->
-            return buildRemoteSource(match.groupValues[1], PatchSourceType.GITLAB)
-        }
-        return null
+    val parsed = app.morphe.engine.patches.RemotePatchSourceFactory.parse(input) ?: return null
+    val type = when (parsed.provider) {
+        app.morphe.engine.patches.PatchProvider.GITHUB -> PatchSourceType.GITHUB
+        app.morphe.engine.patches.PatchProvider.GITLAB -> PatchSourceType.GITLAB
     }
-
-    if (trimmed.contains("github.com/")) {
-        val match = Regex("github\\.com/([^/]+/[^/?#]+)").find(trimmed) ?: return null
-        return buildRemoteSource(match.groupValues[1], PatchSourceType.GITHUB)
-    }
-
-    if (trimmed.contains("gitlab.com/")) {
-        val match = Regex("gitlab\\.com/([^/]+/[^/?#]+)").find(trimmed) ?: return null
-        return buildRemoteSource(match.groupValues[1], PatchSourceType.GITLAB)
-    }
-
-    // Bare "owner/repo" — assume GitHub for backwards compatibility with
-    // the historical default.
-    if (trimmed.matches(Regex("[\\w.-]+/[\\w.-]+"))) {
-        return buildRemoteSource(trimmed, PatchSourceType.GITHUB)
-    }
-
-    return null
-}
-
-private fun buildRemoteSource(rawPath: String, provider: PatchSourceType): ResolvedRemoteSource? {
-    val clean = rawPath.trimEnd('/').removeSuffix(".git")
-    if (!clean.contains('/') || clean.split('/').size != 2) return null
-    val host = when (provider) {
-        PatchSourceType.GITHUB -> "github.com"
-        PatchSourceType.GITLAB -> "gitlab.com"
-        else -> return null
-    }
-    return ResolvedRemoteSource(
-        canonicalUrl = "https://$host/$clean",
-        provider = provider,
-    )
+    return ResolvedRemoteSource(canonicalUrl = parsed.canonicalUrl, provider = type)
 }
 
 // LabeledField, SlimTextField, DialogActionButton moved to SlimInputs.kt for
