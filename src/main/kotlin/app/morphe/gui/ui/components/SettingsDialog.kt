@@ -1558,15 +1558,30 @@ private fun OutputFolderSection(
             )
         }
 
+        // Stored form first (mirrors config.json), absolute resolution second.
+        // Hides the second line entirely when storage IS absolute, repeating
+        // the same path twice would make no sense now, innit.
         if (defaultOutputDirectory != null) {
+            val stored = app.morphe.engine.util.PortablePaths.storableForm(defaultOutputDirectory)
+            val isBundleRelative = stored != defaultOutputDirectory
             Text(
-                text = defaultOutputDirectory,
+                text = stored,
                 fontSize = 9.sp,
                 fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (isBundleRelative) {
+                Text(
+                    text = "Resolves to: $defaultOutputDirectory",
+                    fontSize = 9.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -1835,26 +1850,61 @@ private fun SigningSection(
             )
         }
 
-        // Either: full path tooltip when user-configured,
-        // or: "using default" hint when not.
+        // Either: stored form (relative when inside the bundle, absolute otherwise)
+        // with a "Resolves to: ..." subtitle when relative. Mirrors config.json
+        // so users can see which paths follow the bundle vs which are pinned.
+        // Or: "using default" hint when no user-configured path is set.
         if (keystorePath != null) {
+            val stored = app.morphe.engine.util.PortablePaths.storableForm(keystorePath)
+            val isBundleRelative = stored != keystorePath
             Text(
-                text = keystorePath,
+                text = stored,
                 fontSize = 9.sp,
                 fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (isBundleRelative) {
+                Text(
+                    text = "Resolves to: $keystorePath",
+                    fontSize = 9.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         } else {
+            // Mirror the storage form treatment used for user-configured paths above.
+            // The default keystore lives in the bundle (`morphe-data/`) in the happy case,
+            // so the storable form will be relative.
+            // Verb is conditional on file existence. Patcher creates the file on first sign,
+            // so on a fresh install the hint accurately says "Will create..."
+            // instead of making up claims like "Using..." an absent file.
+            val defaultAbs = MorpheData.defaultKeystoreFile.absolutePath
+            val defaultStored = app.morphe.engine.util.PortablePaths.storableForm(defaultAbs)
+            val isBundleRelative = defaultStored != defaultAbs
+            val verb = if (MorpheData.defaultKeystoreFile.exists()) "Using"
+                       else "Will create"
             Text(
-                text = "Using Morphe's default keystore at ${MorpheData.defaultKeystoreFile.absolutePath}",
+                text = "$verb Morphe's default keystore at $defaultStored",
                 fontSize = 9.sp,
                 fontFamily = mono,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            if (isBundleRelative) {
+                Text(
+                    text = "Resolves to: $defaultAbs",
+                    fontSize = 9.sp,
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))
