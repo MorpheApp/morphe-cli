@@ -126,7 +126,16 @@ internal fun AddPatchSourceDialog(
                         LabeledField(label = "REPOSITORY URL", mono = mono) {
                             SlimTextField(
                                 value = url,
-                                onValueChange = { url = it; error = null },
+                                onValueChange = { newUrl ->
+                                    url = newUrl
+                                    error = null
+                                    // Auto-suggest the name from the repo basename as soon as the URL
+                                    // parses cleanly exactly like the LOCAL file case which derives the name
+                                    // from the .mpp filename. It tires its best :)
+                                    if (name.isBlank()) {
+                                        suggestNameFromUrl(newUrl)?.let { name = it }
+                                    }
+                                },
                                 placeholder = "github.com/owner/repo or gitlab.com/owner/repo",
                                 mono = mono,
                                 accents = accents,
@@ -470,6 +479,19 @@ internal fun resolveRemoteSourceUrl(input: String): ResolvedRemoteSource? {
         app.morphe.engine.patches.PatchProvider.GITLAB -> PatchSourceType.GITLAB
     }
     return ResolvedRemoteSource(canonicalUrl = parsed.canonicalUrl, provider = type)
+}
+
+/**
+ * Suggest a friendly source name from a typed/pasted URL — used to populate
+ * the NAME field while the user is filling in REPOSITORY URL, so they don't
+ * have to think one up themselves. Returns `<owner>/<repo>` so two sources
+ * with similarly-named repos (e.g. forks of `morphe-patches`) stay
+ * distinguishable. Returns null when the URL doesn't parse cleanly yet
+ * (partial typing, invalid host, etc.).
+ */
+private fun suggestNameFromUrl(input: String): String? {
+    val parsed = app.morphe.engine.patches.RemotePatchSourceFactory.parse(input) ?: return null
+    return parsed.repoPath.takeIf { it.isNotBlank() }
 }
 
 // LabeledField, SlimTextField, DialogActionButton moved to SlimInputs.kt for
