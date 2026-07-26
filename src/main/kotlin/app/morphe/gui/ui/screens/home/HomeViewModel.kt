@@ -390,18 +390,27 @@ class HomeViewModel(
                 val result = EnabledSourcesLoader.loadAll(enabled, patchService, prefs)
 
                 if (!result.anyLoaded) {
+                    val firstThrowable = result.loaded.perSource.firstNotNullOfOrNull { it.error }
                     val firstError = result.resolved.firstNotNullOfOrNull { it.error }
-                        ?: result.loaded.perSource.firstNotNullOfOrNull { it.error?.message }
+                        ?: firstThrowable?.let { humanizePatchLoadError(it) }
                         ?: "Could not load any patches"
                     val friendlyError = if (firstError.contains("zip", ignoreCase = true) || firstError.contains("END header", ignoreCase = true)) {
                         "Patch file is missing or corrupted. Clear cache and re-download."
                     } else {
                         firstError
                     }
-                    // Logged once per load (not per poll): the per-source failures are only
-                    // surfaced in the UI otherwise, so without this the log file has nothing
-                    // to diagnose a "patches won't load" report from.
-                    Logger.warn("Failed to load any patches: $firstError")
+                    // Log the real throwable (full stack). Never only a null/blank .message.
+                    if (firstThrowable != null) {
+                        Logger.error("Failed to load any patches: $friendlyError", firstThrowable)
+                    } else {
+                        Logger.warn("Failed to load any patches: $firstError")
+                    }
+                    result.loaded.perSource.filter { !it.isSuccess }.forEach { src ->
+                        val err = src.error
+                        if (err != null) {
+                            Logger.error("Patch source '${src.sourceName}' failed to load", err)
+                        }
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
                         patchLoadError = friendlyError
@@ -453,13 +462,18 @@ class HomeViewModel(
                     result.loaded.perSource.forEach { if (!it.isSuccess) add(it.sourceId) }
                 }
                 if (failedSourceIds.isNotEmpty()) {
-                    // One WARN summary per load (name: reason for each failed source), so a
-                    // partial failure — which is otherwise only shown in the UI — is captured
-                    // in the log file for diagnosing user reports.
+                    // One summary + full stack per failed source so partial failures are
+                    // diagnosable from the log file (not only a red "Failed to load" LED).
                     val details = buildList {
                         result.resolved.forEach { r -> r.error?.let { add("${r.source.name}: $it") } }
                         result.loaded.perSource.forEach { s ->
-                            if (!s.isSuccess) add("${s.sourceName}: ${s.error?.message ?: "failed to load"}")
+                            if (!s.isSuccess) {
+                                val err = s.error
+                                add("${s.sourceName}: ${err?.let { humanizePatchLoadError(it) } ?: "failed to load"}")
+                                if (err != null) {
+                                    Logger.error("Patch source '${s.sourceName}' failed to load", err)
+                                }
+                            }
                         }
                     }
                     Logger.warn("Some patch sources failed to load — ${details.joinToString("; ")}")

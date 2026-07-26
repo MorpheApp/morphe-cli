@@ -199,9 +199,18 @@ class QuickPatchViewModel(
                 val result = EnabledSourcesLoader.loadAll(listOf(pair), patchService)
 
                 if (!result.anyLoaded) {
+                    val firstThrowable = result.loaded.perSource.firstNotNullOfOrNull { it.error }
                     val firstError = result.resolved.firstNotNullOfOrNull { it.error }
-                        ?: result.loaded.perSource.firstNotNullOfOrNull { it.error?.message }
+                        ?: firstThrowable?.let { humanizePatchLoadError(it) }
                         ?: "Could not load any patches"
+                    if (firstThrowable != null) {
+                        Logger.error("Quick mode: Failed to load any patches: $firstError", firstThrowable)
+                    } else {
+                        Logger.warn("Quick mode: Failed to load any patches: $firstError")
+                    }
+                    result.loaded.perSource.filter { !it.isSuccess }.forEach { src ->
+                        src.error?.let { Logger.error("Quick mode: source '${src.sourceName}' failed", it) }
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
                         patchLoadError = firstError

@@ -103,6 +103,7 @@ import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 import app.morphe.gui.util.VersionStatus
+import app.morphe.gui.util.humanizePatchLoadError
 import app.morphe.gui.util.resolveStatusColorType
 import app.morphe.gui.util.resolveVersionWarningContent
 import app.morphe.gui.util.toColor
@@ -431,7 +432,12 @@ fun HomeScreenContent(
         val sourceErrors: Map<String, String> = buildMap {
             snapshot?.resolved?.forEach { r -> r.error?.let { put(r.source.id, it) } }
             snapshot?.loaded?.perSource?.forEach { s ->
-                if (!s.isSuccess) put(s.sourceId, s.error?.message ?: "Failed to load")
+                if (!s.isSuccess) {
+                    put(
+                        s.sourceId,
+                        s.error?.let { humanizePatchLoadError(it) } ?: "Failed to load",
+                    )
+                }
             }
         }
         SourceManagementSheet(

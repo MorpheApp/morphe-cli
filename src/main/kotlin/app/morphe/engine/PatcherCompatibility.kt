@@ -6,7 +6,6 @@
 package app.morphe.engine
 
 import java.io.File
-import java.util.Properties
 import java.util.zip.ZipInputStream
 import java.util.logging.Logger
 
@@ -18,6 +17,11 @@ import java.util.logging.Logger
  * Morphe" message, mirroring how morphe-manager reads the bundle's `Patcher-Version`
  * manifest attribute and compares it to the patcher it ships.
  *
+ * The "ships" version is read from the **patcher library on the classpath**
+ * (`app/morphe/patcher/version.properties`), not from the desktop app's version catalog.
+ * That way a composite/local `morphe-patcher` (or any resolved artifact) reports its own
+ * version instead of a stale catalog pin in `libs.versions.toml`.
+ *
  * Deliberately lenient: any doubt (missing attribute, unparseable version, unreadable file)
  * returns null so a valid bundle is never wrongly rejected.
  */
@@ -25,16 +29,10 @@ object PatcherCompatibility {
 
     private val logger = Logger.getLogger(PatcherCompatibility::class.java.name)
 
-    /** The morphe-patcher version this build ships, from the generated version.properties. */
-    val currentPatcherVersion: String? by lazy {
-        runCatching {
-            PatcherCompatibility::class.java
-                .getResourceAsStream("/app/morphe/cli/version.properties")
-                ?.use { Properties().apply { load(it) }.getProperty("patcherVersion") }
-                ?.trim()
-                ?.takeUnless { it.isEmpty() || it.startsWith("\${") }
-        }.getOrNull()
-    }
+    /**
+     * The morphe-patcher version on the classpath (see [MorpheComponents.patcherVersion]).
+     */
+    val currentPatcherVersion: String? get() = MorpheComponents.patcherVersion
 
     /**
      * The morphe-patcher version [mpp] requires, from its `Patcher-Version` manifest

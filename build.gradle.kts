@@ -150,18 +150,45 @@ tasks {
         }
     }
 
+    // Write the *resolved* morphe library version (not the catalog pin). Patcher ships
+    // its own version.properties.
+    val writeMorpheComponents = register("writeMorpheComponents") {
+        description = "Writes the resolved morphe-library version to components.properties"
+        val outFile = layout.buildDirectory.file(
+            "generated/morphe-components/app/morphe/cli/components.properties",
+        )
+        val runtimeCp = configurations.named("runtimeClasspath")
+        inputs.files(runtimeCp)
+        outputs.file(outFile)
+        doLast {
+            val libraryVersion = runtimeCp.get().incoming.resolutionResult.allComponents
+                .mapNotNull { it.moduleVersion }
+                .firstOrNull { it.group == "app.morphe" && it.name.startsWith("morphe-library") }
+                ?.version
+                ?: "unknown"
+            outFile.get().asFile.apply {
+                parentFile.mkdirs()
+                writeText(
+                    "# Generated from resolved runtimeClasspath — do not edit\n" +
+                        "libraryVersion=$libraryVersion\n",
+                )
+            }
+        }
+    }
+
     processResources {
         // Make sure the licenses are generated before the resources are processed
-        dependsOn("exportLibraryDefinitions")
+        dependsOn("exportLibraryDefinitions", writeMorpheComponents)
         from(layout.buildDirectory.file("generated/aboutLibraries/aboutlibraries.json"))
+        from(layout.buildDirectory.dir("generated/morphe-components"))
 
-        // Only expand properties files, not binary files like PNG/ICO
+        // Only expand properties files, not binary files like PNG/ICO.
+        // Patcher is read from its jar at runtime. libraryVersion lives in
+        // components.properties generated above, skip token expansion for it.
         filesMatching("**/*.properties") {
+            if (path.contains("components.properties")) return@filesMatching
             expand(
                 "projectVersion" to project.version,
-                // The bundled patcher version, so the app can tell a user when a
-                // patch bundle needs a newer patcher than this build ships.
-                "patcherVersion" to libs.versions.morphe.patcher.get(),
             )
         }
         // Bundle the project's NOTICE (GPL 7b/7c) and LICENSE into META-INF so they
