@@ -132,6 +132,7 @@ class PatchOptionsFileTest {
         // patches (no compatibleWith) to default = false, so `default = true` is only
         // honored for app-specific patches.
         val adBlockPatch = rawResourcePatch(name = "AdBlocker", description = "Block Ads", default = true) {
+            @Suppress("DEPRECATION")
             compatibleWith("com.example.app")
         }
 

@@ -75,15 +75,15 @@ dependencies {
     // -- Compose Desktop ---------------------------------------------------
     // Platform-independent: single JAR runs on all supported OSes.
     // Skiko auto-detects the OS at runtime and loads the correct native library.
-    implementation(compose.desktop.macos_arm64)
-    implementation(compose.desktop.macos_x64)
-    implementation(compose.desktop.linux_x64)
-    implementation(compose.desktop.linux_arm64)
-    implementation(compose.desktop.windows_x64)
-    implementation(compose.components.resources)
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-macos-arm64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-macos-x64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-linux-x64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-linux-arm64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-windows-x64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.components:components-resources:${libs.versions.compose.get()}")
     @Suppress("DEPRECATION")
     implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
+    implementation("org.jetbrains.compose.material:material-icons-extended-desktop:1.7.3")
 
     // -- Async / Serialization ---------------------------------------------
     implementation(libs.kotlinx.coroutines.core)

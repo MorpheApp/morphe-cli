@@ -135,7 +135,7 @@ class ConfigRepository {
         // mapped onto the default source).
         val legacyTags: Map<String, String> = when {
             current.lastPatchesVersionBySource.isNotEmpty() -> current.lastPatchesVersionBySource
-            current.lastPatchesVersion != null -> mapOf(DEFAULT_PATCH_SOURCE.id to current.lastPatchesVersion!!)
+            current.lastPatchesVersion != null -> mapOf(DEFAULT_PATCH_SOURCE.id to current.lastPatchesVersion)
             else -> emptyMap()
         }
         if (legacyTags.isEmpty()) return emptyMap()
