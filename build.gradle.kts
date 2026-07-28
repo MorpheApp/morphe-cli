@@ -175,6 +175,9 @@ tasks {
     shadowJar {
         dependencies {
             exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
+            exclude(dependency("org.jetbrains.compose.material:material-icons-extended-desktop:.*"))
+            exclude(dependency("net.java.dev.jna:jna:.*"))
+            exclude(dependency("net.java.dev.jna:jna-platform:.*"))
         }
 
         exclude(

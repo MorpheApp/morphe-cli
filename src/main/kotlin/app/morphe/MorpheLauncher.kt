@@ -31,10 +31,11 @@ fun main(args: Array<String>) {
                 launchGuiReflectively(args)
                 return
             } else {
-                val skikoJar = BootstrapDownloader.downloadIfMissing()
+                val downloadedJars = BootstrapDownloader.downloadIfMissing()
                 val javaHome = System.getProperty("java.home")
                 val javaBin = File(javaHome, "bin/java").absolutePath
-                val classPath = File(location.toURI()).absolutePath + File.pathSeparator + skikoJar.absolutePath
+                val downloadedClassPath = downloadedJars.joinToString(File.pathSeparator) { it.absolutePath }
+                val classPath = File(location.toURI()).absolutePath + File.pathSeparator + downloadedClassPath
 
                 val processBuilder = ProcessBuilder(
                     javaBin,
