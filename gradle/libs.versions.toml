@@ -29,6 +29,10 @@ kotlinx-serialization = "1.11.0"
 # JNA (Windows DWM title bar tinting)
 jna = "5.19.1"
 
+# Bootstrap GUI
+skiko = "0.144.6"
+materialIcons = "1.7.3"
+
 # Testing
 mockk = "1.14.11"
 
