@@ -67,7 +67,9 @@ dependencies {
     api(libs.morphe.patcher)
     implementation(libs.arsclib)
     implementation(libs.morphe.library)
-    implementation(libs.jadb)
+    implementation(libs.jadb) {
+        exclude(group = "org.mockito")
+    }
     implementation(libs.picocli)
 
     // -- Compose Desktop ---------------------------------------------------
@@ -209,6 +211,29 @@ tasks {
             "/prebuilt/*/aapt_*",
         )
 
+        // Exclude unused JNA native platforms to save ~5MB.
+        // We only support Mac (x64/arm64), Windows (x64), and Linux (x64/arm64).
+        exclude("com/sun/jna/aix-ppc/**")
+        exclude("com/sun/jna/aix-ppc64/**")
+        exclude("com/sun/jna/freebsd-x86/**")
+        exclude("com/sun/jna/freebsd-x86-64/**")
+        exclude("com/sun/jna/freebsd-aarch64/**")
+        exclude("com/sun/jna/dragonflybsd-x86-64/**")
+        exclude("com/sun/jna/openbsd-x86-64/**")
+        exclude("com/sun/jna/sunos-sparc/**")
+        exclude("com/sun/jna/sunos-sparcv9/**")
+        exclude("com/sun/jna/sunos-x86/**")
+        exclude("com/sun/jna/sunos-x86-64/**")
+        exclude("com/sun/jna/linux-arm/**")
+        exclude("com/sun/jna/linux-armel/**")
+        exclude("com/sun/jna/linux-mips64el/**")
+        exclude("com/sun/jna/linux-ppc/**")
+        exclude("com/sun/jna/linux-ppc64le/**")
+        exclude("com/sun/jna/linux-riscv64/**")
+        exclude("com/sun/jna/linux-s390x/**")
+        exclude("com/sun/jna/linux-loongarch64/**")
+        exclude("com/sun/jna/win32-x86/**")
+
         // NOTICE/LICENSE handling:
         //   * Global strategy is EXCLUDE (first-wins) so duplicates at non-transformed
         //     paths — including native libs like libskiko-*.dylib — are deduplicated.
@@ -273,8 +298,56 @@ tasks {
     }
 
     publish {
-        dependsOn(shadowJar)
+        dependsOn("overwriteShadowJar")
     }
+
+    assemble {
+        dependsOn("overwriteShadowJar")
+    }
+
+    val minifyShadowJar = register<proguard.gradle.ProGuardTask>("minifyShadowJar") {
+        // Only run when explicitly requested via assemble or direct call
+        enabled = gradle.startParameter.taskNames.any { it.contains("assemble") || it.contains("minify") || it.contains("publish") }
+        dependsOn(shadowJar)
+
+        // Use the JAR produced by shadowJar as input
+        val shadowJarFile = shadowJar.get().archiveFile.get().asFile
+        // Use a temporary file for the ProGuard output
+        val tempJarFile = file(shadowJarFile.absolutePath.replace(".jar", ".tmp.jar"))
+
+        injars(shadowJarFile)
+        outjars(tempJarFile)
+
+        // Load the Proguard configuration
+        configuration("proguard-rules.pro")
+
+        // Include the Java runtime classes
+        val javaHome = System.getProperty("java.home")
+        libraryjars("$javaHome/jmods")
+
+        // Report on what was removed
+        printusage(layout.buildDirectory.file("proguard/usage.txt").get().asFile)
+    }
+
+    val overwriteShadowJar = register("overwriteShadowJar") {
+        dependsOn(minifyShadowJar)
+        val shadowJarFile = shadowJar.get().archiveFile.get().asFile
+        val tempJarFile = file(shadowJarFile.absolutePath.replace(".jar", ".tmp.jar"))
+        
+        // Only run if minification actually happened
+        onlyIf { minifyShadowJar.get().enabled && tempJarFile.exists() }
+        
+        doLast {
+            tempJarFile.copyTo(shadowJarFile, overwrite = true)
+            tempJarFile.delete()
+        }
+    }
+
+    // Ensure all shadow-related tasks wait for minification to finish before using the JAR.
+    // This prevents "zip END header not found" errors caused by concurrent access.
+    named("shadowDistZip") { dependsOn(overwriteShadowJar) }
+    named("shadowDistTar") { dependsOn(overwriteShadowJar) }
+    named("startShadowScripts") { dependsOn(overwriteShadowJar) }
 }
 
 // ============================================================================
