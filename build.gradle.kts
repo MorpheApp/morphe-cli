@@ -173,6 +173,10 @@ tasks {
     // Shadow JAR — the only distribution artifact
     // -------------------------------------------------------------------------
     shadowJar {
+        dependencies {
+            exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
+        }
+
         exclude(
             "/prebuilt/linux/aapt",
             "/prebuilt/windows/aapt.exe",
