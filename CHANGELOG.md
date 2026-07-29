@@ -1,3 +1,10 @@
+# [1.13.0-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.2...v1.13.0-dev.3) (2026-07-29)
+
+
+### Features
+
+* dynamically download GUI dependencies to reduce jar size ([#232](https://github.com/MorpheApp/morphe-desktop/issues/232)) ([d74a3c2](https://github.com/MorpheApp/morphe-desktop/commit/d74a3c2eec569c620d98d3c1a28693a03f5c76f8))
+
 # [1.13.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.1...v1.13.0-dev.2) (2026-07-29)
 
 
