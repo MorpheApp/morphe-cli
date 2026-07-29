@@ -1,3 +1,10 @@
+# [1.13.0-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.3...v1.13.0-dev.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* Clean up obsolete GUI dependencies ([#233](https://github.com/MorpheApp/morphe-desktop/issues/233)) ([0d6816c](https://github.com/MorpheApp/morphe-desktop/commit/0d6816c6a031afd20a225444776fbc075118aa3b))
+
 # [1.13.0-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.2...v1.13.0-dev.3) (2026-07-29)
 
 

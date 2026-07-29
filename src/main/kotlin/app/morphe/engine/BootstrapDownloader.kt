@@ -58,6 +58,15 @@ object BootstrapDownloader {
     fun downloadIfMissing(listener: BootstrapProgressListener? = null): List<File> {
         val dependencies = listOf(SKIKO, JNA, JNA_PLATFORM)
         val binDir = File(MorpheData.root, "libs").also { it.mkdirs() }
+        
+        val expectedFileNames = dependencies.map { it.fileName }.toSet()
+        binDir.listFiles()?.forEach { file ->
+            if (file.isFile && file.name !in expectedFileNames) {
+                logger.info("Removing obsolete dependency: ${file.name}")
+                file.delete()
+            }
+        }
+        
         val downloadedFiles = mutableListOf<File>()
 
         // Decide up front which components need fetching, hashing each cached file
