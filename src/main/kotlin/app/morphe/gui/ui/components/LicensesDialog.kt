@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.morphe.gui.ui.theme.LocalMorpheAccents
@@ -56,8 +58,7 @@ import app.morphe.gui.util.Logger
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.entity.Library
 import com.mikepenz.aboutlibraries.entity.License
-import java.awt.Desktop
-import java.net.URI
+
 
 @Composable
 internal fun LicensesDialog(onDismiss: () -> Unit) {
@@ -580,6 +581,7 @@ private fun LinkPill(
 ) {
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
+    val uriHandler = LocalUriHandler.current
     Row(
         modifier = Modifier
             .hoverable(hover)
@@ -589,7 +591,7 @@ private fun LinkPill(
                 if (isHovered) borderColor.copy(alpha = 0.4f) else borderColor,
                 RoundedCornerShape(corners.small)
             )
-            .clickable { openUrl(url) }
+            .clickable { uriHandler.openUri(url) }
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -602,9 +604,8 @@ private fun LinkPill(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.9f else 0.6f),
             letterSpacing = 1.sp
         )
-        @Suppress("DEPRECATION")
         Icon(
-            imageVector = Icons.Default.OpenInNew,
+            imageVector = Icons.AutoMirrored.Default.OpenInNew,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.75f else 0.45f),
             modifier = Modifier.size(10.dp)
@@ -943,14 +944,4 @@ private fun licenseDisplayLabel(license: License): String {
     val hash = license.hash
     if (hash.isNotBlank() && !MD5_HASH_REGEX.matches(hash)) return hash
     return license.name.ifBlank { "—" }
-}
-
-private fun openUrl(url: String) {
-    try {
-        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-            Desktop.getDesktop().browse(URI.create(url))
-        }
-    } catch (e: Exception) {
-        Logger.error("Failed to open url: $url", e)
-    }
 }

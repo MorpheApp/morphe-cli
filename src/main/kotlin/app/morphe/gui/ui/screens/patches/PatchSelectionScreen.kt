@@ -249,7 +249,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             }
 
             // Command preview toggle
-            if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
+            if (!uiState.isLoading && uiState.bundles.isNotEmpty()) {
                 val cmdHover = remember { MutableInteractionSource() }
                 val isCmdHovered by cmdHover.collectIsHoveredAsState()
                 val cmdActive = showCommandPreview
@@ -301,7 +301,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 )
 
                 TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
                     tooltip = {
                         PlainTooltip {
                             Text(
@@ -351,8 +351,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
         }
 
         // Command preview — collapsible
-        if (!uiState.isLoading && uiState.allPatches.isNotEmpty()) {
-            val commandPreview = remember(uiState.selectedPatches, uiState.stripLibsStatus, cleanMode, continueOnError, keystorePath) {
+        if (!uiState.isLoading && uiState.bundles.isNotEmpty()) {
+            val commandPreview = remember(uiState.selectedByBundle, uiState.stripLibsStatus, cleanMode, continueOnError, keystorePath) {
                 viewModel.getCommandPreview(cleanMode, continueOnError, keystorePath, keystorePassword, keystoreAlias, keystoreEntryPassword)
             }
             AnimatedVisibility(
@@ -599,7 +599,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 ) {
                     val patchHover = remember { MutableInteractionSource() }
                     val isPatchHovered by patchHover.collectIsHoveredAsState()
-                    val patchEnabled = uiState.selectedPatches.isNotEmpty()
+                    val patchEnabled = uiState.selectedCount > 0
                     val patchBg by animateColorAsState(
                         when {
                             !patchEnabled -> accents.primary.copy(alpha = 0.1f)

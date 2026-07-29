@@ -140,7 +140,7 @@ fun Iterable<Patch<*>>.mostCommonCompatibleVersions(
         val versionCount = VersionMap()
 
         for (patch in this) {
-            if (!countUnusedPatches && !patch.use) continue
+            if (!countUnusedPatches && !patch.default) continue
 
             val compat = patch.compatibility
 
@@ -157,8 +157,6 @@ fun Iterable<Patch<*>>.mostCommonCompatibleVersions(
                         .filter { includeExperimental || !it.isExperimental }
                         .mapNotNull { it.version }
                 }
-
-                if (versions.isEmpty() && !isUniversal) continue
 
                 if (versions.isEmpty()) {
                     versionCount[""] = (versionCount[""] ?: 0) + 1

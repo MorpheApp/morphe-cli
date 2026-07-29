@@ -6,6 +6,7 @@
 package app.morphe.desktop.command
 
 import app.morphe.desktop.command.model.PatchBundle
+import app.morphe.engine.isCompatibleWith
 import app.morphe.engine.patches.LoadedBundle
 import app.morphe.engine.patches.PatchBundleLoader
 import app.morphe.desktop.command.model.findMatchingBundle
@@ -112,12 +113,15 @@ internal object OptionsCommand : Callable<Int> {
             // For each bundle: apply optional package filter, find its matching JSON
             // entry (by source filename), merge, splice updated entry back into the running list.
             var updatedBundles = existingBundles
+            val pkg = packageName
             loadedBundles.forEach { lb ->
-                val filtered = packageName?.let { pkg ->
-                    lb.patches.filter { patch ->
-                        patch.compatiblePackages?.any { (name, _) -> name == pkg } ?: true
-                    }.toSet()
-                } ?: lb.patches
+                val filtered = lb.patches.filter { patch ->
+                    pkg == null || patch.isCompatibleWith(
+                        packageName = pkg,
+                        includeExperimental = true,
+                        includeUniversalPatches = true,
+                    )
+                }.toSet()
 
                 val existingBundle = updatedBundles.findMatchingBundle(setOf(lb.sourceFile))
                 val updatedBundle = filtered.mergeWithBundle(

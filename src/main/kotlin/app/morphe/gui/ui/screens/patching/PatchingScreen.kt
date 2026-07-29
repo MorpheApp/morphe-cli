@@ -34,13 +34,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.ExperimentalComposeUiApi
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import java.awt.datatransfer.StringSelection
 import java.io.File
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -719,6 +722,7 @@ private fun getStatusColor(status: PatchingStatus): Color {
 }
 
 @Composable
+@OptIn(ExperimentalComposeUiApi::class)
 private fun LogFileViewerDialog(
     file: File,
     corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
@@ -727,7 +731,8 @@ private fun LogFileViewerDialog(
     onDismiss: () -> Unit,
 ) {
     val accents = LocalMorpheAccents.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val clipboardScope = rememberCoroutineScope()
 
     // Read file once on open. Logs are line-oriented text, typically well
     // under a few MB; if a single patching session ever produces something
@@ -798,7 +803,11 @@ private fun LogFileViewerDialog(
                             .clip(RoundedCornerShape(corners.small))
                             .background(copyBg)
                             .clickable {
-                                clipboard.setText(AnnotatedString(content))
+                                clipboardScope.launch {
+                                    clipboard.setClipEntry(
+                                        ClipEntry(StringSelection(content))
+                                    )
+                                }
                                 copied = true
                             }
                             .padding(horizontal = 10.dp, vertical = 6.dp)
