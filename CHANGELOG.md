@@ -1,3 +1,10 @@
+# [1.13.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.1...v1.13.0-dev.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* resolve deprecation warnings and fix `list-versions` accuracy ([#225](https://github.com/MorpheApp/morphe-desktop/issues/225)) ([9b79d69](https://github.com/MorpheApp/morphe-desktop/commit/9b79d69895f89760e465b63d0b9d9d23c8ba738f))
+
 # [1.13.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.12.0...v1.13.0-dev.1) (2026-07-27)
 
 
