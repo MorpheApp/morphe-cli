@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.mikepenz.aboutlibraries.plugin.DuplicateMode
 import com.mikepenz.aboutlibraries.plugin.DuplicateRule
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -28,6 +29,9 @@ kotlin {
     }
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21)
+    }
+    sourceSets.main {
+        kotlin.srcDir(layout.buildDirectory.dir("generated/source/bootstrap/main"))
     }
 }
 
@@ -63,6 +67,15 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
+// ============================================================================
+// Bootstrap (GUI) Dependency Code Generation
+// ============================================================================
+val bootstrapDependencies = configurations.create("bootstrapDependencies") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
 dependencies {
     api(libs.morphe.patcher)
     implementation(libs.arsclib)
@@ -71,6 +84,16 @@ dependencies {
         exclude(group = "org.mockito")
     }
     implementation(libs.picocli)
+
+    // -- Bootstrap (Code Generation) ---------------------------------------
+    bootstrapDependencies("org.jetbrains.compose.material:material-icons-extended-desktop:${libs.versions.materialIcons.get()}")
+    bootstrapDependencies("net.java.dev.jna:jna:${libs.versions.jna.get()}")
+    bootstrapDependencies("net.java.dev.jna:jna-platform:${libs.versions.jna.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-x64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-arm64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-linux-x64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-linux-arm64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:${libs.versions.skiko.get()}")
 
     // -- Compose Desktop ---------------------------------------------------
     // Platform-independent: single JAR runs on all supported OSes.
@@ -136,6 +159,64 @@ aboutLibraries {
 // Tasks
 // ============================================================================
 tasks {
+    val generateBootstrapConstants = register("generateBootstrapConstants") {
+        val artifactFiles = bootstrapDependencies.incoming.files
+        inputs.files(artifactFiles)
+        
+        val skikoVersion = libs.versions.skiko.get()
+        val materialIconsVersion = libs.versions.materialIcons.get()
+        val jnaVersion = libs.versions.jna.get()
+        
+        inputs.property("skikoVersion", skikoVersion)
+        inputs.property("materialIconsVersion", materialIconsVersion)
+        inputs.property("jnaVersion", jnaVersion)
+        
+        val outputDir = layout.buildDirectory.dir("generated/source/bootstrap/main/app/morphe/engine")
+        outputs.dir(outputDir)
+        
+        doLast {
+            val outDir = outputDir.get().asFile
+            outDir.mkdirs()
+            val outFile = File(outDir, "BootstrapConstants.kt")
+            
+            fun getHash(artifactName: String, version: String): String {
+                val exactName = "$artifactName-$version.jar"
+                val file = artifactFiles.find { it.name == exactName }
+                    ?: error("Could not find artifact exactly matching $exactName in ${artifactFiles.map { it.name }}")
+                val digest = MessageDigest.getInstance("SHA-256")
+                return digest.digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+            }
+            
+            val content = """
+                package app.morphe.engine
+
+                internal object BootstrapConstants {
+                    const val SKIKO_VERSION = "$skikoVersion"
+                    const val MATERIAL_ICONS_VERSION = "$materialIconsVersion"
+                    const val JNA_VERSION = "$jnaVersion"
+                    
+                    const val MATERIAL_ICONS_HASH = "${getHash("material-icons-extended-desktop", materialIconsVersion)}"
+                    const val JNA_HASH = "${getHash("jna", jnaVersion)}"
+                    const val JNA_PLATFORM_HASH = "${getHash("jna-platform", jnaVersion)}"
+                    
+                    val SKIKO_HASHES = mapOf(
+                        "macos-x64" to "${getHash("skiko-awt-runtime-macos-x64", skikoVersion)}",
+                        "macos-arm64" to "${getHash("skiko-awt-runtime-macos-arm64", skikoVersion)}",
+                        "linux-x64" to "${getHash("skiko-awt-runtime-linux-x64", skikoVersion)}",
+                        "linux-arm64" to "${getHash("skiko-awt-runtime-linux-arm64", skikoVersion)}",
+                        "windows-x64" to "${getHash("skiko-awt-runtime-windows-x64", skikoVersion)}"
+                    )
+                }
+            """.trimIndent()
+            
+            outFile.writeText(content)
+        }
+    }
+
+    named("compileKotlin") {
+        dependsOn(generateBootstrapConstants)
+    }
+
     jar {
         manifest {
             attributes(
@@ -173,6 +254,13 @@ tasks {
     // Shadow JAR — the only distribution artifact
     // -------------------------------------------------------------------------
     shadowJar {
+        dependencies {
+            exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
+            exclude(dependency("org.jetbrains.compose.material:material-icons-extended-desktop:.*"))
+            exclude(dependency("net.java.dev.jna:jna:.*"))
+            exclude(dependency("net.java.dev.jna:jna-platform:.*"))
+        }
+
         exclude(
             "/prebuilt/linux/aapt",
             "/prebuilt/windows/aapt.exe",
