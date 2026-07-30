@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,8 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -75,7 +75,7 @@ fun ToolsDialog(
             ) {
                 ActionButton(
                     label = "OPEN LOGS",
-                    icon = Icons.Default.BugReport,
+                    icon = MorpheIcons.BugReport,
                     mono = mono,
                     borderColor = borderColor,
                     onClick = {
@@ -94,7 +94,7 @@ fun ToolsDialog(
 
                 ActionButton(
                     label = "OPEN APP DATA",
-                    icon = Icons.Default.FolderOpen,
+                    icon = MorpheIcons.FolderOpen,
                     mono = mono,
                     borderColor = borderColor,
                     onClick = {
@@ -113,7 +113,7 @@ fun ToolsDialog(
 
                 ActionButton(
                     label = "VIEW LICENSES",
-                    icon = Icons.Default.Description,
+                    icon = MorpheIcons.Description,
                     mono = mono,
                     borderColor = borderColor,
                     onClick = { showLicensesDialog = true }
@@ -134,7 +134,7 @@ fun ToolsDialog(
                         cacheClearFailed -> "CLEAR FAILED"
                         else -> "CLEAR CACHE"
                     },
-                    icon = Icons.Default.Delete,
+                    icon = MorpheIcons.Delete,
                     mono = mono,
                     borderColor = if (cacheCleared) MorpheColors.Teal.copy(alpha = 0.3f)
                                   else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),

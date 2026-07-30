@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.home
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -34,12 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -827,79 +823,79 @@ private fun HeaderBar(
 /**
  * Inline patches version for the header bar — compact, horizontal.
  */
-@Composable
-private fun PatchesVersionInline(
-    patchesVersion: String,
-    latestLabel: String?,
-    onChangePatchesClick: () -> Unit,
-    patchSourceName: String? = null
-) {
-    val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
-    val accents = LocalMorpheAccents.current
-    val hoverInteraction = remember { MutableInteractionSource() }
-    val isHovered by hoverInteraction.collectIsHoveredAsState()
-    val borderColor by animateColorAsState(
-        MaterialTheme.colorScheme.outline.copy(alpha = if (isHovered) 0.24f else 0.1f),
-        animationSpec = tween(200)
-    )
-
-    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = Modifier
-            .heightIn(min = 34.dp)
-            .clip(RoundedCornerShape(corners.small))
-            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
-            .background(MaterialTheme.colorScheme.surface)
-            .hoverable(hoverInteraction)
-            .clickable(onClick = onChangePatchesClick)
-            .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        itemVerticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = patchSourceName?.uppercase() ?: "PATCHES",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = homeMutedTextColor(0.4f),
-                letterSpacing = 1.5.sp
-            )
-            Text(
-                text = " · ",
-                fontSize = 10.sp,
-                fontFamily = mono,
-                color = homeMutedTextColor(0.25f)
-            )
-            Text(
-                text = patchesVersion,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = mono,
-                color = homeAccentTextColor(accents.primary)
-            )
-        }
-        if (latestLabel != null) {
-            Box(
-                modifier = Modifier
-                    .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                    .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
-                    .padding(horizontal = 5.dp, vertical = 1.dp)
-            ) {
-                Text(
-                    text = latestLabel,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.secondary,
-                    letterSpacing = 1.sp
-                )
-            }
-        }
-    }
-}
+//@Composable
+//private fun PatchesVersionInline(
+//    patchesVersion: String,
+//    latestLabel: String?,
+//    onChangePatchesClick: () -> Unit,
+//    patchSourceName: String? = null
+//) {
+//    val corners = LocalMorpheCorners.current
+//    val mono = LocalMorpheFont.current
+//    val accents = LocalMorpheAccents.current
+//    val hoverInteraction = remember { MutableInteractionSource() }
+//    val isHovered by hoverInteraction.collectIsHoveredAsState()
+//    val borderColor by animateColorAsState(
+//        MaterialTheme.colorScheme.outline.copy(alpha = if (isHovered) 0.24f else 0.1f),
+//        animationSpec = tween(200)
+//    )
+//
+//    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+//    androidx.compose.foundation.layout.FlowRow(
+//        modifier = Modifier
+//            .heightIn(min = 34.dp)
+//            .clip(RoundedCornerShape(corners.small))
+//            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+//            .background(MaterialTheme.colorScheme.surface)
+//            .hoverable(hoverInteraction)
+//            .clickable(onClick = onChangePatchesClick)
+//            .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+//        horizontalArrangement = Arrangement.spacedBy(6.dp),
+//        verticalArrangement = Arrangement.spacedBy(4.dp),
+//        itemVerticalAlignment = Alignment.CenterVertically
+//    ) {
+//        Row(verticalAlignment = Alignment.CenterVertically) {
+//            Text(
+//                text = patchSourceName?.uppercase() ?: "PATCHES",
+//                fontSize = 9.sp,
+//                fontWeight = FontWeight.Bold,
+//                fontFamily = mono,
+//                color = homeMutedTextColor(0.4f),
+//                letterSpacing = 1.5.sp
+//            )
+//            Text(
+//                text = " · ",
+//                fontSize = 10.sp,
+//                fontFamily = mono,
+//                color = homeMutedTextColor(0.25f)
+//            )
+//            Text(
+//                text = patchesVersion,
+//                fontSize = 12.sp,
+//                fontWeight = FontWeight.SemiBold,
+//                fontFamily = mono,
+//                color = homeAccentTextColor(accents.primary)
+//            )
+//        }
+//        if (latestLabel != null) {
+//            Box(
+//                modifier = Modifier
+//                    .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+//                    .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+//                    .padding(horizontal = 5.dp, vertical = 1.dp)
+//            ) {
+//                Text(
+//                    text = latestLabel,
+//                    fontSize = 8.sp,
+//                    fontWeight = FontWeight.Bold,
+//                    fontFamily = mono,
+//                    color = accents.secondary,
+//                    letterSpacing = 1.sp
+//                )
+//            }
+//        }
+//    }
+//}
 
 /** One-time intro banner shown when the user first sees multi-source mode.
  *  Persists dismissal in ConfigRepository so it never reappears once dismissed. */
@@ -930,7 +926,7 @@ private fun MultiSourceHintBanner(
         )
         IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
             Icon(
-                imageVector = Icons.Default.Clear,
+                imageVector = MorpheIcons.Clear,
                 contentDescription = "Dismiss",
                 tint = accents.primary,
                 modifier = Modifier.size(14.dp),
@@ -1262,7 +1258,7 @@ private fun ActionButtonContent(
     } else {
         if (showWarning) {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = MorpheIcons.Warning,
                 contentDescription = "Warning",
                 modifier = Modifier.size(16.dp)
             )
@@ -1720,7 +1716,7 @@ private fun VersionWarningDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         icon = {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = MorpheIcons.Warning,
                 contentDescription = null,
                 tint = warnColor,
                 modifier = Modifier.size(28.dp)
@@ -2052,7 +2048,7 @@ private fun SupportedAppVerticalCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Clear,
+                            imageVector = MorpheIcons.Clear,
                             contentDescription = "Close",
                             tint = if (isCloseHovered) MaterialTheme.colorScheme.error
                                    else homeMutedTextColor(0.55f),
@@ -2285,7 +2281,7 @@ private fun VersionWithDownload(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        imageVector = MorpheIcons.OpenInNew,
                         contentDescription = null,
                         modifier = Modifier.size(11.dp)
                     )
@@ -2368,7 +2364,7 @@ private fun SlimSearchField(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.Search,
+                    MorpheIcons.Search,
                     contentDescription = null,
                     tint = muted.copy(alpha = 0.55f),
                     modifier = Modifier.size(14.dp)
@@ -2395,7 +2391,7 @@ private fun SlimSearchField(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.Clear,
+                            MorpheIcons.Clear,
                             contentDescription = "Clear",
                             tint = muted.copy(alpha = 0.5f),
                             modifier = Modifier.size(12.dp)

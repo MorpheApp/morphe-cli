@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -16,12 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.UsbOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -128,7 +124,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                 )
 
                 Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
+                    imageVector = MorpheIcons.ArrowDropDown,
                     contentDescription = "Device details",
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -153,7 +149,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PowerSettingsNew,
+                                    imageVector = MorpheIcons.PowerSettingsNew,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -185,7 +181,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PowerSettingsNew,
+                                    imageVector = MorpheIcons.PowerSettingsNew,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = accents.primary
@@ -214,7 +210,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.UsbOff,
+                                    imageVector = MorpheIcons.UsbOff,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.error
@@ -248,7 +244,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PhoneAndroid,
+                                    imageVector = MorpheIcons.PhoneAndroid,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
@@ -280,7 +276,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Info,
+                                    imageVector = MorpheIcons.Info,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = accents.primary.copy(alpha = 0.6f)
@@ -381,7 +377,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Info,
+                                    imageVector = MorpheIcons.Info,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)

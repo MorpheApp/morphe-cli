@@ -5,6 +5,7 @@
 
 package app.morphe.gui.ui.screens.quick
 
+import app.morphe.gui.ui.icons.MorpheIcons
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -15,8 +16,6 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -493,7 +492,7 @@ private fun IdleContent(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.CloudUpload,
+                    imageVector = MorpheIcons.CloudUpload,
                     contentDescription = null,
                     modifier = Modifier.size(44.dp),
                     tint = if (isDragHovering) accents.primary
@@ -643,7 +642,7 @@ private fun ReadyContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = MorpheIcons.Close,
                             contentDescription = "Clear",
                             tint = if (isCloseHovered) MaterialTheme.colorScheme.error
                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -886,7 +885,7 @@ private fun ReadyContent(
                         }
                         Spacer(Modifier.weight(1f))
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
+                            imageVector = MorpheIcons.KeyboardArrowDown,
                             contentDescription = if (patchesExpanded) "Collapse patches" else "Expand patches",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier
@@ -954,7 +953,7 @@ private fun ReadyContent(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        Icons.Default.Search,
+                                        MorpheIcons.Search,
                                         contentDescription = null,
                                         tint = muted.copy(alpha = 0.55f),
                                         modifier = Modifier.size(14.dp)
@@ -981,7 +980,7 @@ private fun ReadyContent(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                Icons.Default.Clear,
+                                                MorpheIcons.Clear,
                                                 contentDescription = "Clear",
                                                 tint = muted.copy(alpha = 0.5f),
                                                 modifier = Modifier.size(12.dp)
@@ -1687,7 +1686,7 @@ private fun SupportedAppsRow(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Default.Search,
+                                    MorpheIcons.Search,
                                     contentDescription = null,
                                     tint = muted.copy(alpha = 0.55f),
                                     modifier = Modifier.size(14.dp)
@@ -1714,7 +1713,7 @@ private fun SupportedAppsRow(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            Icons.Default.Clear,
+                                            MorpheIcons.Clear,
                                             contentDescription = "Clear",
                                             tint = muted.copy(alpha = 0.5f),
                                             modifier = Modifier.size(12.dp)
@@ -1888,7 +1887,7 @@ private fun DragOverlay() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Default.CloudUpload,
+                imageVector = MorpheIcons.CloudUpload,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = accents.primary

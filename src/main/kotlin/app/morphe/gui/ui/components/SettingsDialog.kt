@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,9 +18,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -390,7 +389,7 @@ private fun CollapsibleSection(
             letterSpacing = 1.5.sp
         )
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            imageVector = MorpheIcons.KeyboardArrowLeft,
             contentDescription = if (expanded) "Collapse" else "Expand",
             modifier = Modifier
                 .size(16.dp)
@@ -1070,7 +1069,7 @@ private fun SigningSection(
                             modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
-                                imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                imageVector = if (showPassword) MorpheIcons.VisibilityOff else MorpheIcons.Visibility,
                                 contentDescription = if (showPassword) "Hide" else "Show",
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -1117,7 +1116,7 @@ private fun SigningSection(
                             modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
-                                imageVector = if (showEntryPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                imageVector = if (showEntryPassword) MorpheIcons.VisibilityOff else MorpheIcons.Visibility,
                                 contentDescription = if (showEntryPassword) "Hide" else "Show",
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -1170,7 +1169,7 @@ private fun SigningSection(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = MorpheIcons.Check,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )
@@ -1263,7 +1262,7 @@ private fun SigningSection(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = MorpheIcons.Add,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
                     tint = if (generateSuccess) MorpheColors.Teal else accentColor
@@ -1317,7 +1316,7 @@ private fun SigningSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = MorpheIcons.Info,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )
@@ -1355,7 +1354,7 @@ private fun SigningSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Share,
+                    imageVector = MorpheIcons.Share,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )
@@ -1741,7 +1740,7 @@ private fun PatchedAppRuntimeLogsSection(
 
             ActionButton(
                 label = if (status is RuntimeLogsStatus.Clearing) "CLEARING…" else "CLEAR DEVICE LOGS",
-                icon = Icons.Default.DeleteSweep,
+                icon = MorpheIcons.DeleteSweep,
                 mono = mono,
                 borderColor = borderColor,
                 enabled = canAct,
@@ -1760,7 +1759,7 @@ private fun PatchedAppRuntimeLogsSection(
 
             ActionButton(
                 label = if (status is RuntimeLogsStatus.Saving) "SAVING…" else "SAVE DEVICE LOGS",
-                icon = Icons.Default.Save,
+                icon = MorpheIcons.Save,
                 mono = mono,
                 borderColor = borderColor,
                 contentColor = accentColor,

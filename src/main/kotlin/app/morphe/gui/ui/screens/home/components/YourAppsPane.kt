@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.home.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -30,11 +32,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -142,7 +139,7 @@ fun PatchedUpdatesBanner(count: Int, onView: () -> Unit) {
             .clickable(onClick = onView)
             .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
-        Icon(Icons.Default.Refresh, contentDescription = null, tint = blue, modifier = Modifier.size(15.dp))
+        Icon(MorpheIcons.Refresh, contentDescription = null, tint = blue, modifier = Modifier.size(15.dp))
         Text(
             text = if (count == 1) "1 patched app has an update available"
                    else "$count patched apps have updates available",
@@ -358,29 +355,29 @@ fun YourAppRow(
             if (deviceInfo?.installPending == true) {
                 DetailActionPill(
                     if (installing) "INSTALLING…" else "INSTALL",
-                    Icons.Default.Download,
+                    MorpheIcons.Download,
                     app.morphe.gui.ui.theme.MorpheColors.Teal, mono, corners.small,
                     onClick = if (installing) ({}) else onInstall,
                 )
             }
             if (hasUpdate) {
                 DetailActionPill(
-                    "UPDATE", Icons.Default.Refresh,
+                    "UPDATE", MorpheIcons.Refresh,
                     app.morphe.gui.ui.theme.MorpheColors.Blue, mono, corners.small, onClick = onUpdate,
                 )
             }
-            DetailActionPill("RE-PATCH", Icons.Default.Refresh, accents.primary, mono, corners.small, onClick = onRepatch)
+            DetailActionPill("RE-PATCH", MorpheIcons.Refresh, accents.primary, mono, corners.small, onClick = onRepatch)
             // Only offer uninstall when the app is actually on the connected device.
             if (deviceInfo?.installed == true) {
                 DetailActionPill(
                     if (uninstalling) "UNINSTALLING…" else "UNINSTALL",
-                    Icons.Default.Delete,
+                    MorpheIcons.Delete,
                     Color(0xFFE0504D), mono, corners.small,
                     onClick = if (uninstalling) ({}) else onUninstall,
                 )
             }
             DetailActionPill(
-                "FORGET", Icons.Default.Delete,
+                "FORGET", MorpheIcons.Delete,
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), mono, corners.small,
                 onClick = onForget,
             )
@@ -611,7 +608,7 @@ fun PatchedAppDetailDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         WideActionButton(
                             if (installing) "INSTALLING…" else "INSTALL",
-                            sub, Icons.Default.Download,
+                            sub, MorpheIcons.Download,
                             app.morphe.gui.ui.theme.MorpheColors.Teal, mono, corners.small,
                             onClick = if (installing) ({}) else ({ onInstall() }),
                         )
@@ -620,11 +617,11 @@ fun PatchedAppDetailDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     if (hasUpdate) {
                         WideActionButton(
-                            "UPDATE", updateSub, Icons.Default.Refresh,
+                            "UPDATE", updateSub, MorpheIcons.Refresh,
                             app.morphe.gui.ui.theme.MorpheColors.Blue, mono, corners.small,
                         ) { onDismiss(); onUpdate() }
                     }
-                    WideActionButton("RE-PATCH", repatchSub, Icons.Default.Refresh, accents.primary, mono, corners.small) {
+                    WideActionButton("RE-PATCH", repatchSub, MorpheIcons.Refresh, accents.primary, mono, corners.small) {
                         onDismiss(); onRepatch()
                     }
                 }
@@ -633,16 +630,16 @@ fun PatchedAppDetailDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         WideActionButton(
                             if (uninstalling) "UNINSTALLING…" else "UNINSTALL",
-                            "remove from device", Icons.Default.Delete,
+                            "remove from device", MorpheIcons.Delete,
                             Color(0xFFE0504D), mono, corners.small,
                             onClick = if (uninstalling) ({}) else ({ onDismiss(); onUninstall() }),
                         )
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    WideActionButton("FOLDER", null, Icons.AutoMirrored.Filled.OpenInNew, accents.secondary, mono, corners.small, onClick = onOpenFolder)
+                    WideActionButton("FOLDER", null, MorpheIcons.OpenInNew, accents.secondary, mono, corners.small, onClick = onOpenFolder)
                     WideActionButton(
-                        "FORGET", null, Icons.Default.Delete,
+                        "FORGET", null, MorpheIcons.Delete,
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), mono, corners.small,
                     ) { onDismiss(); onForget() }
                 }

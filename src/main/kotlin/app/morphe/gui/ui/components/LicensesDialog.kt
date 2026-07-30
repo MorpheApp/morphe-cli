@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -30,9 +32,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -171,7 +170,7 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = MorpheIcons.Close,
                                 contentDescription = "Close",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
                                     alpha = if (isCloseHovered) 0.85f else 0.55f
@@ -296,7 +295,7 @@ private fun LicenseSearchBar(query: String, onQueryChange: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.Search,
+            imageVector = MorpheIcons.Search,
             contentDescription = "Search",
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             modifier = Modifier.size(16.dp)
@@ -336,7 +335,7 @@ private fun LicenseSearchBar(query: String, onQueryChange: (String) -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Clear,
+                    imageVector = MorpheIcons.Clear,
                     contentDescription = "Clear",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(14.dp)
@@ -446,7 +445,7 @@ private fun LibraryRow(
             }
 
             Icon(
-                imageVector = Icons.Default.ExpandMore,
+                imageVector = MorpheIcons.ExpandMore,
                 contentDescription = if (expanded) "Collapse" else "Expand",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.7f else 0.4f),
                 modifier = Modifier
@@ -605,7 +604,7 @@ private fun LinkPill(
             letterSpacing = 1.sp
         )
         Icon(
-            imageVector = Icons.AutoMirrored.Default.OpenInNew,
+            imageVector = MorpheIcons.OpenInNew,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.75f else 0.45f),
             modifier = Modifier.size(10.dp)
@@ -752,7 +751,7 @@ private fun NoticeTextDialog(onDismiss: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = MorpheIcons.Close,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(14.dp)
@@ -846,7 +845,7 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = MorpheIcons.Close,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(14.dp)

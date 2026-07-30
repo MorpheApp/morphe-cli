@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -16,9 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -77,7 +76,7 @@ fun UpdateBanner(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(
-                imageVector = Icons.Default.NewReleases,
+                imageVector = MorpheIcons.NewReleases,
                 contentDescription = null,
                 tint = accent,
                 modifier = Modifier.size(14.dp),
@@ -118,7 +117,7 @@ fun UpdateBanner(
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = accent),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Download,
+                    imageVector = MorpheIcons.Download,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
                 )

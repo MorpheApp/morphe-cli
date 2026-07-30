@@ -5,12 +5,10 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,10 +38,10 @@ fun ErrorDialog(
     retryText: String = "Retry"
 ) {
     val icon = when (errorType) {
-        ErrorType.NETWORK -> Icons.Default.WifiOff
-        ErrorType.FILE -> Icons.Default.Error
-        ErrorType.CLI -> Icons.Default.Error
-        ErrorType.GENERIC -> Icons.Default.Warning
+        ErrorType.NETWORK -> MorpheIcons.WifiOff
+        ErrorType.FILE -> MorpheIcons.Error
+        ErrorType.CLI -> MorpheIcons.Error
+        ErrorType.GENERIC -> MorpheIcons.Warning
     }
 
     AlertDialog(

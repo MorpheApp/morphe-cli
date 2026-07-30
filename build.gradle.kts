@@ -105,7 +105,6 @@ dependencies {
     implementation("org.jetbrains.compose.components:components-resources:${libs.versions.compose.get()}")
     @Suppress("DEPRECATION")
     implementation(compose.material3)
-    implementation("org.jetbrains.compose.material:material-icons-extended-desktop:1.7.3")
 
     // -- Async / Serialization ---------------------------------------------
     implementation(libs.kotlinx.coroutines.core)
@@ -245,9 +244,9 @@ tasks {
         }
     }
 
-    // -------------------------------------------------------------------------
+    // ============================================================================
     // Shadow JAR — the only distribution artifact
-    // -------------------------------------------------------------------------
+    // ============================================================================
     shadowJar {
         dependencies {
             exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
