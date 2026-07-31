@@ -62,6 +62,15 @@ import androidx.compose.ui.window.DialogProperties
 import app.morphe.engine.model.PatchedAppRecord
 import app.morphe.gui.ui.screens.home.DeviceAppInfo
 import app.morphe.gui.ui.screens.home.PatchedAppState
+import app.morphe.gui.ui.screens.home.RecallUpdateInfo
+import app.morphe.gui.ui.components.morpheScrollbarStyle
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -996,4 +1005,112 @@ private fun humanSize(bytes: Long): String {
     if (bytes <= 0) return "—"
     val mb = bytes / 1_048_576.0
     return if (mb >= 1) "%.1f MB".format(mb) else "%.0f KB".format(bytes / 1024.0)
+}
+
+// ============================================================================
+// YOUR APPS LIST BODY
+// ============================================================================
+
+/**
+ * "Your apps" list body. The patched-app history (Phase 7). Same scroll/scrollbar
+ * treatment as the supported-apps list, but rows are [YourAppRow]s sourced from the
+ * records (not the supported-apps list), so apps patched via a since-removed source
+ * still appear. Tapping a row opens the detail dialog.
+ */
+@Composable
+internal fun YourAppsListBody(
+    patchedRecords: List<PatchedAppRecord>,
+    filteredRecords: List<PatchedAppRecord>,
+    searchQuery: String,
+    patchedStates: Map<String, PatchedAppState>,
+    deviceAppInfo: Map<String, DeviceAppInfo>,
+    updateInfoByPackage: Map<String, RecallUpdateInfo>,
+    onShowDetail: (PatchedAppRecord) -> Unit,
+    onRepatch: (String) -> Unit,
+    onUpdate: (String) -> Unit,
+    onForget: (String) -> Unit,
+    onInstall: (String) -> Unit,
+    installingPackage: String?,
+    onUninstall: (String) -> Unit,
+    uninstallingPackage: String?,
+    paneMaxHeight: Dp,
+    showSearch: Boolean,
+) {
+    val mono = LocalMorpheFont.current
+    when {
+        patchedRecords.isEmpty() -> YourAppsEmptyHint(
+            title = "NO PATCHED APPS YET",
+            subtitle = "Patch an app and it shows up here.",
+            mono = mono,
+        )
+        filteredRecords.isEmpty() -> YourAppsEmptyHint(
+            title = "NO MATCHES",
+            subtitle = "Nothing matches \"$searchQuery\".",
+            mono = mono,
+        )
+        else -> {
+            val listState = rememberLazyListState()
+            val headerSearchAllowance = if (showSearch) 80.dp else 34.dp
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = (paneMaxHeight - headerSearchAllowance).coerceAtLeast(120.dp)),
+            ) {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxWidth().padding(end = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(items = filteredRecords, key = { it.packageName }) { record ->
+                        YourAppRow(
+                            record = record,
+                            state = patchedStates[record.packageName] ?: PatchedAppState.PATCHED,
+                            deviceInfo = deviceAppInfo[record.packageName],
+                            updateInfo = updateInfoByPackage[record.packageName],
+                            onClick = { onShowDetail(record) },
+                            onRepatch = { onRepatch(record.packageName) },
+                            onUpdate = { onUpdate(record.packageName) },
+                            onForget = { onForget(record.packageName) },
+                            onInstall = { onInstall(record.packageName) },
+                            installing = installingPackage == record.packageName,
+                            onUninstall = { onUninstall(record.packageName) },
+                            uninstalling = uninstallingPackage == record.packageName,
+                        )
+                    }
+                }
+                Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
+                    VerticalScrollbar(
+                        modifier = Modifier.fillMaxHeight(),
+                        adapter = rememberScrollbarAdapter(listState),
+                        style = morpheScrollbarStyle(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun YourAppsEmptyHint(title: String, subtitle: String, mono: androidx.compose.ui.text.font.FontFamily) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+    ) {
+        Text(
+            text = title,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            letterSpacing = 1.sp,
+            color = homeMutedTextColor(0.55f),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = subtitle,
+            fontSize = 11.sp,
+            fontFamily = mono,
+            color = homeMutedTextColor(0.4f),
+            textAlign = TextAlign.Center,
+        )
+    }
 }
