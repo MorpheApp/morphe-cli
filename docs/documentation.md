@@ -45,6 +45,8 @@ Now that you've done your first run, let's dig deeper into how the magic happens
 Morphe keeps its runtime data: cached patch files, logs, scratch space for patching, and the default signing keystore in a single **`morphe-data/`** folder. By default, this folder is created **next to the JAR** you run, so it survives upgrades and is easy to find. 
 If that location isn't writable (e.g. running from an IDE, or from a read-only install path), Morphe falls back to **`~/morphe/`**. The startup logs print which one is in use (look for `Morphe data root: ...`).
 
+You can override the location entirely with the **`MORPHE_DATA_DIR`** environment variable. Point it at a writable directory and Morphe uses that as the data root, ahead of both the JAR-adjacent default and the `~/morphe/` fallback. This is meant for read-only or package-manager installs, where the JAR's own folder isn't writable and you'd rather choose the location than land in `~/morphe/`. If the path you set isn't writable, Morphe logs a warning and ignores it.
+
 ```
 morphe-data/
   patches/         # cached .mpp patch bundles
@@ -118,6 +120,9 @@ The home screen has a top bar (on the top):
 | 🟡  | **STABLE OLDER**  | a stable release, but a newer one exists |
 | 🔵  | **DEV LATEST**    | newest pre-release (experimental)        |
 | 🔴  | **DEV OLDER**     | a pre-release but behind                 |
+| 🩵  | **LOCAL**         | a local `.mpp` file or folder source     |
+
+A **disabled** source shows a **dimmed** LED, and a source that **failed to load** shows a **red** LED and raises an error banner. Those two states take priority over the channel color.
 
 In Expert mode, click the pill to open the **source manager** – add, remove, refresh, or reorder sources (see [Managing patch sources](#gui-expert-sources)). In Quick mode it's informational. The same LED colors appear on each row inside the source manager.
 
@@ -190,6 +195,8 @@ The sources Morphe fetches from are configurable: add community sources (GitHub 
 **Reordering.** Drag a source by its handle to change its position in the list. Order is **load priority** – sources higher in the list are loaded first. This usually doesn't matter, but it can: if two sources ship a class with the same name (common when both are forks of the same patches project), the one loaded first wins. Keeping your primary source on top is the safe default.
 
 **Channel badge.** Each enabled source shows a small badge for the release it resolved to, color-coded by release channel, the same colors (and meanings) as the sources-pill LEDs in [The TopBar](#gui-window).
+
+**When a source fails to load.** Morphe no longer spins forever on a source it can't fetch or parse. It stops with an error, turns that source's badge and LED **red**, and shows a banner naming the source and the reason, so you can fix or remove it while the other sources still load.
 
 <p align="center">
   <img src="images/documentation/gui/source_sheet.png" width="50%" height="50%" alt="Sources sheet" style="vertical-align: middle"/>
@@ -384,6 +391,7 @@ The gear icon opens Settings – Morphe's persistent preferences. Think of it as
 | **Strip Libs**                 | Native-lib architectures to keep                                                                          | Keep all                                                                             | `--striplibs`                                                                              |
 | **Patched app runtime logs**   | Capture logcat from a device after a patched app misbehaves                                               | –                                                                                    | –                                                                                          |
 | **Route links to patched app** | After an ADB install, auto-route the app's web links to it (with an optional "disable stock app's links") | Off                                                                                  | [`utility install --route-links`](#utility-install)                                        |
+| **Developer options** | Unlock patch-developer workflows (currently: point a local source at a folder so its newest .mpp auto-loads) | Off | – |
 
 <p align="center">
   <img src="images/documentation/gui/settings.png" width="60%" alt="Settings dialog" style="vertical-align: middle"/>
@@ -448,6 +456,10 @@ A debugging aid: capture logcat from a connected device after a patched app cras
   <img src="images/documentation/gui/logcat-logs.png" width="60%" alt="Logcat Logs" style="vertical-align: middle"/>
 </p>
 
+<h4 id="gui-settings-developer">Developer options</h4>
+
+Off by default and meant for **patch developers**. Turning it on unlocks a growing set of workflow options for building and testing patches. Right now it adds one: when you add a **local source**, you can point it at a **folder** instead of a single `.mpp` file, and Morphe always loads the newest `.mpp` in that folder. That saves re-selecting the file every time you rebuild your patches. Build outputs like `*-sources.mpp` and `*-javadoc.mpp` are always ignored, and you can set your own exclude patterns for a folder source from the source manager.
+
 <h3 id="gui-tools">Tools</h3>
 
 The wrench icon opens Tools – one-off actions and reference info, kept out of Settings so a destructive action doesn't sit next to your preferences.
@@ -459,7 +471,7 @@ The wrench icon opens Tools – one-off actions and reference info, kept out of 
 | **OPEN APP DATA** | Open Morphe's data folder – the`morphe-data/` directory (see [Where Morphe stores its files](#where-files-stored)) |
 | **CLEAR CACHE**   | Delete downloaded patches and logs (they re-download as needed)                                                    |
 | **VIEW LICENSES** | Browse the open-source licenses of Morphe's dependencies                                                           |
-| Version           | The running app version is shown at the bottom                                                                     |
+| Version           | The running app version, plus the bundled **Morphe Patcher** and **Morphe Library** versions, are shown at the bottom                                                                     |
 
 <p align="center">
   <img src="images/documentation/gui/tools.png" width="60%" alt="Tools Setting" style="vertical-align: middle"/>
@@ -653,6 +665,9 @@ Required: No
 Default: a subfolder named after the app, created next to the input APK – `<app>/<app>-Morphe-<appVersion>-patches-<patchesVersion>.apk`
 
 Specify a custom output path for the patched APK.
+
+> [!NOTE]
+> `<appVersion>` in the default name is read from the APK's manifest (`versionName`). Patching two different versions of the same app therefore produces two differently-named files instead of overwriting each other, even when the input files happen to share a name (for example both called `base.apk`).
 
 ```
 java -jar morphe-desktop-*-all.jar patch -p patches.mpp -o /path/to/output.apk your_app.apk
