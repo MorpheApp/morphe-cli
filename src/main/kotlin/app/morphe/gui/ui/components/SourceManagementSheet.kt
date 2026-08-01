@@ -806,9 +806,10 @@ private fun ExcludedPatternsEditor(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Ignore .mpp files whose name matches any of these. A plain word matches any file " +
-                "containing it (e.g. debug). Use * for globs (e.g. *-debug.mpp). *-sources.mpp and " +
-                "*-javadoc.mpp are always ignored.",
+            text = "Only affects folder sources, which auto-load the newest .mpp in a folder. When " +
+                "picking that newest build, files whose name matches a pattern here are skipped. A " +
+                "plain word matches any file containing it (e.g. debug). Use * for globs (e.g. " +
+                "*-debug.mpp). *-sources.mpp and *-javadoc.mpp are always ignored.",
             fontSize = 11.sp,
             fontFamily = mono,
             lineHeight = 15.sp,
