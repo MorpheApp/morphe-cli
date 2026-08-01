@@ -117,13 +117,13 @@ internal object ListPatchesCommand : Runnable {
     override fun run() {
         fun PatchOption<*>.buildString() =
             buildString {
-                appendLine("Title: $title")
+                appendLine("Title: $name")
                 description?.let { appendLine("Description: $it") }
                 appendLine("Required: $required")
                 default?.let {
-                    appendLine("Key: $key")
+                    appendLine("Key: $name")
                     append("Default: $it")
-                } ?: append("Key: $key")
+                } ?: append("Key: $name")
 
                 values?.let { values ->
                     appendLine("\nPossible values:")
@@ -142,7 +142,7 @@ internal object ListPatchesCommand : Runnable {
 
                     if (withDescriptions) append("\nDescription: ${patch.description}")
 
-                    append("\nEnabled: ${patch.use}")
+                    append("\nEnabled: ${patch.default}")
 
                     if (withOptions && patch.options.isNotEmpty()) {
                         appendLine("\nOptions:")

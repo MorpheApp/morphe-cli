@@ -6,6 +6,7 @@
 package app.morphe.engine
 
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.util.Properties
 import java.util.logging.Logger
@@ -50,7 +51,7 @@ object UpdateChecker {
                     "https://raw.githubusercontent.com/MorpheApp/morphe-desktop/refs/heads/main/gradle.properties"
             }
 
-            val connection = URL(url).openConnection() as HttpURLConnection
+            val connection = URI(url).toURL().openConnection() as HttpURLConnection
             connection.connectTimeout = 3000
             connection.readTimeout = 3000
 

@@ -13,5 +13,6 @@ dependencies {
     // project must then apply the shadow plugin without a version to avoid
     // the "plugin is already on the classpath" conflict.
     implementation("com.gradleup.shadow:shadow-gradle-plugin:9.4.3")
+    implementation("com.guardsquare:proguard-gradle:7.9.1")
     implementation("org.jetbrains:annotations:26.1.0")
 }

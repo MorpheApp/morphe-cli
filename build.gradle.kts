@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.mikepenz.aboutlibraries.plugin.DuplicateMode
 import com.mikepenz.aboutlibraries.plugin.DuplicateRule
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -28,6 +29,9 @@ kotlin {
     }
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21)
+    }
+    sourceSets.main {
+        kotlin.srcDir(layout.buildDirectory.dir("generated/source/bootstrap/main"))
     }
 }
 
@@ -63,25 +67,46 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
+// ============================================================================
+// Bootstrap (GUI) Dependency Code Generation
+// ============================================================================
+val bootstrapDependencies = configurations.create("bootstrapDependencies") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
 dependencies {
     api(libs.morphe.patcher)
     implementation(libs.arsclib)
     implementation(libs.morphe.library)
-    implementation(libs.jadb)
+    implementation(libs.jadb) {
+        exclude(group = "org.mockito")
+    }
     implementation(libs.picocli)
+
+    // -- Bootstrap (Code Generation) ---------------------------------------
+    bootstrapDependencies("org.jetbrains.compose.material:material-icons-extended-desktop:${libs.versions.materialIcons.get()}")
+    bootstrapDependencies("net.java.dev.jna:jna:${libs.versions.jna.get()}")
+    bootstrapDependencies("net.java.dev.jna:jna-platform:${libs.versions.jna.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-x64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-arm64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-linux-x64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-linux-arm64:${libs.versions.skiko.get()}")
+    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:${libs.versions.skiko.get()}")
 
     // -- Compose Desktop ---------------------------------------------------
     // Platform-independent: single JAR runs on all supported OSes.
     // Skiko auto-detects the OS at runtime and loads the correct native library.
-    implementation(compose.desktop.macos_arm64)
-    implementation(compose.desktop.macos_x64)
-    implementation(compose.desktop.linux_x64)
-    implementation(compose.desktop.linux_arm64)
-    implementation(compose.desktop.windows_x64)
-    implementation(compose.components.resources)
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-macos-arm64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-macos-x64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-linux-x64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-linux-arm64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.desktop:desktop-jvm-windows-x64:${libs.versions.compose.get()}")
+    implementation("org.jetbrains.compose.components:components-resources:${libs.versions.compose.get()}")
     @Suppress("DEPRECATION")
     implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
+    implementation("org.jetbrains.compose.material:material-icons-extended-desktop:1.7.3")
 
     // -- Async / Serialization ---------------------------------------------
     implementation(libs.kotlinx.coroutines.core)
@@ -137,6 +162,64 @@ aboutLibraries {
 // Tasks
 // ============================================================================
 tasks {
+    val generateBootstrapConstants = register("generateBootstrapConstants") {
+        val artifactFiles = bootstrapDependencies.incoming.files
+        inputs.files(artifactFiles)
+        
+        val skikoVersion = libs.versions.skiko.get()
+        val materialIconsVersion = libs.versions.materialIcons.get()
+        val jnaVersion = libs.versions.jna.get()
+        
+        inputs.property("skikoVersion", skikoVersion)
+        inputs.property("materialIconsVersion", materialIconsVersion)
+        inputs.property("jnaVersion", jnaVersion)
+        
+        val outputDir = layout.buildDirectory.dir("generated/source/bootstrap/main/app/morphe/engine")
+        outputs.dir(outputDir)
+        
+        doLast {
+            val outDir = outputDir.get().asFile
+            outDir.mkdirs()
+            val outFile = File(outDir, "BootstrapConstants.kt")
+            
+            fun getHash(artifactName: String, version: String): String {
+                val exactName = "$artifactName-$version.jar"
+                val file = artifactFiles.find { it.name == exactName }
+                    ?: error("Could not find artifact exactly matching $exactName in ${artifactFiles.map { it.name }}")
+                val digest = MessageDigest.getInstance("SHA-256")
+                return digest.digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+            }
+            
+            val content = """
+                package app.morphe.engine
+
+                internal object BootstrapConstants {
+                    const val SKIKO_VERSION = "$skikoVersion"
+                    const val MATERIAL_ICONS_VERSION = "$materialIconsVersion"
+                    const val JNA_VERSION = "$jnaVersion"
+                    
+                    const val MATERIAL_ICONS_HASH = "${getHash("material-icons-extended-desktop", materialIconsVersion)}"
+                    const val JNA_HASH = "${getHash("jna", jnaVersion)}"
+                    const val JNA_PLATFORM_HASH = "${getHash("jna-platform", jnaVersion)}"
+                    
+                    val SKIKO_HASHES = mapOf(
+                        "macos-x64" to "${getHash("skiko-awt-runtime-macos-x64", skikoVersion)}",
+                        "macos-arm64" to "${getHash("skiko-awt-runtime-macos-arm64", skikoVersion)}",
+                        "linux-x64" to "${getHash("skiko-awt-runtime-linux-x64", skikoVersion)}",
+                        "linux-arm64" to "${getHash("skiko-awt-runtime-linux-arm64", skikoVersion)}",
+                        "windows-x64" to "${getHash("skiko-awt-runtime-windows-x64", skikoVersion)}"
+                    )
+                }
+            """.trimIndent()
+            
+            outFile.writeText(content)
+        }
+    }
+
+    named("compileKotlin") {
+        dependsOn(generateBootstrapConstants)
+    }
+
     jar {
         manifest {
             attributes(
@@ -174,11 +257,41 @@ tasks {
     // Shadow JAR — the only distribution artifact
     // -------------------------------------------------------------------------
     shadowJar {
+        dependencies {
+            exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
+            exclude(dependency("org.jetbrains.compose.material:material-icons-extended-desktop:.*"))
+            exclude(dependency("net.java.dev.jna:jna:.*"))
+            exclude(dependency("net.java.dev.jna:jna-platform:.*"))
+        }
+
         exclude(
             "/prebuilt/linux/aapt",
             "/prebuilt/windows/aapt.exe",
             "/prebuilt/*/aapt_*",
         )
+
+        // Exclude unused JNA native platforms to save ~5MB.
+        // We only support Mac (x64/arm64), Windows (x64), and Linux (x64/arm64).
+        exclude("com/sun/jna/aix-ppc/**")
+        exclude("com/sun/jna/aix-ppc64/**")
+        exclude("com/sun/jna/freebsd-x86/**")
+        exclude("com/sun/jna/freebsd-x86-64/**")
+        exclude("com/sun/jna/freebsd-aarch64/**")
+        exclude("com/sun/jna/dragonflybsd-x86-64/**")
+        exclude("com/sun/jna/openbsd-x86-64/**")
+        exclude("com/sun/jna/sunos-sparc/**")
+        exclude("com/sun/jna/sunos-sparcv9/**")
+        exclude("com/sun/jna/sunos-x86/**")
+        exclude("com/sun/jna/sunos-x86-64/**")
+        exclude("com/sun/jna/linux-arm/**")
+        exclude("com/sun/jna/linux-armel/**")
+        exclude("com/sun/jna/linux-mips64el/**")
+        exclude("com/sun/jna/linux-ppc/**")
+        exclude("com/sun/jna/linux-ppc64le/**")
+        exclude("com/sun/jna/linux-riscv64/**")
+        exclude("com/sun/jna/linux-s390x/**")
+        exclude("com/sun/jna/linux-loongarch64/**")
+        exclude("com/sun/jna/win32-x86/**")
 
         // NOTICE/LICENSE handling:
         //   * Global strategy is EXCLUDE (first-wins) so duplicates at non-transformed
@@ -250,8 +363,56 @@ tasks {
     }
 
     publish {
-        dependsOn(shadowJar)
+        dependsOn("overwriteShadowJar")
     }
+
+    assemble {
+        dependsOn("overwriteShadowJar")
+    }
+
+    val minifyShadowJar = register<proguard.gradle.ProGuardTask>("minifyShadowJar") {
+        // Only run when explicitly requested via assemble or direct call
+        enabled = gradle.startParameter.taskNames.any { it.contains("assemble") || it.contains("minify") || it.contains("publish") }
+        dependsOn(shadowJar)
+
+        // Use the JAR produced by shadowJar as input
+        val shadowJarFile = shadowJar.get().archiveFile.get().asFile
+        // Use a temporary file for the ProGuard output
+        val tempJarFile = file(shadowJarFile.absolutePath.replace(".jar", ".tmp.jar"))
+
+        injars(shadowJarFile)
+        outjars(tempJarFile)
+
+        // Load the Proguard configuration
+        configuration("proguard-rules.pro")
+
+        // Include the Java runtime classes
+        val javaHome = System.getProperty("java.home")
+        libraryjars("$javaHome/jmods")
+
+        // Report on what was removed
+        printusage(layout.buildDirectory.file("proguard/usage.txt").get().asFile)
+    }
+
+    val overwriteShadowJar = register("overwriteShadowJar") {
+        dependsOn(minifyShadowJar)
+        val shadowJarFile = shadowJar.get().archiveFile.get().asFile
+        val tempJarFile = file(shadowJarFile.absolutePath.replace(".jar", ".tmp.jar"))
+        
+        // Only run if minification actually happened
+        onlyIf { minifyShadowJar.get().enabled && tempJarFile.exists() }
+        
+        doLast {
+            tempJarFile.copyTo(shadowJarFile, overwrite = true)
+            tempJarFile.delete()
+        }
+    }
+
+    // Ensure all shadow-related tasks wait for minification to finish before using the JAR.
+    // This prevents "zip END header not found" errors caused by concurrent access.
+    named("shadowDistZip") { dependsOn(overwriteShadowJar) }
+    named("shadowDistTar") { dependsOn(overwriteShadowJar) }
+    named("startShadowScripts") { dependsOn(overwriteShadowJar) }
 }
 
 // ============================================================================

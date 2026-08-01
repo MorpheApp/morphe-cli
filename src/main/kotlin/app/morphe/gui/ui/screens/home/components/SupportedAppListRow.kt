@@ -311,7 +311,7 @@ private fun VersionChip(
                 if (isLink) Modifier
                     .pointerHoverIcon(PointerIcon.Hand)
                     .clickable {
-                        openUrlAndFollowRedirects(downloadUrl!!) { uriHandler.openUri(it) }
+                        openUrlAndFollowRedirects(downloadUrl) { uriHandler.openUri(it) }
                     }
                 else Modifier
             )
@@ -501,7 +501,7 @@ private fun Pill(
                 if (isInteractive) Modifier
                     .pointerHoverIcon(PointerIcon.Hand)
                     .pointerInput(onClick) {
-                        detectTapGestures(onTap = { onClick?.invoke() })
+                        detectTapGestures(onTap = { onClick() })
                     }
                 else Modifier
             )

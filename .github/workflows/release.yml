@@ -22,8 +22,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Cache Gradle
-        uses: burrunan/gradle-cache-action@v3
+      - name: Clean
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew clean --no-daemon
 
       - name: Setup Node.js
         uses: actions/setup-node@v6

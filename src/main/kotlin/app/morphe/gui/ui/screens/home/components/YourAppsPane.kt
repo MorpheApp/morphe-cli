@@ -605,7 +605,7 @@ fun PatchedAppDetailDialog(
                 val updateSub = updateInfo?.let { updateSummary(it) }
                 // Already-patched APK ready to install (no re-patch) — primary action.
                 if (installPending) {
-                    val sub = if (deviceInfo?.installed == true)
+                    val sub = if (deviceInfo.installed)
                         "v${record.apkVersion.removePrefix("v")} ready · device on v${deviceInfo.installedVersion?.removePrefix("v") ?: "?"}"
                     else "v${record.apkVersion.removePrefix("v")} ready — no re-patch needed"
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
