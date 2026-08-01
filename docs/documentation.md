@@ -50,11 +50,14 @@ morphe-data/
   patches/         # cached .mpp patch bundles
   logs/            # application logs
   tmp/             # per-run patching scratch (the default --temporary-files-path location)
+  libs/            # GUI runtime (Skiko, JNA) downloaded on the first GUI launch
   morphe.keystore  # shared default signing key (see --keystore)
   config.json      # preferences + configured sources
 ```
 
 Both the GUI and the CLI use this folder. In the GUI you can open it from **Tools → Open App Data**. On the CLI, `--temporary-files-path` defaults to `tmp/` (override it to send scratch elsewhere) and `--keystore` defaults to `morphe.keystore` here.
+
+The **`libs/`** folder is special: it only appears once you open the **GUI**. Morphe ships as a single small jar, and to keep that download small it does not bundle the GUI's platform-specific rendering library (Skiko) or its native-access library (JNA). The first time you launch the GUI, Morphe downloads the correct builds for your operating system and architecture from Maven Central, verifies each one by checksum, and caches them here while showing a brief setup window. The CLI needs none of these, so running from a terminal never downloads anything. Every later GUI launch reuses this cache and works offline.
 
 <h2 id="gui">GUI</h2>
 
