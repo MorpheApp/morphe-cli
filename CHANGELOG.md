@@ -1,3 +1,10 @@
+# [1.13.0-dev.6](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.5...v1.13.0-dev.6) (2026-08-02)
+
+
+### Features
+
+* developer mode +  configurable data directory ([#220](https://github.com/MorpheApp/morphe-desktop/issues/220)) ([a1ba3a2](https://github.com/MorpheApp/morphe-desktop/commit/a1ba3a2f7e4d2793c0371fc77df2241bc8c828da))
+
 # [1.13.0-dev.5](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.4...v1.13.0-dev.5) (2026-08-02)
 
 
