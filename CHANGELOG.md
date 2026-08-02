@@ -1,3 +1,17 @@
+# [1.13.0-dev.6](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.5...v1.13.0-dev.6) (2026-08-02)
+
+
+### Features
+
+* developer mode +  configurable data directory ([#220](https://github.com/MorpheApp/morphe-desktop/issues/220)) ([a1ba3a2](https://github.com/MorpheApp/morphe-desktop/commit/a1ba3a2f7e4d2793c0371fc77df2241bc8c828da))
+
+# [1.13.0-dev.5](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.4...v1.13.0-dev.5) (2026-08-02)
+
+
+### Bug Fixes
+
+* Add Enable-Native-Access attribute to jar manifest ([#249](https://github.com/MorpheApp/morphe-desktop/issues/249)) ([d70a4c2](https://github.com/MorpheApp/morphe-desktop/commit/d70a4c2d0de96088c0cb9c7d3a2d341c78e8247a))
+
 # [1.13.0-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.3...v1.13.0-dev.4) (2026-07-29)
 
 

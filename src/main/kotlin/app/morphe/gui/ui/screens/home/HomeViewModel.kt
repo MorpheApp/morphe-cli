@@ -222,7 +222,7 @@ class HomeViewModel(
                 val enabled = patchSourceManager.getEnabledRepositories()
                 // emptyMap() preferred versions → each source resolves to its latest
                 // release (the pin override is scoped to this call; config is untouched).
-                val result = EnabledSourcesLoader.loadAll(enabled, patchService, emptyMap())
+                val result = EnabledSourcesLoader.loadAll(enabled, patchService, emptyMap(), configRepository.loadConfig().excludedMppPatterns)
                 val resolvedOk = result.resolved.filter { it.patchFile != null }
                 val files = resolvedOk.mapNotNull { it.patchFile?.absolutePath }
                 if (files.isEmpty()) {
@@ -387,7 +387,7 @@ class HomeViewModel(
                 // no cross-source contamination.
                 val prefs = configRepository.getSourceVersionPrefs()
                 lastLoadedVersionsBySource = prefs
-                val result = EnabledSourcesLoader.loadAll(enabled, patchService, prefs)
+                val result = EnabledSourcesLoader.loadAll(enabled, patchService, prefs, configRepository.loadConfig().excludedMppPatterns)
 
                 if (!result.anyLoaded) {
                     val firstThrowable = result.loaded.perSource.firstNotNullOfOrNull { it.error }
@@ -570,7 +570,7 @@ class HomeViewModel(
         screenModelScope.launch {
             try {
                 val enabled = patchSourceManager.getEnabledRepositories()
-                val result = EnabledSourcesLoader.loadAll(enabled, patchService, emptyMap())
+                val result = EnabledSourcesLoader.loadAll(enabled, patchService, emptyMap(), configRepository.loadConfig().excludedMppPatterns)
                 val apps = SupportedAppExtractor.extractSupportedApps(result.unionGuiPatches)
                 latestResolvedApps = apps
                 _uiState.value = _uiState.value.copy(updateInfoByPackage = buildUpdateInfoMap(apps))

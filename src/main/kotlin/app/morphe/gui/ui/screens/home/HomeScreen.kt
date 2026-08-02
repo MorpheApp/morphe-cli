@@ -485,6 +485,7 @@ fun HomeScreenContent(
                 }
             },
             onDismiss = { showSourceManagementSheet = false },
+            onRefresh = { viewModel.retryLoadPatches() },
             enabled = !uiState.isAnalyzing,
         )
     }
