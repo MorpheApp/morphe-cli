@@ -197,6 +197,18 @@ class HomeViewModel(
         }
     }
 
+    /** Dismiss the "some sources failed" banner for now. It re-appears if a different
+     *  source starts failing on a later load. */
+    fun dismissSourcesFailedBanner() {
+        sourcesFailedBannerDismissed = true
+        _uiState.value = _uiState.value.copy(showSourcesFailedBanner = false)
+    }
+
+    // Backing state for [dismissSourcesFailedBanner]: the failed-source set last dismissed,
+    // and whether it is currently dismissed. Reset when the failed set changes (see load).
+    private var lastFailedSourceIds: Set<String> = emptySet()
+    private var sourcesFailedBannerDismissed: Boolean = false
+
     /**
      * Begin an "Update" for [record]: resolve the LATEST patch files (ignoring any
      * pinned version — this run only, leaving global config untouched), then work
@@ -358,7 +370,7 @@ class HomeViewModel(
     private fun loadPatchesAndSupportedApps(forceRefresh: Boolean = false) {
         loadJob?.cancel()
         loadJob = screenModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingPatches = true, patchLoadError = null)
+            _uiState.value = _uiState.value.copy(isLoadingPatches = true, patchLoadError = null, showSourcesFailedBanner = false)
 
             try {
                 val enabled = patchSourceManager.getEnabledRepositories()
@@ -378,13 +390,26 @@ class HomeViewModel(
                 val result = EnabledSourcesLoader.loadAll(enabled, patchService, prefs, configRepository.loadConfig().excludedMppPatterns)
 
                 if (!result.anyLoaded) {
+                    val firstThrowable = result.loaded.perSource.firstNotNullOfOrNull { it.error }
                     val firstError = result.resolved.firstNotNullOfOrNull { it.error }
-                        ?: result.loaded.perSource.firstNotNullOfOrNull { it.error?.message }
+                        ?: firstThrowable?.let { humanizePatchLoadError(it) }
                         ?: "Could not load any patches"
                     val friendlyError = if (firstError.contains("zip", ignoreCase = true) || firstError.contains("END header", ignoreCase = true)) {
                         "Patch file is missing or corrupted. Clear cache and re-download."
                     } else {
                         firstError
+                    }
+                    // Log the real throwable (full stack). Never only a null/blank .message.
+                    if (firstThrowable != null) {
+                        Logger.error("Failed to load any patches: $friendlyError", firstThrowable)
+                    } else {
+                        Logger.warn("Failed to load any patches: $firstError")
+                    }
+                    result.loaded.perSource.filter { !it.isSuccess }.forEach { src ->
+                        val err = src.error
+                        if (err != null) {
+                            Logger.error("Patch source '${src.sourceName}' failed to load", err)
+                        }
                     }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
@@ -426,6 +451,38 @@ class HomeViewModel(
 
                 val patchedStates = computePatchedStates(supportedApps)
                 latestResolvedApps = null // fresh load — drop any stale eager-resolved apps
+
+                // Partial-failure surfacing: some sources loaded, but others may have failed
+                // (e.g. a bundle needing a newer patcher). Collect the failed source ids from
+                // both the resolve phase and the load phase so the banner + per-row FAILED
+                // state agree. Re-show the banner when the failed set changes, even if the
+                // user dismissed a previous one.
+                val failedSourceIds = buildSet {
+                    result.resolved.forEach { if (it.error != null) add(it.source.id) }
+                    result.loaded.perSource.forEach { if (!it.isSuccess) add(it.sourceId) }
+                }
+                if (failedSourceIds.isNotEmpty()) {
+                    // One summary + full stack per failed source so partial failures are
+                    // diagnosable from the log file (not only a red "Failed to load" LED).
+                    val details = buildList {
+                        result.resolved.forEach { r -> r.error?.let { add("${r.source.name}: $it") } }
+                        result.loaded.perSource.forEach { s ->
+                            if (!s.isSuccess) {
+                                val err = s.error
+                                add("${s.sourceName}: ${err?.let { humanizePatchLoadError(it) } ?: "failed to load"}")
+                                if (err != null) {
+                                    Logger.error("Patch source '${s.sourceName}' failed to load", err)
+                                }
+                            }
+                        }
+                    }
+                    Logger.warn("Some patch sources failed to load — ${details.joinToString("; ")}")
+                }
+                if (failedSourceIds != lastFailedSourceIds) {
+                    sourcesFailedBannerDismissed = false
+                    lastFailedSourceIds = failedSourceIds
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
                     isOffline = isOffline,
@@ -437,7 +494,10 @@ class HomeViewModel(
                     latestPatchesVersion = displayVersion,
                     latestDevPatchesVersion = null,
                     patchSourceName = sourceName,
-                    patchLoadError = null
+                    patchLoadError = null,
+                    showSourcesFailedBanner = failedSourceIds.isNotEmpty() && !sourcesFailedBannerDismissed,
+                    failedSourcesCount = failedSourceIds.size,
+                    failedSourceIds = failedSourceIds,
                 )
                 refreshDeviceInfo() // records just (re)loaded — refresh the optional device layer
                 reanalyzeSelectedApk()
@@ -448,7 +508,12 @@ class HomeViewModel(
                 // write UI state — otherwise a stale "Job was cancelled" can
                 // clobber the in-flight successor's loading/success state.
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Throwable, not just Exception: a bundle built against a newer patcher
+                // throws java.lang.Error (NoSuchMethodError / LinkageError) at link time.
+                // As an Error it would slip past catch(Exception), leaving isLoadingPatches
+                // stuck true and the loading skeleton animating forever with no way to reach
+                // the source manager. Widening it guarantees loading always ends in a state.
                 Logger.error("Failed to load patches and supported apps", e)
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
@@ -1253,6 +1318,13 @@ data class HomeUiState(
     /** True when more than one source is enabled and the user hasn't dismissed
      *  the one-time multi-source intro hint yet. */
     val showMultiSourceHint: Boolean = false,
+    /** True when some patch sources loaded but at least one failed. Drives the
+     *  non-blocking "some sources failed" banner. */
+    val showSourcesFailedBanner: Boolean = false,
+    /** How many sources failed to load (for the banner copy). */
+    val failedSourcesCount: Int = 0,
+    /** Source ids that failed to load. Drives the red status LED on the home pill. */
+    val failedSourceIds: Set<String> = emptySet(),
 ) {
     /**
      * Show the update banner only when an update was found AND the user hasn't

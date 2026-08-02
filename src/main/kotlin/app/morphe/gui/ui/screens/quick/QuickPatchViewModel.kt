@@ -203,9 +203,18 @@ class QuickPatchViewModel(
                 )
 
                 if (!result.anyLoaded) {
+                    val firstThrowable = result.loaded.perSource.firstNotNullOfOrNull { it.error }
                     val firstError = result.resolved.firstNotNullOfOrNull { it.error }
-                        ?: result.loaded.perSource.firstNotNullOfOrNull { it.error?.message }
+                        ?: firstThrowable?.let { humanizePatchLoadError(it) }
                         ?: "Could not load any patches"
+                    if (firstThrowable != null) {
+                        Logger.error("Quick mode: Failed to load any patches: $firstError", firstThrowable)
+                    } else {
+                        Logger.warn("Quick mode: Failed to load any patches: $firstError")
+                    }
+                    result.loaded.perSource.filter { !it.isSuccess }.forEach { src ->
+                        src.error?.let { Logger.error("Quick mode: source '${src.sourceName}' failed", it) }
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
                         patchLoadError = firstError
@@ -250,7 +259,10 @@ class QuickPatchViewModel(
                 // state from a cancelled load — the cancellation race would
                 // clobber a successor's progress with a stale error.
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Throwable, not just Exception: a bundle built against a newer patcher
+                // throws java.lang.Error (NoSuchMethodError / LinkageError) at link time,
+                // which would slip past catch(Exception) and leave the loader stuck forever.
                 Logger.error("Quick mode: Failed to load patches", e)
                 _uiState.value = _uiState.value.copy(
                     isLoadingPatches = false,
@@ -493,6 +505,7 @@ class QuickPatchViewModel(
                 patchesFile = patchFile,
                 baseOutputDir = appConfig.resolvedDefaultOutputDirectory(),
                 appDisplayName = apkInfo.displayName,
+                appVersion = apkInfo.versionName,
             ).absolutePath
 
             // Resolve keystore — see PatchingViewModel for the full rationale.

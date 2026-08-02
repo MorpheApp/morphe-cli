@@ -20,11 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.engine.CacheManager
+import app.morphe.engine.MorpheComponents
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
-import app.morphe.engine.CacheManager
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import java.awt.Desktop
@@ -155,12 +156,25 @@ fun ToolsDialog(
 
                 Spacer(Modifier.height(14.dp))
 
-                // ── About ──
+                // ── About (Morphe ecosystem versions) ──
+                val aboutColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 Text(
                     text = "${AppConstants.APP_NAME} ${AppConstants.APP_VERSION}",
                     fontSize = 10.sp,
                     fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    color = aboutColor,
+                )
+                Text(
+                    text = "Morphe Patcher ${MorpheComponents.patcherVersion ?: "unknown"}",
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = aboutColor,
+                )
+                Text(
+                    text = "Morphe Library ${MorpheComponents.libraryVersion ?: "unknown"}",
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = aboutColor,
                 )
             }
         },
