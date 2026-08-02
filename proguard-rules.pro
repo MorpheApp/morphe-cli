@@ -33,7 +33,10 @@
 -keep class io.ktor.** { *; }
 
 # JNA (Native access)
-#-keep class com.sun.jna.** { *; }
+-keep class com.sun.jna.** { *; }
+
+# FileKit (Native file dialogs)
+-keep class io.github.vinceglb.filekit.** { *; }
 
 # Keep SPI services (ServiceLoader)
 -keepnames class * {
