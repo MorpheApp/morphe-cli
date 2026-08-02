@@ -311,6 +311,8 @@ tasks {
             "META-INF/NOTICE",
             "META-INF/NOTICE.txt",
             "META-INF/NOTICE.md",
+            "META-INF/*.kotlin_module",
+            "META-INF/services/*",
         )) {
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
