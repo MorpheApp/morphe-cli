@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
+import java.net.URI
 import java.net.URL
 
 object DownloadUrlResolver {
@@ -37,7 +38,7 @@ object DownloadUrlResolver {
         if (maxRedirectsToFollow <= 0) return url
 
         try {
-            val originalUrl = URL(url)
+            val originalUrl = URI(url).toURL()
             val connection = originalUrl.openConnection() as HttpURLConnection
             connection.instanceFollowRedirects = false
             connection.requestMethod = "HEAD"

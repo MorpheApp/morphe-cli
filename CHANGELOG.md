@@ -1,3 +1,24 @@
+# [1.13.0-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.3...v1.13.0-dev.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* Clean up obsolete GUI dependencies ([#233](https://github.com/MorpheApp/morphe-desktop/issues/233)) ([0d6816c](https://github.com/MorpheApp/morphe-desktop/commit/0d6816c6a031afd20a225444776fbc075118aa3b))
+
+# [1.13.0-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.2...v1.13.0-dev.3) (2026-07-29)
+
+
+### Features
+
+* dynamically download GUI dependencies to reduce jar size ([#232](https://github.com/MorpheApp/morphe-desktop/issues/232)) ([d74a3c2](https://github.com/MorpheApp/morphe-desktop/commit/d74a3c2eec569c620d98d3c1a28693a03f5c76f8))
+
+# [1.13.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.1...v1.13.0-dev.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* resolve deprecation warnings and fix `list-versions` accuracy ([#225](https://github.com/MorpheApp/morphe-desktop/issues/225)) ([9b79d69](https://github.com/MorpheApp/morphe-desktop/commit/9b79d69895f89760e465b63d0b9d9d23c8ba738f))
+
 # [1.13.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.12.0...v1.13.0-dev.1) (2026-07-27)
 
 

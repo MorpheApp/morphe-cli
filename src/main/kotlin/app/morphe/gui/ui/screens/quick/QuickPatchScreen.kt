@@ -390,7 +390,7 @@ private fun PatchesVersionBadge(
                 .then(
                     if (interactive) Modifier
                         .pointerHoverIcon(androidx.compose.ui.input.pointer.PointerIcon.Hand)
-                        .clickable(onClick = onClick!!)
+                        .clickable(onClick = onClick)
                     else Modifier
                 )
                 .padding(horizontal = 12.dp),

@@ -582,8 +582,8 @@ class AdbManager {
 
         var stockChanged = false
         if (stockEligible) {
-            val stockCommands = if (enable) AppLinkCommands.disableStock(stockPackage!!)
-            else AppLinkCommands.restoreStock(stockPackage!!)
+            val stockCommands = if (enable) AppLinkCommands.disableStock(stockPackage)
+            else AppLinkCommands.restoreStock(stockPackage)
             onProgress(
                 if (enable) "Disabling links in $stockPackage..."
                 else "Re-enabling links in $stockPackage..."

@@ -1138,7 +1138,7 @@ private fun SigningSection(
                 onClick = {
                     verifyResult = null
                     verifySuccess = false
-                    val path = keystorePath ?: return@OutlinedButton
+                    val path = keystorePath
                     val result = readKeystoreInfo(
                         path,
                         localPassword.ifEmpty { null },
@@ -1622,7 +1622,7 @@ private fun readKeystoreInfo(
 
             return KeystoreInfoResult(
                 alias = alias,
-                issuer = cert.issuerDN.name,
+                issuer = cert.issuerX500Principal.name,
                 validFrom = dateFormat.format(cert.notBefore),
                 validTo = dateFormat.format(cert.notAfter),
                 sha256Fingerprint = sha256,

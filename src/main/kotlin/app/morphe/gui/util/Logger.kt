@@ -118,7 +118,7 @@ object Logger {
 
     private fun log(level: Level, message: String) {
         val timestamp = dateFormat.format(Date())
-        val logLine = "[$timestamp] [${level.name.padEnd(5)}] $message"
+        val logLine = "[$timestamp] [${level.name}] $message"
 
         // Print to console
         when (level) {

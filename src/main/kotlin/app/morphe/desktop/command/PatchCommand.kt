@@ -10,6 +10,8 @@ package app.morphe.desktop.command
 
 import app.morphe.desktop.command.model.*
 import app.morphe.desktop.command.CliHttpClient
+import app.morphe.engine.isCompatibleWith
+import app.morphe.engine.compatibleVersionsForDisplay
 import app.morphe.engine.MorpheData
 import app.morphe.engine.supportedVersionsFor
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
@@ -641,13 +643,11 @@ internal object PatchCommand : Callable<Int> {
 
                         val compatiblePatchNames = bundlePatches
                             .filter { patch ->
-                                val compat = patch.compatibility
-                                if (!compat.isNullOrEmpty()) {
-                                    compat.any { it.packageName == packageName || it.packageName == null }
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    patch.compatiblePackages == null || patch.compatiblePackages!!.any { (name, _) -> name == packageName }
-                                }
+                                patch.isCompatibleWith(
+                                    packageName = packageName,
+                                    includeExperimental = true,
+                                    includeUniversalPatches = true,
+                                )
                             }
                             .mapNotNull { it.name?.lowercase() }
                             .toSet()
@@ -676,13 +676,11 @@ internal object PatchCommand : Callable<Int> {
                             // so multi-app patches with the same name aren't merged together.
                             val actualPatch = bundlePatches.find { patch ->
                                 if (!patch.name.equals(patchName, ignoreCase = true)) return@find false
-                                val compat = patch.compatibility
-                                if (!compat.isNullOrEmpty()) {
-                                    compat.any { it.packageName == packageName || it.packageName == null }
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    patch.compatiblePackages == null || patch.compatiblePackages!!.any { (name, _) -> name == packageName }
-                                }
+                                patch.isCompatibleWith(
+                                    packageName = packageName,
+                                    includeExperimental = true,
+                                    includeUniversalPatches = true,
+                                )
                             }
                             val actualOptionKeys = actualPatch?.options?.keys ?: emptySet()
 
@@ -1002,12 +1000,9 @@ internal object PatchCommand : Callable<Int> {
                     return@patchLoop logger.fine(
                         "Skipping \"$patchName\": incompatible with $packageName " +
                             "(only compatible with " +
-                            (patch.compatibility
-                                ?.mapNotNull { it.packageName }
-                                ?.joinToString(", ")
-                                ?: @Suppress("DEPRECATION") patch.compatiblePackages
-                                    ?.joinToString(", ") { (name, _) -> name }
-                                ?: "") + ")"
+                            patch.compatibleVersionsForDisplay(includeExperimental = true)
+                                .mapNotNull { (name, _) -> name }
+                                .joinToString(", ") + ")"
                     )
                 }
                 supportedVersions != null -> {

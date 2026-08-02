@@ -6,7 +6,7 @@ kotlin = "2.3.21"
 # CLI
 picocli = "4.7.7"
 arsclib = "a28c6fb2a7"
-morphe-patcher = "1.8.0-dev.3"
+morphe-patcher = "1.8.0-dev.4"
 morphe-library = "1.4.0"
 jadb = "1.2.3"
 
@@ -28,6 +28,10 @@ kotlinx-serialization = "1.11.0"
 
 # JNA (Windows DWM title bar tinting)
 jna = "5.19.1"
+
+# Bootstrap GUI
+skiko = "0.144.6"
+materialIcons = "1.7.3"
 
 # Testing
 mockk = "1.14.11"
