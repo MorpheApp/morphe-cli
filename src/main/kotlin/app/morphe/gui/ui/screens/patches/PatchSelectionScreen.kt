@@ -66,6 +66,8 @@ import app.morphe.gui.util.DeviceMonitor
 import java.awt.FileDialog
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import app.morphe.gui.util.MorpheFilePicker
+import kotlinx.coroutines.launch
 import java.io.File
 
 /**
@@ -92,6 +94,9 @@ data class PatchSelectionScreen(
     val initialSelectionByBundle: Map<String, Set<String>> = emptyMap(),
     /** One-click repatch option seed ("patchName.optionKey" → value). */
     val initialPatchOptions: Map<String, String> = emptyMap(),
+    /** The app's versionName (parsed from the APK), threaded to the output-name helper so
+     *  the filename is unique by app version even for renamed bundles. Blank = not supplied. */
+    val apkVersion: String = "",
 ) : Screen {
 
     @Composable
@@ -101,6 +106,7 @@ data class PatchSelectionScreen(
             parametersOf(
                 apkPath, apkName, patchesFilePath, packageName, apkArchitectures,
                 effectiveList, patchSourceNames, initialSelectionByBundle, initialPatchOptions,
+                apkVersion,
             )
         }
         PatchSelectionScreenContent(viewModel = viewModel)
@@ -1052,6 +1058,7 @@ private fun IconStudioOption(
     val hasIcon = value.isNotBlank()
     var showStudio by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1062,12 +1069,9 @@ private fun IconStudioOption(
         IconActionPill(MorpheIcons.Edit, if (hasIcon) "EDIT ICON" else "DESIGN ICON", accents.secondary, filled = true, shape = shape, mono = mono) { showStudio = true }
         // Import an already-prepared folder (e.g. one made in the Manager).
         IconActionPill(MorpheIcons.FolderOpen, "IMPORT FOLDER", accents.secondary.copy(alpha = 0.8f), filled = false, shape = shape, mono = mono) {
-            val chooser = javax.swing.JFileChooser().apply {
-                fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
-                dialogTitle = "Select an icon folder"
-            }
-            if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
-                chooser.selectedFile?.let { onValueChange(it.absolutePath) }
+            scope.launch {
+                MorpheFilePicker.pickDirectory(title = "Select an icon folder")
+                    ?.let { onValueChange(it.absolutePath) }
             }
         }
         if (hasIcon) {

@@ -78,6 +78,7 @@ internal fun SupportedAppsListPane(
     isLoading: Boolean,
     loadError: String?,
     onRetry: () -> Unit,
+    onManageSources: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val corners = LocalMorpheCorners.current
@@ -203,17 +204,34 @@ internal fun SupportedAppsListPane(
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(10.dp))
-                    OutlinedButton(
-                        onClick = onRetry,
-                        shape = RoundedCornerShape(corners.small),
-                    ) {
-                        Text(
-                            "RETRY",
-                            fontFamily = mono,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.5.sp,
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = onRetry,
+                            shape = RoundedCornerShape(corners.small),
+                        ) {
+                            Text(
+                                "RETRY",
+                                fontFamily = mono,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.5.sp,
+                            )
+                        }
+                        // Always offer a way to the source manager here: when a bundle is
+                        // broken (e.g. needs a newer patcher), fixing it means removing or
+                        // re-pointing that source, so it must be reachable from the error.
+                        OutlinedButton(
+                            onClick = onManageSources,
+                            shape = RoundedCornerShape(corners.small),
+                        ) {
+                            Text(
+                                "MANAGE SOURCES",
+                                fontFamily = mono,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.5.sp,
+                            )
+                        }
                     }
                 }
             }

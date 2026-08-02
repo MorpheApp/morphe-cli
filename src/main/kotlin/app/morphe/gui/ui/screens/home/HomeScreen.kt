@@ -7,6 +7,7 @@ package app.morphe.gui.ui.screens.home
 
 import app.morphe.gui.ui.screens.home.components.HeaderBar
 import app.morphe.gui.ui.screens.home.components.MultiSourceHintBanner
+import app.morphe.gui.ui.screens.home.components.SourcesFailedBanner
 import app.morphe.gui.ui.screens.home.components.MiddleContent
 import app.morphe.gui.ui.screens.home.components.DragOverlay
 import app.morphe.gui.ui.screens.home.components.SupportedAppsListPane
@@ -43,6 +44,7 @@ import app.morphe.gui.ui.components.UpdateBanner
 import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.util.VersionStatus
+import app.morphe.gui.util.humanizePatchLoadError
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -274,10 +276,24 @@ fun HomeScreenContent(
             ?.resolved
             ?.associate { it.source.id to it.channel }
             ?: emptyMap()
+        // Per-source load failures (resolve phase + load phase), so the sheet shows which
+        // source broke and why. Same data the "some sources failed" banner is driven by.
+        val sourceErrors: Map<String, String> = buildMap {
+            snapshot?.resolved?.forEach { r -> r.error?.let { put(r.source.id, it) } }
+            snapshot?.loaded?.perSource?.forEach { s ->
+                if (!s.isSuccess) {
+                    put(
+                        s.sourceId,
+                        s.error?.let { humanizePatchLoadError(it) } ?: "Failed to load",
+                    )
+                }
+            }
+        }
         SourceManagementSheet(
             sources = allSources,
             sourceVersions = versions,
             sourceChannels = channels,
+            sourceErrors = sourceErrors,
             isLoading = uiState.isLoadingPatches,
             onToggleEnabled = { id, enabled ->
                 coroutineScope.launch {
@@ -318,6 +334,7 @@ fun HomeScreenContent(
                 }
             },
             onDismiss = { showSourceManagementSheet = false },
+            onRefresh = { viewModel.retryLoadPatches() },
             enabled = !uiState.isAnalyzing,
         )
     }
@@ -356,6 +373,7 @@ fun HomeScreenContent(
                                 patchesFilePath = patchesFile.absolutePath,
                                 packageName = uiState.apkInfo!!.packageName,
                                 apkArchitectures = uiState.apkInfo!!.architectures,
+                                apkVersion = uiState.apkInfo!!.versionName,
                                 patchesFilePaths = viewModel.getAllResolvedPatchFiles().map { it.absolutePath },
                                 patchSourceNames = viewModel.getAllResolvedPatchSourceNames(),
                             ))
@@ -427,7 +445,7 @@ fun HomeScreenContent(
                 accum
             }
             val sourceStates: List<SourceLedState> = allSources.map { src ->
-                sourceLedState(src, channelsBySource[src.id])
+                sourceLedState(src, channelsBySource[src.id], hasError = src.id in uiState.failedSourceIds)
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -456,6 +474,16 @@ fun HomeScreenContent(
                             if (uiState.showMultiSourceHint) {
                                 MultiSourceHintBanner(
                                     onDismiss = { viewModel.dismissMultiSourceHint() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = padding, end = padding, top = 8.dp),
+                                )
+                            }
+                            if (uiState.showSourcesFailedBanner) {
+                                SourcesFailedBanner(
+                                    count = uiState.failedSourcesCount,
+                                    onManageSources = { showSourceManagementSheet = true },
+                                    onDismiss = { viewModel.dismissSourcesFailedBanner() },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(start = padding, end = padding, top = 8.dp),
@@ -497,6 +525,7 @@ fun HomeScreenContent(
                                     isLoading = uiState.isLoadingPatches,
                                     loadError = uiState.patchLoadError,
                                     onRetry = onRetry,
+                                    onManageSources = { showSourceManagementSheet = true },
                                     modifier = Modifier
                                         .weight(1.2f)
                                         .fillMaxHeight(),
@@ -572,6 +601,7 @@ private fun handleContinue(
                 patchesFilePath = patchesFile.absolutePath,
                 packageName = info.packageName,
                 apkArchitectures = info.architectures,
+                apkVersion = info.versionName,
                 patchesFilePaths = viewModel.getAllResolvedPatchFiles().map { it.absolutePath },
                 patchSourceNames = viewModel.getAllResolvedPatchSourceNames(),
             ))

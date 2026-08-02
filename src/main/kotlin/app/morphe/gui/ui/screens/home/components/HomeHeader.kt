@@ -166,6 +166,89 @@ internal fun MultiSourceHintBanner(
     }
 }
 
+/**
+ * Non-blocking banner shown when some patch sources loaded but at least one failed.
+ * Patching still works with the loaded sources, so this is an informational warning that
+ * points at the source manager (where each failed source shows exactly why it broke).
+ */
+@Composable
+internal fun SourcesFailedBanner(
+    count: Int,
+    onManageSources: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
+    val warn = accents.warning
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(corners.small))
+            .border(1.dp, warn.copy(alpha = 0.3f), RoundedCornerShape(corners.small))
+            .background(warn.copy(alpha = 0.06f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            imageVector = MorpheIcons.Warning,
+            contentDescription = null,
+            tint = warn,
+            modifier = Modifier.size(15.dp),
+        )
+        Text(
+            text = (if (count == 1) "A patch source" else "$count patch sources") +
+                " failed to load. Using the ones that loaded successfully.",
+            fontSize = 11.sp,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            letterSpacing = 0.2.sp,
+            modifier = Modifier.weight(1f),
+        )
+        // House-style pill: corners.small with an animated hover border/text, matching the
+        // update banner's actions rather than the default Material TextButton (which used a
+        // full-pill shape and no hover color change).
+        val actionHover = remember { MutableInteractionSource() }
+        val isActionHovered by actionHover.collectIsHoveredAsState()
+        val actionBorder by animateColorAsState(
+            if (isActionHovered) warn.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            animationSpec = tween(150),
+        )
+        val actionText by animateColorAsState(
+            if (isActionHovered) warn else warn.copy(alpha = 0.7f),
+            animationSpec = tween(150),
+        )
+        Box(
+            modifier = Modifier
+                .height(24.dp)
+                .hoverable(actionHover)
+                .clip(RoundedCornerShape(corners.small))
+                .border(1.dp, actionBorder, RoundedCornerShape(corners.small))
+                .clickable(onClick = onManageSources)
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "MANAGE SOURCES",
+                fontFamily = mono,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                color = actionText,
+            )
+        }
+        IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+            Icon(
+                imageVector = MorpheIcons.Clear,
+                contentDescription = "Dismiss",
+                tint = warn,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
 // SourcesCountPill, SourceLed, SourceLedState, sourceLedState moved to
 // gui/ui/components/SourcesPill.kt for reuse across modes (Quick Patch uses
 // a non-clickable variant).

@@ -61,6 +61,9 @@ Both the GUI and the CLI use this folder. In the GUI you can open it from **Tool
 
 The **`libs/`** folder is special: it only appears once you open the **GUI**. Morphe ships as a single small jar, and to keep that download small it does not bundle the GUI's platform-specific rendering library (Skiko) or its native-access library (JNA). The first time you launch the GUI, Morphe downloads the correct builds for your operating system and architecture from Maven Central, verifies each one by checksum, and caches them here while showing a brief setup window. The CLI needs none of these, so running from a terminal never downloads anything. Every later GUI launch reuses this cache and works offline.
 
+> [!TIP]
+> **Choosing a custom location.** If neither default suits you (for example, a package-manager install lands the JAR in a read-only, system-wide path), set the **`MORPHE_DATA_DIR`** environment variable to a writable directory. When it's set and usable, Morphe uses it as the data root ahead of everything else. If the value isn't a writable directory, Morphe logs a warning and ignores it. On Linux, if `MORPHE_DATA_DIR` is unset but `XDG_DATA_HOME` is exported, a *fallback* install uses `$XDG_DATA_HOME/morphe`. An existing `~/morphe/` folder is always kept as-is so upgrades never strand your data. Either way, the startup log line (`Morphe data root: ...`) tells you which location won.
+
 <h2 id="gui">GUI</h2>
 
 The GUI is the window you get when you double-click the jar and for most people, it's the way to use Morphe. No flags to memorize, no quoting mistakes, no terminal history full of 47 almost-right commands. Point, click and patch.
@@ -198,6 +201,8 @@ The sources Morphe fetches from are configurable: add community sources (GitHub 
 
 **When a source fails to load.** Morphe no longer spins forever on a source it can't fetch or parse. It stops with an error, turns that source's badge and LED **red**, and shows a banner naming the source and the reason, so you can fix or remove it while the other sources still load.
 
+**Local sources.** A source can also be a local `.mpp` file on disk. If you're *building* patches, enable [Developer options](#gui-settings-developer) to point a source at a **folder** instead. Morphe then always loads the newest `.mpp` in it, so a rebuild is picked up without having to re-select the file.
+
 <p align="center">
   <img src="images/documentation/gui/source_sheet.png" width="50%" height="50%" alt="Sources sheet" style="vertical-align: middle"/>
 </p>
@@ -311,11 +316,11 @@ Morphe runs the pipeline and streams the same log lines the CLI prints, with a *
 <h4 id="gui-expert-result">5. Result</h4>
 
 
-| Control                             | What it does                  | CLI equivalent                               |
-|-------------------------------------|-------------------------------|----------------------------------------------|
-| **OUTPUT FILE** / **OPEN FOLDER →** | Locate the patched APK        | output path is set by`-o` / `--out`          |
-| **ADB INSTALL** (+ device picker)   | Install straight to a device  | `-i` / [`utility install`](#utility-install) |
-| **PATCH ANOTHER**                   | Start over with a new APK     | –                                            |
+| Control                             | What it does                  | CLI equivalent                                    |
+|-------------------------------------|-------------------------------|---------------------------------------------------|
+| **OUTPUT FILE** / **OPEN FOLDER →** | Locate the patched APK        | output path is set by`-o` / `--out`               |
+| **ADB INSTALL** (+ device picker)   | Install straight to a device  | `-i` / [`utility install`](#utility-install)      |
+| **PATCH ANOTHER**                   | Start over with a new APK     | –                                                 |
 | **TEMPORARY FILES → CLEAN UP**      | Free this run's scratch space | auto-purged by default; `--disable-purge` to keep |
 
 - **OUTPUT FILE / OPEN FOLDER →** – the finished APK and a button to reveal it in your file manager.
@@ -458,7 +463,12 @@ A debugging aid: capture logcat from a connected device after a patched app cras
 
 <h4 id="gui-settings-developer">Developer options</h4>
 
-Off by default and meant for **patch developers**. Turning it on unlocks a growing set of workflow options for building and testing patches. Right now it adds one: when you add a **local source**, you can point it at a **folder** instead of a single `.mpp` file, and Morphe always loads the newest `.mpp` in that folder. That saves re-selecting the file every time you rebuild your patches. Build outputs like `*-sources.mpp` and `*-javadoc.mpp` are always ignored, and you can set your own exclude patterns for a folder source from the source manager.
+This section is for people **building** patches and other developers. Off by default. Toggling it on unlocks a suite of workflow options to better assist you in your development. Please feel free to make a request in the issues tab if you feel a feature could be added here.
+
+**Folder sources.** Normally a local source points at a single `.mpp` file. With Developer options on, the add/edit source dialog gains a **FOLDER** button next to **FILE**. Pick a folder and Morphe always loads the **newest `.mpp`** inside it. Point it at your patch build-output directory once and you never re-pick the file: each rebuild is used on the next load. The [source sheet](#gui-expert-sources) also gains a **refresh** button (top-right) that re-scans on demand, so a patch you just built shows up without leaving the screen. Build outputs like `*-sources.mpp` and `*-javadoc.mpp` are always ignored, and you can set your own exclude patterns for a folder source from the source manager.
+
+> [!NOTE]
+> Existing folder sources keep working even if you later turn Developer options back off. The toggle only gates *creating* them.
 
 <h3 id="gui-tools">Tools</h3>
 

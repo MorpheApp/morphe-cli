@@ -133,6 +133,9 @@ dependencies {
     implementation(libs.jna)
     implementation(libs.jna.platform)
 
+    // -- FileKit (native file/folder pickers) ------------------------------
+    implementation(libs.filekit.dialogs)
+
     // -- License attribution UI (About / Licenses screen) -----------------
     implementation(libs.about.libraries.core)
     implementation(libs.about.libraries.m3)
@@ -215,7 +218,8 @@ tasks {
         manifest {
             attributes(
                 "Implementation-Title" to project.name,
-                "Implementation-Version" to project.version
+                "Implementation-Version" to project.version,
+                "Enable-Native-Access" to "ALL-UNNAMED"
             )
         }
     }
@@ -227,14 +231,46 @@ tasks {
         }
     }
 
+    // Write the *resolved* morphe library version (not the catalog pin). Patcher ships
+    // its own version.properties.
+    val writeMorpheComponents = register("writeMorpheComponents") {
+        description = "Writes the resolved morphe-library version to components.properties"
+        val outFile = layout.buildDirectory.file(
+            "generated/morphe-components/app/morphe/cli/components.properties",
+        )
+        val runtimeCp = configurations.named("runtimeClasspath")
+        inputs.files(runtimeCp)
+        outputs.file(outFile)
+        doLast {
+            val libraryVersion = runtimeCp.get().incoming.resolutionResult.allComponents
+                .mapNotNull { it.moduleVersion }
+                .firstOrNull { it.group == "app.morphe" && it.name.startsWith("morphe-library") }
+                ?.version
+                ?: "unknown"
+            outFile.get().asFile.apply {
+                parentFile.mkdirs()
+                writeText(
+                    "# Generated from resolved runtimeClasspath — do not edit\n" +
+                        "libraryVersion=$libraryVersion\n",
+                )
+            }
+        }
+    }
+
     processResources {
         // Make sure the licenses are generated before the resources are processed
-        dependsOn("exportLibraryDefinitions")
+        dependsOn("exportLibraryDefinitions", writeMorpheComponents)
         from(layout.buildDirectory.file("generated/aboutLibraries/aboutlibraries.json"))
+        from(layout.buildDirectory.dir("generated/morphe-components"))
 
-        // Only expand properties files, not binary files like PNG/ICO
+        // Only expand properties files, not binary files like PNG/ICO.
+        // Patcher is read from its jar at runtime. libraryVersion lives in
+        // components.properties generated above, skip token expansion for it.
         filesMatching("**/*.properties") {
-            expand("projectVersion" to project.version)
+            if (path.contains("components.properties")) return@filesMatching
+            expand(
+                "projectVersion" to project.version,
+            )
         }
         // Bundle the project's NOTICE (GPL 7b/7c) and LICENSE into META-INF so they
         // land in the main JAR before the Shadow merge. Source of truth stays at the
@@ -304,6 +340,8 @@ tasks {
             "META-INF/NOTICE",
             "META-INF/NOTICE.txt",
             "META-INF/NOTICE.md",
+            "META-INF/*.kotlin_module",
+            "META-INF/services/*",
         )) {
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
@@ -323,6 +361,12 @@ tasks {
             exclude(dependency("net.java.dev.jna:.*"))
             // Skiko uses ServiceLoader for native registration. Same class of problem as Ktor / Koin / JNA above.
             exclude(dependency("org.jetbrains.skiko:.*"))
+            // FileKit + its DBus transport (Linux XDG portal) are reached reflectively /
+            // via ServiceLoader. Keep them whole so minimize doesn't prune the pickers.
+            exclude(dependency("io.github.vinceglb:.*"))
+            // dbus-java registers its unix-socket transport via ServiceLoader (invisible
+            // to minimize). Backs FileKit's Linux XDG portal picker.
+            exclude(dependency("com.github.hypfvieh:.*"))
         }
 
         mergeServiceFiles()
@@ -373,6 +417,10 @@ tasks {
         // Include the Java runtime classes
         val javaHome = System.getProperty("java.home")
         libraryjars("$javaHome/jmods")
+        
+        // Include all dependencies as library jars so Proguard can resolve hierarchies
+        // for classes excluded from the fat JAR (like JNA and Skiko runtimes).
+        libraryjars(configurations.runtimeClasspath.get().filter { it.exists() })
 
         // Report on what was removed
         printusage(layout.buildDirectory.file("proguard/usage.txt").get().asFile)

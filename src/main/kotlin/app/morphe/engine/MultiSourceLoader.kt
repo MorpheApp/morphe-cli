@@ -13,6 +13,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
@@ -94,13 +95,36 @@ object MultiSourceLoader {
                 sourceName = input.sourceName,
                 patches = patches,
             )
-        } catch (e: Exception) {
-            logger.warning("MultiSourceLoader: failed to load '${input.sourceName}': ${e.message}")
+        } catch (e: Throwable) {
+            // Catch Throwable, not just Exception: a bundle built against a newer patcher
+            // throws java.lang.Error (NoSuchMethodError / NoClassDefFoundError / LinkageError)
+            // because it references patcher APIs missing here. As an Error it would escape a
+            // catch(Exception), sink the whole load, and hang the UI on "loading" forever.
+            // Isolating it per source keeps one bad bundle from taking the others down, and
+            // lets us surface a clear "update Morphe" message (mirrors morphe-manager).
+            //
+            // Do NOT swallow the real failure: many Errors have a null .message (e.g.
+            // ExceptionInInitializerError) with the useful text on .cause. We always store an
+            // exception whose message walks the full cause chain, and log the full stack.
+            val versionMsg = PatcherCompatibility.incompatibilityMessage(input.patchFile)
+            val error: Throwable = if (versionMsg != null) {
+                PatchBundleIncompatibleException(versionMsg)
+            } else {
+                PatchSourceLoadException(e.readableMessage(), e)
+            }
+            logger.log(
+                Level.WARNING,
+                "MultiSourceLoader: failed to load '${input.sourceName}': ${error.message}",
+                e,
+            )
+            // Also stderr so IDE runs / headless CLI see the stack even if JUL is unconfigured.
+            System.err.println("MultiSourceLoader: failed to load '${input.sourceName}': ${error.message}")
+            e.printStackTrace(System.err)
             LoadedSource(
                 sourceId = input.sourceId,
                 sourceName = input.sourceName,
                 patches = emptySet(),
-                error = e,
+                error = error,
             )
         } finally {
             tempCopy.deleteOnExit()
