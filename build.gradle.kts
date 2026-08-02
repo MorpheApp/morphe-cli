@@ -221,7 +221,8 @@ tasks {
         manifest {
             attributes(
                 "Implementation-Title" to project.name,
-                "Implementation-Version" to project.version
+                "Implementation-Version" to project.version,
+                "Enable-Native-Access" to "ALL-UNNAMED"
             )
         }
     }
