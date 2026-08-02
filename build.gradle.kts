@@ -392,6 +392,10 @@ tasks {
         // Include the Java runtime classes
         val javaHome = System.getProperty("java.home")
         libraryjars("$javaHome/jmods")
+        
+        // Include all dependencies as library jars so Proguard can resolve hierarchies
+        // for classes excluded from the fat JAR (like JNA and Skiko runtimes).
+        libraryjars(configurations.runtimeClasspath.get().filter { it.exists() })
 
         // Report on what was removed
         printusage(layout.buildDirectory.file("proguard/usage.txt").get().asFile)
