@@ -1,3 +1,10 @@
+# [1.13.0-dev.7](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.6...v1.13.0-dev.7) (2026-08-02)
+
+
+### Bug Fixes
+
+* Resilient patch bundle loading + quieter ADB logging + unique version output naming ([#224](https://github.com/MorpheApp/morphe-desktop/issues/224)) ([8cb5250](https://github.com/MorpheApp/morphe-desktop/commit/8cb5250ed1562b9882cef47497b7edd4c0f64d2d))
+
 # [1.13.0-dev.6](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.5...v1.13.0-dev.6) (2026-08-02)
 
 
