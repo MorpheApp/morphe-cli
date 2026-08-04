@@ -215,6 +215,10 @@ class QuickPatchViewModel(
                     result.loaded.perSource.filter { !it.isSuccess }.forEach { src ->
                         src.error?.let { Logger.error("Quick mode: source '${src.sourceName}' failed", it) }
                     }
+                    // See HomeViewModel: the source sheet needs the snapshot to show
+                    // which source failed, and single-source Quick Patch hits this
+                    // path for every load failure.
+                    cachedSourcesResult = result
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
                         patchLoadError = firstError

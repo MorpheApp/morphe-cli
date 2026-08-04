@@ -326,7 +326,7 @@ internal fun ReadyContent(
 
         // ── Patches card. Collapsed by default, header alone, intrinsic
         // height. When expanded, gains a bounded body so the chip flow
-        // doesn't dominate a short window; the body's own scroll handles
+        // doesn't dominate a short window. The body's own scroll handles
         // long patch lists. ──
         Box(
             modifier = Modifier
@@ -356,7 +356,7 @@ internal fun ReadyContent(
                     }
                 } else {
                     // Header, clickable to toggle the patch chip body. Tap
-                    // anywhere on the row to expand/collapse; a chevron at
+                    // anywhere on the row to expand/collapse. A chevron at
                     // the trailing edge indicates the current state.
                     val chevronRotation by animateFloatAsState(
                         targetValue = if (patchesExpanded) 180f else 0f,

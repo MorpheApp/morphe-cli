@@ -44,7 +44,9 @@ import app.morphe.gui.ui.components.UpdateBanner
 import app.morphe.gui.ui.screens.patches.PatchesScreen
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.util.VersionStatus
-import app.morphe.gui.util.humanizePatchLoadError
+import app.morphe.gui.util.sourceChannelMap
+import app.morphe.gui.util.sourceErrorMap
+import app.morphe.gui.util.sourceVersionMap
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -268,32 +270,11 @@ fun HomeScreenContent(
 
     if (showSourceManagementSheet) {
         val snapshot = viewModel.getResolvedSourcesSnapshot()
-        val versions: Map<String, String?> = snapshot
-            ?.resolved
-            ?.associate { it.source.id to it.resolvedVersion }
-            ?: emptyMap()
-        val channels: Map<String, app.morphe.gui.util.EnabledSourcesLoader.Channel?> = snapshot
-            ?.resolved
-            ?.associate { it.source.id to it.channel }
-            ?: emptyMap()
-        // Per-source load failures (resolve phase + load phase), so the sheet shows which
-        // source broke and why. Same data the "some sources failed" banner is driven by.
-        val sourceErrors: Map<String, String> = buildMap {
-            snapshot?.resolved?.forEach { r -> r.error?.let { put(r.source.id, it) } }
-            snapshot?.loaded?.perSource?.forEach { s ->
-                if (!s.isSuccess) {
-                    put(
-                        s.sourceId,
-                        s.error?.let { humanizePatchLoadError(it) } ?: "Failed to load",
-                    )
-                }
-            }
-        }
         SourceManagementSheet(
             sources = allSources,
-            sourceVersions = versions,
-            sourceChannels = channels,
-            sourceErrors = sourceErrors,
+            sourceVersions = snapshot.sourceVersionMap(),
+            sourceChannels = snapshot.sourceChannelMap(),
+            sourceErrors = snapshot.sourceErrorMap(),
             isLoading = uiState.isLoadingPatches,
             onToggleEnabled = { id, enabled ->
                 coroutineScope.launch {

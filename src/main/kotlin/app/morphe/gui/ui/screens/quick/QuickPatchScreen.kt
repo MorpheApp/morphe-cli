@@ -28,9 +28,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cafe.adriel.voyager.core.screen.Screen
-import app.morphe.gui.data.model.Patch
-import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.ui.components.MorpheErrorBar
 import app.morphe.gui.ui.components.OfflineBanner
@@ -39,32 +36,20 @@ import app.morphe.gui.ui.components.SourceSheetMode
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.theme.*
-import app.morphe.gui.util.PatchService
+import app.morphe.gui.util.sourceChannelMap
+import app.morphe.gui.util.sourceErrorMap
+import app.morphe.gui.util.sourceVersionMap
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
 
-class QuickPatchScreen : Screen {
-    @Composable
-    override fun Content() {
-        val patchSourceManager: PatchSourceManager = koinInject()
-        val patchService: PatchService = koinInject()
-        val configRepository: ConfigRepository = koinInject()
-        val updateCheckRepository: app.morphe.gui.data.repository.UpdateCheckRepository = koinInject()
-        val viewModel = remember {
-            QuickPatchViewModel(patchSourceManager, patchService, configRepository, updateCheckRepository)
-        }
-        QuickPatchContent(viewModel)
-    }
-}
-
 @Composable
 fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Source picker state — Quick Patch is single-source by design. The picker
+    // Source picker state. Quick Patch is single-source by design, so the picker
     // uses the same SourceManagementSheet as Expert mode but in SINGLE_SELECT
     // mode (radio behavior). Users can also add/edit/remove sources from here,
     // matching morphe-manager which doesn't gate source management on expert mode.
@@ -89,8 +74,16 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
     val centerSidePadding = with(density) { maxOf(leadingWidthPx, trailingWidthPx).toDp() } + 16.dp
 
     if (showSourcePicker) {
+        // Same per-source version, channel, and failure data Expert mode feeds the
+        // sheet, so a source that broke reads as FAILED here too instead of looking
+        // healthy but silently contributing no patches.
+        val snapshot = viewModel.getResolvedSourcesSnapshot()
         SourceManagementSheet(
             sources = allSources,
+            sourceVersions = snapshot.sourceVersionMap(),
+            sourceChannels = snapshot.sourceChannelMap(),
+            sourceErrors = snapshot.sourceErrorMap(),
+            isLoading = uiState.isLoadingPatches,
             mode = SourceSheetMode.SINGLE_SELECT,
             activeSourceId = activeSourceId,
             onSelectSingle = { id ->
@@ -127,7 +120,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // ── Header row — matches expert mode ──
+                // ── Header row, matches expert mode ──
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -141,7 +134,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                         }
                         .padding(vertical = 8.dp)
                 ) {
-                    // Logo — left-aligned
+                    // Logo, left-aligned
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
@@ -151,7 +144,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                         BrandingLogo()
                     }
 
-                    // Patches version badge — centered. Click opens the source-management
+                    // Patches version badge, centered. Click opens the source-management
                     // sheet in SINGLE_SELECT mode so the user can pick which source Quick
                     // Patch uses (and add/edit/remove sources too).
                     Box(

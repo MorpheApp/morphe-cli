@@ -46,7 +46,8 @@ internal fun SupportedAppsRow(
     isLoading: Boolean,
     loadError: String? = null,
     isDefaultSource: Boolean = true,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    onManageSources: () -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
@@ -117,31 +118,12 @@ internal fun SupportedAppsRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    val retryHover = remember { MutableInteractionSource() }
-                    val isRetryHovered by retryHover.collectIsHoveredAsState()
-                    Box(
-                        modifier = Modifier
-                            .hoverable(retryHover)
-                            .clip(RoundedCornerShape(corners.small))
-                            .border(
-                                1.dp,
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                    alpha = if (isRetryHovered) 0.3f else 0.12f
-                                ),
-                                RoundedCornerShape(corners.small)
-                            )
-                            .clickable(onClick = onRetry)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "RETRY",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
+                    ErrorActionPill(text = "RETRY", onClick = onRetry)
+                    // Retrying a source that is itself broken (bad URL, corrupt .mpp,
+                    // needs a newer patcher) loops forever, so the picker has to be
+                    // reachable from the error itself and not only from the header badge.
+                    Spacer(modifier = Modifier.width(6.dp))
+                    ErrorActionPill(text = "CHANGE SOURCE", onClick = onManageSources)
                 }
             }
             else -> {
@@ -366,6 +348,46 @@ internal fun SupportedAppsRow(
                 }
             }
         }
+    }
+}
+
+// ============================================================================
+// ERROR ACTION PILL
+// ============================================================================
+
+/** Outlined action used in the patch-load error row. Matches the quiet, mono
+ *  pill style of this screen rather than a Material button. */
+@Composable
+private fun ErrorActionPill(
+    text: String,
+    onClick: () -> Unit,
+) {
+    val corners = LocalMorpheCorners.current
+    val mono = LocalMorpheFont.current
+    val hover = remember { MutableInteractionSource() }
+    val isHovered by hover.collectIsHoveredAsState()
+    Box(
+        modifier = Modifier
+            .hoverable(hover)
+            .clip(RoundedCornerShape(corners.small))
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = if (isHovered) 0.3f else 0.12f
+                ),
+                RoundedCornerShape(corners.small)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurface,
+            letterSpacing = 0.5.sp
+        )
     }
 }
 
