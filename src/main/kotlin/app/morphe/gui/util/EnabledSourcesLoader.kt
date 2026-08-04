@@ -326,3 +326,38 @@ object EnabledSourcesLoader {
         return match?.value ?: file.nameWithoutExtension
     }
 }
+
+// ============================================================================
+// SNAPSHOT PROJECTIONS FOR THE SOURCE-MANAGEMENT UI
+// ============================================================================
+
+/*
+ * Both Expert mode and Quick Patch open the same SourceManagementSheet, so these
+ * projections live here rather than being re-derived per screen. All three
+ * tolerate a null receiver because a snapshot only exists once a load has run.
+ */
+
+/** sourceId to resolved version label (e.g. "v1.27.0-dev.2"). */
+fun EnabledSourcesLoader.Result?.sourceVersionMap(): Map<String, String?> =
+    this?.resolved?.associate { it.source.id to it.resolvedVersion } ?: emptyMap()
+
+/** sourceId to the channel its resolved release sits on. Drives the sheet badge. */
+fun EnabledSourcesLoader.Result?.sourceChannelMap(): Map<String, EnabledSourcesLoader.Channel?> =
+    this?.resolved?.associate { it.source.id to it.channel } ?: emptyMap()
+
+/**
+ * sourceId to a load-failure message, covering both the resolve phase (couldn't
+ * fetch or find an .mpp) and the load phase (found one, couldn't read it), so a
+ * partial multi-source failure shows exactly which source broke and why.
+ */
+fun EnabledSourcesLoader.Result?.sourceErrorMap(): Map<String, String> {
+    val snapshot = this ?: return emptyMap()
+    return buildMap {
+        snapshot.resolved.forEach { r -> r.error?.let { put(r.source.id, it) } }
+        snapshot.loaded.perSource.forEach { s ->
+            if (!s.isSuccess) {
+                put(s.sourceId, s.error?.let { humanizePatchLoadError(it) } ?: "Failed to load")
+            }
+        }
+    }
+}

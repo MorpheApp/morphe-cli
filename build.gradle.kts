@@ -86,7 +86,6 @@ dependencies {
     implementation(libs.picocli)
 
     // -- Bootstrap (Code Generation) ---------------------------------------
-    bootstrapDependencies("org.jetbrains.compose.material:material-icons-extended-desktop:${libs.versions.materialIcons.get()}")
     bootstrapDependencies("net.java.dev.jna:jna:${libs.versions.jna.get()}")
     bootstrapDependencies("net.java.dev.jna:jna-platform:${libs.versions.jna.get()}")
     bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-x64:${libs.versions.skiko.get()}")
@@ -106,7 +105,6 @@ dependencies {
     implementation("org.jetbrains.compose.components:components-resources:${libs.versions.compose.get()}")
     @Suppress("DEPRECATION")
     implementation(compose.material3)
-    implementation("org.jetbrains.compose.material:material-icons-extended-desktop:1.7.3")
 
     // -- Async / Serialization ---------------------------------------------
     implementation(libs.kotlinx.coroutines.core)
@@ -167,11 +165,9 @@ tasks {
         inputs.files(artifactFiles)
         
         val skikoVersion = libs.versions.skiko.get()
-        val materialIconsVersion = libs.versions.materialIcons.get()
         val jnaVersion = libs.versions.jna.get()
-        
+
         inputs.property("skikoVersion", skikoVersion)
-        inputs.property("materialIconsVersion", materialIconsVersion)
         inputs.property("jnaVersion", jnaVersion)
         
         val outputDir = layout.buildDirectory.dir("generated/source/bootstrap/main/app/morphe/engine")
@@ -195,10 +191,8 @@ tasks {
 
                 internal object BootstrapConstants {
                     const val SKIKO_VERSION = "$skikoVersion"
-                    const val MATERIAL_ICONS_VERSION = "$materialIconsVersion"
                     const val JNA_VERSION = "$jnaVersion"
-                    
-                    const val MATERIAL_ICONS_HASH = "${getHash("material-icons-extended-desktop", materialIconsVersion)}"
+
                     const val JNA_HASH = "${getHash("jna", jnaVersion)}"
                     const val JNA_PLATFORM_HASH = "${getHash("jna-platform", jnaVersion)}"
                     
@@ -286,13 +280,12 @@ tasks {
         }
     }
 
-    // -------------------------------------------------------------------------
+    // ============================================================================
     // Shadow JAR — the only distribution artifact
-    // -------------------------------------------------------------------------
+    // ============================================================================
     shadowJar {
         dependencies {
             exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
-            exclude(dependency("org.jetbrains.compose.material:material-icons-extended-desktop:.*"))
             exclude(dependency("net.java.dev.jna:jna:.*"))
             exclude(dependency("net.java.dev.jna:jna-platform:.*"))
         }

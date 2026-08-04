@@ -30,7 +30,7 @@ All modifications made by Morphe can be found in the Git history.
 1. Java Runtime Environment 21 or above ([Azul Zulu JRE](https://www.azul.com/downloads/?version=java-21-lts&package=jre#zulu), [Temurin](https://adoptium.net/temurin/releases?version=21&os=any&arch=any) or [OpenJDK](https://jdk.java.net/archive/)).
 2. Morphe Desktop jar file (morphe-desktop-*-all.jar). Download the latest from [here](https://github.com/MorpheApp/morphe-desktop/releases/latest).
 3. If using CLI: Patches mpp file (patches-*.mpp). Download the latest Morphe official patch files from [here](https://github.com/MorpheApp/morphe-patches/releases/latest).
-4. If using CLI: Desired app file (app.apk or app.apkm). Download your apk from [APK Mirror](https://www.apkmirror.com/).
+4. Desired app file (app.apk or app.apkm). Download your apk from [APK Mirror](https://www.apkmirror.com/).
 5. [Optional] [Android Debug Bridge (ADB)](https://developer.android.com/studio/command-line/adb) If you want to install the patched APK file to your device directly from your computer.
 
 ## Documentation
@@ -59,6 +59,9 @@ The GUI is far more user-friendly and straightforward than the CLI. On your firs
 1. Double-click the downloaded `morphe-desktop-*-all.jar`. It should open like this:
 
 ![Morphe GUI Home Screen](docs/images/main_readme/home_screen.png)
+
+> [!NOTE]
+> **First launch only.** Morphe ships as a single small jar. The command-line tool runs on its own, but the GUI needs a couple of platform-specific components (the Skiko renderer and JNA) that aren't bundled, so the download stays small. The **first** time you open the GUI, Morphe fetches the right components for your operating system into `morphe-data/libs/` and shows a brief setup window before the home screen appears. This happens only once. Later launches reuse the cached files and need no internet connection.
 
 2. Drag and drop your `.apk` (or `.apkm` / `.xapk` / `.apks` bundle) into the window. Once it's analyzed, click **PATCH** to begin:
 

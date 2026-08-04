@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -19,14 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragIndicator
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -177,7 +171,7 @@ fun SourceManagementSheet(
                 // Reload sources — re-resolves a folder source to its newest .mpp.
                 IconButton(onClick = onRefresh, enabled = enabled, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
+                        imageVector = MorpheIcons.Refresh,
                         contentDescription = "Reload patches",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 0.7f else 0.3f),
                         modifier = Modifier.size(16.dp),
@@ -297,7 +291,7 @@ fun SourceManagementSheet(
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = MorpheIcons.Add,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp)
                     )
@@ -466,7 +460,7 @@ private fun SourceRow(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DragIndicator,
+                        imageVector = MorpheIcons.DragIndicator,
                         contentDescription = "Drag to reorder",
                         tint = if (isDragging) accentColor
                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
@@ -610,7 +604,7 @@ private fun SourceRow(
             if (!isDefault && enabled) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        imageVector = MorpheIcons.Edit,
                         contentDescription = "Edit",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                         modifier = Modifier.size(14.dp)
@@ -618,7 +612,7 @@ private fun SourceRow(
                 }
                 IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = MorpheIcons.Close,
                         contentDescription = "Remove",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                         modifier = Modifier.size(14.dp)
@@ -665,8 +659,8 @@ private fun ReorderArrows(
     accentColor: Color,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        ReorderArrow(Icons.Default.KeyboardArrowUp, "Move up", canMoveUp, accentColor, onMoveUp)
-        ReorderArrow(Icons.Default.KeyboardArrowDown, "Move down", canMoveDown, accentColor, onMoveDown)
+        ReorderArrow(MorpheIcons.KeyboardArrowUp, "Move up", canMoveUp, accentColor, onMoveUp)
+        ReorderArrow(MorpheIcons.KeyboardArrowDown, "Move down", canMoveDown, accentColor, onMoveDown)
     }
 }
 
@@ -875,7 +869,7 @@ private fun ExcludedPatternsEditor(
                     modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = MorpheIcons.Add,
                         contentDescription = "Add pattern",
                         modifier = Modifier.size(16.dp),
                         tint = if (draft.isNotBlank()) accents.primary
@@ -903,7 +897,7 @@ private fun ExcludedPatternsEditor(
                     modifier = Modifier.size(20.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = MorpheIcons.Close,
                         contentDescription = "Remove pattern",
                         modifier = Modifier.size(13.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),

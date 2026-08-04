@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.patches
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -23,24 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.PlaylistRemove
-import androidx.compose.material.icons.filled.RemoveDone
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -221,7 +205,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = MorpheIcons.ArrowBack,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
@@ -284,7 +268,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Terminal,
+                        imageVector = MorpheIcons.Terminal,
                         contentDescription = "Command Preview",
                         tint = if (cmdActive) accents.secondary
                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -335,7 +319,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlaylistRemove,
+                            imageVector = MorpheIcons.PlaylistRemove,
                             contentDescription = "Continue on error",
                             tint = if (continueOnError) MaterialTheme.colorScheme.error
                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -684,7 +668,7 @@ private fun PatchSearchBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = MorpheIcons.Search,
                 contentDescription = "Search",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 modifier = Modifier.size(16.dp)
@@ -726,7 +710,7 @@ private fun PatchSearchBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Clear,
+                        imageVector = MorpheIcons.Clear,
                         contentDescription = "Clear",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(14.dp)
@@ -769,7 +753,7 @@ private fun PatchSearchBar(
             ) {
                 if (showOnlySelected) {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        imageVector = MorpheIcons.Check,
                         contentDescription = null,
                         tint = accents.primary,
                         modifier = Modifier.size(14.dp)
@@ -860,7 +844,7 @@ private fun PatchListItem(
             ) {
                 if (isSelected) {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        imageVector = MorpheIcons.Check,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(12.dp)
@@ -989,7 +973,7 @@ private fun PatchListItem(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = MorpheIcons.Settings,
                             contentDescription = "Configure options",
                             tint = when {
                                 showOptions -> accents.secondary
@@ -1082,16 +1066,16 @@ private fun IconStudioOption(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Edit/design first (accent-filled), then import, then delete — all on the left.
-        IconActionPill(Icons.Default.Edit, if (hasIcon) "EDIT ICON" else "DESIGN ICON", accents.secondary, filled = true, shape = shape, mono = mono) { showStudio = true }
+        IconActionPill(MorpheIcons.Edit, if (hasIcon) "EDIT ICON" else "DESIGN ICON", accents.secondary, filled = true, shape = shape, mono = mono) { showStudio = true }
         // Import an already-prepared folder (e.g. one made in the Manager).
-        IconActionPill(Icons.Default.FolderOpen, "IMPORT FOLDER", accents.secondary.copy(alpha = 0.8f), filled = false, shape = shape, mono = mono) {
+        IconActionPill(MorpheIcons.FolderOpen, "IMPORT FOLDER", accents.secondary.copy(alpha = 0.8f), filled = false, shape = shape, mono = mono) {
             scope.launch {
                 MorpheFilePicker.pickDirectory(title = "Select an icon folder")
                     ?.let { onValueChange(it.absolutePath) }
             }
         }
         if (hasIcon) {
-            IconActionPill(Icons.Default.Delete, "DELETE", MaterialTheme.colorScheme.error, filled = false, shape = shape, mono = mono) { showDeleteConfirm = true }
+            IconActionPill(MorpheIcons.Delete, "DELETE", MaterialTheme.colorScheme.error, filled = false, shape = shape, mono = mono) { showDeleteConfirm = true }
         }
         Text(
             text = if (hasIcon) "Custom icon ready" else "No custom icon set",
@@ -1448,7 +1432,7 @@ private fun SelectionModeChips(
         // (which is set after applySavedDefaults by virtue of the chip being clicked).
         SelectionModeChip(
             label = "YOUR DEFAULTS",
-            icon = Icons.Default.Bookmark,
+            icon = MorpheIcons.Bookmark,
             active = activeMode == SelectionMode.SAVED,
             enabled = hasSavedSelection,
             onClick = onApplySaved,
@@ -1456,21 +1440,21 @@ private fun SelectionModeChips(
         )
         SelectionModeChip(
             label = "PATCH DEFAULTS",
-            icon = Icons.Default.AutoAwesome,
+            icon = MorpheIcons.AutoAwesome,
             active = activeMode == SelectionMode.DEFAULTS,
             onClick = onApplyDefaults,
             modifier = Modifier.weight(1f)
         )
         SelectionModeChip(
             label = "ALL",
-            icon = Icons.Default.DoneAll,
+            icon = MorpheIcons.DoneAll,
             active = activeMode == SelectionMode.ALL,
             onClick = onApplyAll,
             modifier = Modifier.weight(1f)
         )
         SelectionModeChip(
             label = "NONE",
-            icon = Icons.Default.RemoveDone,
+            icon = MorpheIcons.RemoveDone,
             active = activeMode == SelectionMode.NONE,
             onClick = onApplyNone,
             modifier = Modifier.weight(1f)
@@ -1603,7 +1587,7 @@ private fun CommandPreview(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Terminal,
+                    imageVector = MorpheIcons.Terminal,
                     contentDescription = null,
                     tint = terminalGreen.copy(alpha = 0.7f),
                     modifier = Modifier.size(14.dp)
@@ -1641,7 +1625,7 @@ private fun CommandPreview(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ContentCopy,
+                            imageVector = MorpheIcons.ContentCopy,
                             contentDescription = "Copy",
                             tint = if (showCopied) terminalGreen
                                    else terminalGreen.copy(alpha = if (isCopyHovered) 0.8f else 0.4f),

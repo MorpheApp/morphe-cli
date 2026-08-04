@@ -31,7 +31,25 @@ fun main(args: Array<String>) {
                 launchGuiReflectively(args)
                 return
             } else {
-                val downloadedJars = BootstrapDownloader.downloadIfMissing()
+                // This parent process only shows the setup UI and then babysits the
+                // child GUI process (it stays alive on waitFor for the whole session).
+                // On macOS, "java" dock icon lingers next to Morphe's until the
+                // app quits on first launch. Mark the parent as a UI agent so it has no dock icon of
+                // its own. The child process still shows the real Morphe icon.
+                if (System.getProperty("os.name").startsWith("Mac")) {
+                    System.setProperty("apple.awt.UIElement", "true")
+                }
+                val progress = BootstrapProgressWindow()
+                val downloadedJars = try {
+                    BootstrapDownloader.downloadIfMissing(progress)
+                } catch (e: Throwable) {
+                    // BootstrapProgressWindow.onError has already shown a dialog and
+                    // waited for the user to acknowledge; clean up and exit.
+                    progress.close()
+                    System.exit(1)
+                    return
+                }
+                progress.close()
                 val javaHome = System.getProperty("java.home")
                 val javaBin = File(javaHome, "bin/java").absolutePath
                 val downloadedClassPath = downloadedJars.joinToString(File.pathSeparator) { it.absolutePath }

@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.patching
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -23,9 +25,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -144,7 +143,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = MorpheIcons.ArrowBack,
                         contentDescription = "Back",
                         modifier = Modifier.size(18.dp),
                         tint = if (uiState.isInProgress)
@@ -204,7 +203,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = MorpheIcons.Close,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -839,7 +838,7 @@ private fun LogFileViewerDialog(
                             .padding(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Close,
+                            imageVector = MorpheIcons.Close,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)

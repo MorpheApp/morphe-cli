@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.patches
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -21,12 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -154,7 +150,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = MorpheIcons.ArrowBack,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
@@ -210,7 +206,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
+                        imageVector = MorpheIcons.Refresh,
                         contentDescription = "Refresh",
                         tint = if (uiState.isLoading) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -685,7 +681,7 @@ private fun ReleaseCard(
                                     letterSpacing = 0.5.sp
                                 )
                                 Icon(
-                                    imageVector = if (isExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                    imageVector = if (isExpanded) MorpheIcons.ArrowDropUp else MorpheIcons.ArrowDropDown,
                                     contentDescription = null,
                                     tint = accentColor,
                                     modifier = Modifier.size(14.dp)
@@ -983,7 +979,7 @@ private fun LocalSourceBanner(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.FolderOpen,
+                    imageVector = MorpheIcons.FolderOpen,
                     contentDescription = null,
                     tint = accents.primary,
                     modifier = Modifier.size(20.dp)

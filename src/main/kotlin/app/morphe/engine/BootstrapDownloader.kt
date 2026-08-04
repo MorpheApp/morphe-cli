@@ -33,12 +33,6 @@ object BootstrapDownloader {
         )
     }
 
-    private val MATERIAL_ICONS = RemoteDependency(
-        fileName = "material-icons-extended-desktop-${BootstrapConstants.MATERIAL_ICONS_VERSION}.jar",
-        url = "https://repo1.maven.org/maven2/org/jetbrains/compose/material/material-icons-extended-desktop/${BootstrapConstants.MATERIAL_ICONS_VERSION}/material-icons-extended-desktop-${BootstrapConstants.MATERIAL_ICONS_VERSION}.jar",
-        expectedHash = BootstrapConstants.MATERIAL_ICONS_HASH
-    )
-
     private val JNA = RemoteDependency(
         fileName = "jna-${BootstrapConstants.JNA_VERSION}.jar",
         url = "https://repo1.maven.org/maven2/net/java/dev/jna/jna/${BootstrapConstants.JNA_VERSION}/jna-${BootstrapConstants.JNA_VERSION}.jar",
@@ -51,12 +45,18 @@ object BootstrapDownloader {
         expectedHash = BootstrapConstants.JNA_PLATFORM_HASH
     )
 
+    private data class DownloadPlan(val dep: RemoteDependency, val target: File, val needsDownload: Boolean)
+
     /**
-     * Downloads the required GUI dependencies if missing or invalid.
+     * Downloads the required GUI dependencies if missing or invalid, reporting to
+     * an optional [listener] so the caller can show progress.
+     *
      * @return the list of downloaded (or cached) dependency files.
+     * @throws BootstrapException if a component cannot be downloaded or fails
+     *   verification. The caller is responsible for surfacing this to the user.
      */
-    fun downloadIfMissing(): List<File> {
-        val dependencies = listOf(SKIKO, MATERIAL_ICONS, JNA, JNA_PLATFORM)
+    fun downloadIfMissing(listener: BootstrapProgressListener? = null): List<File> {
+        val dependencies = listOf(SKIKO, JNA, JNA_PLATFORM)
         val binDir = File(MorpheData.root, "libs").also { it.mkdirs() }
         
         val expectedFileNames = dependencies.map { it.fileName }.toSet()
@@ -69,43 +69,86 @@ object BootstrapDownloader {
         
         val downloadedFiles = mutableListOf<File>()
 
-        for (dep in dependencies) {
-            val targetFile = File(binDir, dep.fileName)
+        // Decide up front which components need fetching, hashing each cached file
+        // only once, so the UI only appears when there is real work to do.
+        val plans = dependencies.map { dep ->
+            val file = File(binDir, dep.fileName)
+            DownloadPlan(dep, file, needsDownload = !(file.exists() && verifyHash(file, dep.expectedHash)))
+        }
+        val toDownload = plans.count { it.needsDownload }
+        if (toDownload > 0) listener?.onStart(toDownload)
 
-            if (targetFile.exists()) {
-                if (verifyHash(targetFile, dep.expectedHash)) {
-                    downloadedFiles.add(targetFile)
-                    continue
-                } else {
-                    logger.warning("Cache invalid for ${dep.fileName}, redownloading.")
-                    targetFile.delete()
-                }
+        var index = 0
+        for (plan in plans) {
+            if (!plan.needsDownload) {
+                downloadedFiles.add(plan.target)
+                continue
+            }
+            if (plan.target.exists()) {
+                logger.warning("Cache invalid for ${plan.dep.fileName}, redownloading.")
+                plan.target.delete()
             }
 
-            logger.info("Downloading ${dep.fileName}...")
+            logger.info("Downloading ${plan.dep.fileName}...")
+            val current = index
             try {
-                URI(dep.url).toURL().openStream().use { input ->
-                    FileOutputStream(targetFile).use { output ->
-                        input.copyTo(output)
-                    }
+                downloadWithProgress(plan.dep, plan.target) { done, total ->
+                    listener?.onProgress(current, toDownload, plan.dep.fileName, done, total)
                 }
             } catch (e: Exception) {
-                targetFile.delete()
-                logger.severe("Failed to download GUI dependency ${dep.fileName}: ${e.message}")
-                kotlin.system.exitProcess(1)
+                plan.target.delete()
+                val message = "Failed to download ${plan.dep.fileName}: ${e.message}"
+                logger.severe(message)
+                listener?.onError(message)
+                throw BootstrapException(message, e)
             }
 
-            if (!verifyHash(targetFile, dep.expectedHash)) {
-                targetFile.delete()
-                logger.severe("Checksum mismatch for downloaded dependency ${dep.fileName}.")
-                kotlin.system.exitProcess(1)
+            if (!verifyHash(plan.target, plan.dep.expectedHash)) {
+                plan.target.delete()
+                val message = "Checksum mismatch for ${plan.dep.fileName}."
+                logger.severe(message)
+                listener?.onError(message)
+                throw BootstrapException(message)
             }
 
-            downloadedFiles.add(targetFile)
+            downloadedFiles.add(plan.target)
+            index++
         }
 
+        listener?.onComplete()
         logger.info("All GUI dependencies ready.")
         return downloadedFiles
+    }
+
+    /**
+     * Streams [dep] to [target], invoking [onBytes] with (bytesDownloaded, totalBytes)
+     * as it goes (totalBytes is negative when the server sends no Content-Length).
+     * Callbacks are throttled to roughly every 256 KB so a listener is not flooded.
+     */
+    private fun downloadWithProgress(dep: RemoteDependency, target: File, onBytes: (Long, Long) -> Unit) {
+        val connection = URI(dep.url).toURL().openConnection().apply {
+            connectTimeout = 15_000
+            readTimeout = 30_000
+        }
+        val total = connection.contentLengthLong
+        onBytes(0L, total)
+        connection.getInputStream().use { input ->
+            FileOutputStream(target).use { output ->
+                val buffer = ByteArray(64 * 1024)
+                var done = 0L
+                var lastReported = 0L
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    output.write(buffer, 0, read)
+                    done += read
+                    if (done - lastReported >= 256 * 1024) {
+                        onBytes(done, total)
+                        lastReported = done
+                    }
+                }
+                onBytes(done, total)
+            }
+        }
     }
 
     private fun verifyHash(file: File, expectedHash: String): Boolean {

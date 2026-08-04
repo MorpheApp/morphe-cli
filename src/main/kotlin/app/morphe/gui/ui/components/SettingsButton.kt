@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import app.morphe.gui.LocalAdbPreference
 import app.morphe.gui.LocalModeState
 import androidx.compose.animation.animateColorAsState
@@ -21,8 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -121,7 +121,7 @@ fun SettingsButton(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Default.Settings,
+            imageVector = MorpheIcons.Settings,
             contentDescription = "Settings",
             tint = if (isHovered) MaterialTheme.colorScheme.onSurface
                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),

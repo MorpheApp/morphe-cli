@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.home.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -15,10 +17,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -150,7 +148,7 @@ fun ApkInfoCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = MorpheIcons.Close,
                         contentDescription = "Remove APK",
                         tint = if (isCloseHovered) MaterialTheme.colorScheme.error
                                else homeCardMutedTextColor(0.5f),
@@ -183,7 +181,7 @@ fun ApkInfoCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
+                        imageVector = MorpheIcons.Info,
                         contentDescription = null,
                         tint = accents.warning,
                         modifier = Modifier.size(16.dp)
@@ -219,7 +217,7 @@ fun ApkInfoCard(
                 ) {
                     val warningOrange = accents.warning
                     Icon(
-                        imageVector = Icons.Default.Warning,
+                        imageVector = MorpheIcons.Warning,
                         contentDescription = null,
                         tint = warningOrange,
                         modifier = Modifier.size(16.dp)

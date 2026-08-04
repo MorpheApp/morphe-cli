@@ -1,0 +1,225 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-desktop
+ */
+
+package app.morphe.gui.ui.screens.home.components
+
+import app.morphe.gui.ui.icons.MorpheIcons
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.theme.LocalMorpheCorners
+import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalMorpheAccents
+import app.morphe.engine.model.PatchedAppRecord
+import app.morphe.gui.ui.components.MorpheDialogButton
+import app.morphe.gui.ui.components.MorpheDialogCard
+import app.morphe.gui.ui.components.MorpheDialogText
+import app.morphe.gui.util.VersionStatus
+import app.morphe.gui.util.resolveVersionWarningContent
+import app.morphe.gui.util.toColor
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
+
+// ============================================================================
+// HOME DIALOGS
+// ============================================================================
+
+private val DangerRed = Color(0xFFE0504D)
+
+/**
+ * Blocking warning shown when the selected APK's version does not match the
+ * suggested one. Confirm patches anyway, dismiss to pick a different APK.
+ */
+@Composable
+internal fun VersionWarningDialog(
+    versionStatus: VersionStatus,
+    currentVersion: String,
+    suggestedVersion: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val warningContent = resolveVersionWarningContent(versionStatus, currentVersion, suggestedVersion)
+    val warnColor = warningContent.colorType.toColor()
+
+    MorpheDialogCard(onDismiss = onDismiss, title = warningContent.title) {
+        Icon(
+            imageVector = MorpheIcons.Warning,
+            contentDescription = null,
+            tint = warnColor,
+            modifier = Modifier.size(28.dp),
+        )
+        MorpheDialogText(warningContent.message)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("CANCEL", MaterialTheme.colorScheme.onSurfaceVariant, filled = false, onClick = onDismiss)
+            MorpheDialogButton("CONTINUE ANYWAY", warnColor, filled = true, onClick = onConfirm)
+        }
+    }
+}
+
+/** Confirm removing a record from the patched-app history. */
+@Composable
+internal fun ForgetConfirmDialog(
+    record: PatchedAppRecord,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    MorpheDialogCard(onDismiss = onDismiss, title = "Forget ${record.displayName}?") {
+        MorpheDialogText(
+            "This removes ${record.displayName} from your patched-app history. " +
+                "It doesn't touch any files — re-patching the app adds it back."
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("CANCEL", MaterialTheme.colorScheme.onSurfaceVariant, filled = false, onClick = onDismiss)
+            MorpheDialogButton("FORGET", DangerRed, filled = true, onClick = onConfirm)
+        }
+    }
+}
+
+/**
+ * Confirm uninstalling the patched app from the connected device. The checkbox
+ * offers the keep-history vs delete-history choice.
+ */
+@Composable
+internal fun UninstallConfirmDialog(
+    record: PatchedAppRecord,
+    alsoForget: Boolean,
+    onAlsoForgetChange: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    MorpheDialogCard(
+        onDismiss = onDismiss,
+        title = "Uninstall ${record.displayName}?",
+    ) {
+        MorpheDialogText(
+            "This removes ${record.displayName} from the connected device. " +
+                "The patched APK on disk and your history are kept unless you choose otherwise below."
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(LocalMorpheCorners.current.small))
+                .clickable { onAlsoForgetChange(!alsoForget) }
+                .padding(vertical = 4.dp),
+        ) {
+            Checkbox(
+                checked = alsoForget,
+                onCheckedChange = onAlsoForgetChange,
+                colors = CheckboxDefaults.colors(checkedColor = DangerRed),
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Also remove from Your Apps",
+                fontSize = 12.sp,
+                fontFamily = LocalMorpheFont.current,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("CANCEL", MaterialTheme.colorScheme.onSurfaceVariant, filled = false, onClick = onDismiss)
+            MorpheDialogButton("UNINSTALL", DangerRed, filled = true, onClick = onConfirm)
+        }
+    }
+}
+
+/**
+ * Shown when a record's original input APK is gone. Picking a replacement APK
+ * hands its absolute path back via [onApkPicked].
+ */
+@Composable
+internal fun RepatchMissingApkDialog(
+    record: PatchedAppRecord,
+    onDismiss: () -> Unit,
+    onApkPicked: (String) -> Unit,
+) {
+    MorpheDialogCard(onDismiss = onDismiss, title = "Original APK not found") {
+        MorpheDialogText(
+            "The input APK for ${record.displayName} is no longer at:\n" +
+                "${record.inputApkPath}\n\nSelect the APK again to re-patch with your saved settings."
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("CANCEL", MaterialTheme.colorScheme.onSurfaceVariant, filled = false, onClick = onDismiss)
+            MorpheDialogButton("SELECT APK…", LocalMorpheAccents.current.primary, filled = true) {
+                val fd = FileDialog(null as Frame?, "Select APK to re-patch", FileDialog.LOAD)
+                fd.isVisible = true
+                val picked = fd.file?.let { File(fd.directory, it) }
+                onDismiss()
+                if (picked != null && picked.exists()) onApkPicked(picked.absolutePath)
+            }
+        }
+    }
+}
+
+/** Spinner shown while the latest patches for an update are being resolved. */
+@Composable
+internal fun UpdatePreparingDialog(onCancel: () -> Unit) {
+    MorpheDialogCard(onDismiss = onCancel, title = "Preparing update…") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = LocalMorpheAccents.current.primary,
+            )
+            Spacer(Modifier.width(12.dp))
+            MorpheDialogText("Resolving the latest patches…")
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("CANCEL", MaterialTheme.colorScheme.onSurfaceVariant, filled = false, onClick = onCancel)
+        }
+    }
+}
+
+/** Terminal error state for a failed update preparation. */
+@Composable
+internal fun UpdateFailedDialog(message: String, onDismiss: () -> Unit) {
+    MorpheDialogCard(onDismiss = onDismiss, title = "Update failed") {
+        MorpheDialogText(message)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("OK", LocalMorpheAccents.current.primary, filled = true, onClick = onDismiss)
+        }
+    }
+}
+
+/**
+ * Offered when the latest patches want a newer app version than the one on
+ * record. The user can keep their current APK or fetch the newer one.
+ */
+@Composable
+internal fun UpdateAvailableDialog(
+    appName: String,
+    currentVersion: String,
+    targetVersion: String,
+    currentSupported: Boolean,
+    onDismiss: () -> Unit,
+    onUseMyApk: () -> Unit,
+    onGetNewer: () -> Unit,
+) {
+    MorpheDialogCard(onDismiss = onDismiss, title = "Update $appName") {
+        MorpheDialogText(
+            if (currentSupported) {
+                "The latest patches add support for a newer app version (v$targetVersion). " +
+                    "You can grab it, or keep using your v$currentVersion — your call."
+            } else {
+                "Your v$currentVersion is no longer supported by the latest patches. " +
+                    "Get v$targetVersion to keep patching."
+            }
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MorpheDialogButton("USE MY APK", LocalMorpheAccents.current.secondary, filled = false, onClick = onUseMyApk)
+            MorpheDialogButton("GET v$targetVersion", LocalMorpheAccents.current.primary, filled = true, onClick = onGetNewer)
+        }
+    }
+}

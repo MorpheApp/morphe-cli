@@ -411,6 +411,12 @@ class HomeViewModel(
                             Logger.error("Patch source '${src.sourceName}' failed to load", err)
                         }
                     }
+                    // Record the snapshot even though nothing loaded. The source sheet
+                    // reads it for the per-row FAILED state, and a total failure is
+                    // exactly when the user opens the sheet to find out which source
+                    // broke. Every other reader filters on patchFile != null, so they
+                    // see an empty result rather than stale success data.
+                    cachedSourcesResult = result
                     _uiState.value = _uiState.value.copy(
                         isLoadingPatches = false,
                         patchLoadError = friendlyError

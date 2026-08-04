@@ -5,15 +5,14 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,7 +49,7 @@ fun OfflineBanner(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.WifiOff,
+                imageVector = MorpheIcons.WifiOff,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                 modifier = Modifier.size(16.dp)
@@ -77,7 +76,7 @@ fun OfflineBanner(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    imageVector = MorpheIcons.Refresh,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )

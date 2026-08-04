@@ -45,16 +45,21 @@ Now that you've done your first run, let's dig deeper into how the magic happens
 Morphe keeps its runtime data: cached patch files, logs, scratch space for patching, and the default signing keystore in a single **`morphe-data/`** folder. By default, this folder is created **next to the JAR** you run, so it survives upgrades and is easy to find. 
 If that location isn't writable (e.g. running from an IDE, or from a read-only install path), Morphe falls back to **`~/morphe/`**. The startup logs print which one is in use (look for `Morphe data root: ...`).
 
+You can override the location entirely with the **`MORPHE_DATA_DIR`** environment variable. Point it at a writable directory and Morphe uses that as the data root, ahead of both the JAR-adjacent default and the `~/morphe/` fallback. This is meant for read-only or package-manager installs, where the JAR's own folder isn't writable and you'd rather choose the location than land in `~/morphe/`. If the path you set isn't writable, Morphe logs a warning and ignores it.
+
 ```
 morphe-data/
   patches/         # cached .mpp patch bundles
   logs/            # application logs
   tmp/             # per-run patching scratch (the default --temporary-files-path location)
+  libs/            # GUI runtime (Skiko, JNA) downloaded on the first GUI launch
   morphe.keystore  # shared default signing key (see --keystore)
   config.json      # preferences + configured sources
 ```
 
 Both the GUI and the CLI use this folder. In the GUI you can open it from **Tools → Open App Data**. On the CLI, `--temporary-files-path` defaults to `tmp/` (override it to send scratch elsewhere) and `--keystore` defaults to `morphe.keystore` here.
+
+The **`libs/`** folder is special: it only appears once you open the **GUI**. Morphe ships as a single small jar, and to keep that download small it does not bundle the GUI's platform-specific rendering library (Skiko) or its native-access library (JNA). The first time you launch the GUI, Morphe downloads the correct builds for your operating system and architecture from Maven Central, verifies each one by checksum, and caches them here while showing a brief setup window. The CLI needs none of these, so running from a terminal never downloads anything. Every later GUI launch reuses this cache and works offline.
 
 > [!TIP]
 > **Choosing a custom location.** If neither default suits you (for example, a package-manager install lands the JAR in a read-only, system-wide path), set the **`MORPHE_DATA_DIR`** environment variable to a writable directory. When it's set and usable, Morphe uses it as the data root ahead of everything else. If the value isn't a writable directory, Morphe logs a warning and ignores it. On Linux, if `MORPHE_DATA_DIR` is unset but `XDG_DATA_HOME` is exported, a *fallback* install uses `$XDG_DATA_HOME/morphe`. An existing `~/morphe/` folder is always kept as-is so upgrades never strand your data. Either way, the startup log line (`Morphe data root: ...`) tells you which location won.
@@ -118,6 +123,9 @@ The home screen has a top bar (on the top):
 | 🟡  | **STABLE OLDER**  | a stable release, but a newer one exists |
 | 🔵  | **DEV LATEST**    | newest pre-release (experimental)        |
 | 🔴  | **DEV OLDER**     | a pre-release but behind                 |
+| 🩵  | **LOCAL**         | a local `.mpp` file or folder source     |
+
+A **disabled** source shows a **dimmed** LED, and a source that **failed to load** shows a **red** LED and raises an error banner. Those two states take priority over the channel color.
 
 In Expert mode, click the pill to open the **source manager** – add, remove, refresh, or reorder sources (see [Managing patch sources](#gui-expert-sources)). In Quick mode it's informational. The same LED colors appear on each row inside the source manager.
 
@@ -190,6 +198,8 @@ The sources Morphe fetches from are configurable: add community sources (GitHub 
 **Reordering.** Drag a source by its handle to change its position in the list. Order is **load priority** – sources higher in the list are loaded first. This usually doesn't matter, but it can: if two sources ship a class with the same name (common when both are forks of the same patches project), the one loaded first wins. Keeping your primary source on top is the safe default.
 
 **Channel badge.** Each enabled source shows a small badge for the release it resolved to, color-coded by release channel, the same colors (and meanings) as the sources-pill LEDs in [The TopBar](#gui-window).
+
+**When a source fails to load.** Morphe no longer spins forever on a source it can't fetch or parse. It stops with an error, turns that source's badge and LED **red**, and shows a banner naming the source and the reason, so you can fix or remove it while the other sources still load.
 
 **Local sources.** A source can also be a local `.mpp` file on disk. If you're *building* patches, enable [Developer options](#gui-settings-developer) to point a source at a **folder** instead. Morphe then always loads the newest `.mpp` in it, so a rebuild is picked up without having to re-select the file.
 
@@ -386,6 +396,7 @@ The gear icon opens Settings – Morphe's persistent preferences. Think of it as
 | **Strip Libs**                 | Native-lib architectures to keep                                                                          | Keep all                                                                             | `--striplibs`                                                                              |
 | **Patched app runtime logs**   | Capture logcat from a device after a patched app misbehaves                                               | –                                                                                    | –                                                                                          |
 | **Route links to patched app** | After an ADB install, auto-route the app's web links to it (with an optional "disable stock app's links") | Off                                                                                  | [`utility install --route-links`](#utility-install)                                        |
+| **Developer options** | Unlock patch-developer workflows (currently: point a local source at a folder so its newest .mpp auto-loads) | Off | – |
 
 <p align="center">
   <img src="images/documentation/gui/settings.png" width="60%" alt="Settings dialog" style="vertical-align: middle"/>
@@ -454,7 +465,7 @@ A debugging aid: capture logcat from a connected device after a patched app cras
 
 This section is for people **building** patches and other developers. Off by default. Toggling it on unlocks a suite of workflow options to better assist you in your development. Please feel free to make a request in the issues tab if you feel a feature could be added here.
 
-**Folder sources.** Normally a local source points at a single `.mpp` file. With Developer options on, the add/edit source dialog gains a **FOLDER** button next to **FILE**. Pick a folder and Morphe always loads the **newest `.mpp`** inside it. Point it at your patch build-output directory once and you never re-pick the file: each rebuild is used on the next load. The [source sheet](#gui-expert-sources) also gains a **refresh** button (top-right) that re-scans on demand, so a patch you just built shows up without leaving the screen.
+**Folder sources.** Normally a local source points at a single `.mpp` file. With Developer options on, the add/edit source dialog gains a **FOLDER** button next to **FILE**. Pick a folder and Morphe always loads the **newest `.mpp`** inside it. Point it at your patch build-output directory once and you never re-pick the file: each rebuild is used on the next load. The [source sheet](#gui-expert-sources) also gains a **refresh** button (top-right) that re-scans on demand, so a patch you just built shows up without leaving the screen. Build outputs like `*-sources.mpp` and `*-javadoc.mpp` are always ignored, and you can set your own exclude patterns for a folder source from the source manager.
 
 > [!NOTE]
 > Existing folder sources keep working even if you later turn Developer options back off. The toggle only gates *creating* them.
@@ -470,7 +481,7 @@ The wrench icon opens Tools – one-off actions and reference info, kept out of 
 | **OPEN APP DATA** | Open Morphe's data folder – the`morphe-data/` directory (see [Where Morphe stores its files](#where-files-stored)) |
 | **CLEAR CACHE**   | Delete downloaded patches and logs (they re-download as needed)                                                    |
 | **VIEW LICENSES** | Browse the open-source licenses of Morphe's dependencies                                                           |
-| Version           | The running app version is shown at the bottom                                                                     |
+| Version           | The running app version, plus the bundled **Morphe Patcher** and **Morphe Library** versions, are shown at the bottom                                                                     |
 
 <p align="center">
   <img src="images/documentation/gui/tools.png" width="60%" alt="Tools Setting" style="vertical-align: middle"/>
@@ -664,6 +675,9 @@ Required: No
 Default: a subfolder named after the app, created next to the input APK – `<app>/<app>-Morphe-<appVersion>-patches-<patchesVersion>.apk`
 
 Specify a custom output path for the patched APK.
+
+> [!NOTE]
+> `<appVersion>` in the default name is read from the APK's manifest (`versionName`). Patching two different versions of the same app therefore produces two differently-named files instead of overwriting each other, even when the input files happen to share a name (for example both called `base.apk`).
 
 ```
 java -jar morphe-desktop-*-all.jar patch -p patches.mpp -o /path/to/output.apk your_app.apk

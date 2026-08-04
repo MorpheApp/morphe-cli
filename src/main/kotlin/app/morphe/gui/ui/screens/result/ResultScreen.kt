@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.result
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -19,10 +21,6 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -265,7 +263,7 @@ fun ResultScreenContent(outputPath: String) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = MorpheIcons.ArrowBack,
                         contentDescription = "Back",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -482,7 +480,7 @@ private fun AdbInstallSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle,
+                            imageVector = MorpheIcons.CheckCircle,
                             contentDescription = null,
                             tint = accents.secondary,
                             modifier = Modifier.size(18.dp)
@@ -644,7 +642,7 @@ private fun AdbInstallSection(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PhoneAndroid,
+                                    imageVector = MorpheIcons.PhoneAndroid,
                                     contentDescription = null,
                                     tint = when {
                                         isSelected -> accents.secondary
@@ -875,7 +873,7 @@ private fun LinkHandlingSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle,
+                            imageVector = MorpheIcons.CheckCircle,
                             contentDescription = null,
                             tint = accents.secondary,
                             modifier = Modifier.size(18.dp)
@@ -1046,7 +1044,7 @@ private fun CleanupSection(
             }
         } else if (tempFilesCleared) {
             Icon(
-                imageVector = Icons.Default.CheckCircle,
+                imageVector = MorpheIcons.CheckCircle,
                 contentDescription = null,
                 tint = accents.secondary,
                 modifier = Modifier.size(18.dp)
