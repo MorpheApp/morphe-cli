@@ -1,3 +1,10 @@
+# [1.13.0-dev.8](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.7...v1.13.0-dev.8) (2026-08-04)
+
+
+### Bug Fixes
+
+* Added progress bar to first time GUI download + Switched from materials icon to materials symbol + Cleaned up home screen code ([#234](https://github.com/MorpheApp/morphe-desktop/issues/234)) ([39e948e](https://github.com/MorpheApp/morphe-desktop/commit/39e948e750814707ac2a378f0c40f3751e373520))
+
 # [1.13.0-dev.7](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.6...v1.13.0-dev.7) (2026-08-02)
 
 
