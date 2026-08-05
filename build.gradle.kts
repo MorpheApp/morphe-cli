@@ -353,9 +353,6 @@ tasks {
             // Ktor uses ServiceLoader
             exclude(dependency("io.ktor:.*"))
             exclude(dependency("org.slf4j:.*"))
-            // OkHttp (Ktor's engine) picks its TLS platform reflectively at startup and
-            // okio backs its IO. Keep both whole so minimize can't prune a platform class
-            // that is only ever reached by name.
             exclude(dependency("com.squareup.okhttp3:.*"))
             exclude(dependency("com.squareup.okio:.*"))
             // Koin uses reflection
