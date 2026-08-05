@@ -1,3 +1,10 @@
+# [1.13.0-dev.9](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.8...v1.13.0-dev.9) (2026-08-05)
+
+
+### Bug Fixes
+
+* move both HTTP clients to OkHttp for parity with manager ([#254](https://github.com/MorpheApp/morphe-desktop/issues/254)) ([e8379be](https://github.com/MorpheApp/morphe-desktop/commit/e8379beee35350ad261282118d76ecb9201f2c9a))
+
 # [1.13.0-dev.8](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.7...v1.13.0-dev.8) (2026-08-04)
 
 
