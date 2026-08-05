@@ -113,7 +113,7 @@ dependencies {
 
     // -- Networking (GUI) --------------------------------------------------
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.client.logging)
@@ -353,6 +353,8 @@ tasks {
             // Ktor uses ServiceLoader
             exclude(dependency("io.ktor:.*"))
             exclude(dependency("org.slf4j:.*"))
+            exclude(dependency("com.squareup.okhttp3:.*"))
+            exclude(dependency("com.squareup.okio:.*"))
             // Koin uses reflection
             exclude(dependency("io.insert-koin:.*"))
             // Coroutines Swing provides Dispatchers.Main via ServiceLoader
