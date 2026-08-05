@@ -12,13 +12,16 @@ import app.morphe.gui.data.repository.UpdateCheckRepository
 import app.morphe.engine.PatchedAppStore
 import app.morphe.gui.util.PatchService
 import io.ktor.client.*
-import io.ktor.client.engine.cio.*
+import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+import okhttp3.Dns
+import okhttp3.Protocol
 import org.koin.dsl.module
+import java.net.Inet4Address
 import app.morphe.gui.ui.screens.home.HomeViewModel
 import app.morphe.gui.ui.screens.patches.PatchesViewModel
 import app.morphe.gui.ui.screens.patches.PatchSelectionViewModel
@@ -41,7 +44,23 @@ val appModule = module {
 
     // Ktor HTTP Client
     single {
-        HttpClient(CIO) {
+        HttpClient(OkHttp) {
+            engine {
+                config {
+                    // Prefer IPv4. A host with an advertised but unroutable IPv6
+                    // address otherwise burns the whole connect timeout before
+                    // anything tries the working A record.
+                    dns { hostname ->
+                        val all = Dns.SYSTEM.lookup(hostname)
+                        all.filterIsInstance<Inet4Address>().ifEmpty { all }
+                    }
+                    // Pin HTTP/1.1. Avoids intermittent HTTP/2 PROTOCOL_ERROR stream
+                    // resets seen against GitHub-backed download endpoints.
+                    protocols(listOf(Protocol.HTTP_1_1))
+                    followRedirects(true)
+                    followSslRedirects(true)
+                }
+            }
             install(ContentNegotiation) {
                 json(get())
             }
@@ -61,10 +80,6 @@ val appModule = module {
                 socketTimeoutMillis = 60_000
             }
             // Retry/429 handling lives in HttpService (single layer). Not a client plugin, to avoid compounding retries.
-            engine {
-                // Disable the engine-level total-call cap; the timeouts above govern.
-                requestTimeout = 0
-            }
         }
     }
 
