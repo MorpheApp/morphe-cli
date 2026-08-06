@@ -135,7 +135,7 @@ class ConfigRepository {
         // mapped onto the default source).
         val legacyTags: Map<String, String> = when {
             current.lastPatchesVersionBySource.isNotEmpty() -> current.lastPatchesVersionBySource
-            current.lastPatchesVersion != null -> mapOf(DEFAULT_PATCH_SOURCE.id to current.lastPatchesVersion!!)
+            current.lastPatchesVersion != null -> mapOf(DEFAULT_PATCH_SOURCE.id to current.lastPatchesVersion)
             else -> emptyMap()
         }
         if (legacyTags.isEmpty()) return emptyMap()
@@ -344,6 +344,24 @@ class ConfigRepository {
     suspend fun setAutoStartAdb(enabled: Boolean) {
         val current = loadConfig()
         saveConfig(current.copy(autoStartAdb = enabled))
+    }
+
+    /** Toggle patch-developer options (unlocks folder-based local sources). */
+    suspend fun setDeveloperOptions(enabled: Boolean) {
+        val current = loadConfig()
+        saveConfig(current.copy(developerOptions = enabled))
+    }
+
+    /** Remember the last folder used in the local .mpp picker. */
+    suspend fun setLastLocalPatchDir(path: String?) {
+        val current = loadConfig()
+        saveConfig(current.copy(lastLocalPatchDir = path))
+    }
+
+    /** User-added glob patterns for .mpp files a developer folder source should skip. */
+    suspend fun setExcludedMppPatterns(patterns: List<String>) {
+        val current = loadConfig()
+        saveConfig(current.copy(excludedMppPatterns = patterns))
     }
 
     /**

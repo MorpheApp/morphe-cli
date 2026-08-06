@@ -3,6 +3,8 @@
  * https://github.com/MorpheApp/morphe-desktop
  */
 
+@file:Suppress("DEPRECATION")
+
 package app.morphe.gui.ui.components
 
 import androidx.compose.foundation.Canvas

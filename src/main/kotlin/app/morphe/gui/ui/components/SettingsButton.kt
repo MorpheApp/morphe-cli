@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import app.morphe.gui.LocalAdbPreference
 import app.morphe.gui.LocalModeState
 import androidx.compose.animation.animateColorAsState
@@ -21,8 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +76,7 @@ fun SettingsButton(
     var updateChannelPreference by remember { mutableStateOf(UpdateChannelPreference.STABLE) }
     var autoRouteLinksAfterInstall by remember { mutableStateOf(false) }
     var disableStockLinksAfterInstall by remember { mutableStateOf(false) }
+    var developerOptions by remember { mutableStateOf(false) }
 
     LaunchedEffect(showSettingsDialog) {
         if (showSettingsDialog) {
@@ -93,6 +94,7 @@ fun SettingsButton(
             collapsibleSectionStates = config.collapsibleSectionStates
             autoRouteLinksAfterInstall = config.autoRouteLinksAfterInstall
             disableStockLinksAfterInstall = config.disableStockLinksAfterInstall
+            developerOptions = config.developerOptions
             // Resolve the smart-default if the user has never picked a channel
             // (returns DEV when the running build is dev, STABLE otherwise).
             updateChannelPreference = configRepository.getOrInitUpdateChannelPreference(
@@ -119,7 +121,7 @@ fun SettingsButton(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Default.Settings,
+            imageVector = MorpheIcons.Settings,
             contentDescription = "Settings",
             tint = if (isHovered) MaterialTheme.colorScheme.onSurface
                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
@@ -146,6 +148,11 @@ fun SettingsButton(
             useExpertMode = !modeState.isSimplified,
             onExpertModeChange = { enabled ->
                 modeState.onChange(!enabled)
+            },
+            developerOptions = developerOptions,
+            onDeveloperOptionsChange = { enabled ->
+                developerOptions = enabled
+                scope.launch { configRepository.setDeveloperOptions(enabled) }
             },
             onDismiss = {
                 showSettingsDialog = false

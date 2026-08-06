@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -19,13 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragIndicator
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,11 +43,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
+import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 /**
  * Multi-source management sheet, summoned from the home header `+` button.
@@ -84,6 +82,9 @@ fun SourceManagementSheet(
     onRemove: (id: String) -> Unit,
     onOpenPatches: (sourceId: String) -> Unit,
     onDismiss: () -> Unit,
+    /** Reload all sources: Re-resolves a folder source to its newest .mpp so a
+     *  freshly-built patch is picked up without leaving the screen. */
+    onRefresh: () -> Unit = {},
     /** Persist a new source ordering (ids in desired order). Order affects only
      *  the display-name tiebreak + UI presentation, not which patches load. */
     onReorder: (orderedIds: List<String>) -> Unit = {},
@@ -96,6 +97,9 @@ fun SourceManagementSheet(
      *  in place of the version/badge for enabled sources whose data isn't yet
      *  in [sourceVersions]. */
     isLoading: Boolean = false,
+    /** sourceId → load-failure message for sources that failed to load. Drives the per-row
+     *  FAILED state, so a partial multi-source failure shows exactly which source broke. */
+    sourceErrors: Map<String, String> = emptyMap(),
     /** Selection semantics. Defaults to multi-toggle (Expert mode). */
     mode: SourceSheetMode = SourceSheetMode.MULTI_TOGGLE,
     /** sourceId of the currently picked source — only used when [mode] is SINGLE_SELECT. */
@@ -152,13 +156,28 @@ fun SourceManagementSheet(
         shape = RoundedCornerShape(corners.medium),
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
-            Text(
-                "PATCH SOURCES",
-                fontFamily = mono,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                letterSpacing = 2.sp,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "PATCH SOURCES",
+                    fontFamily = mono,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    letterSpacing = 2.sp,
+                )
+                // Reload sources — re-resolves a folder source to its newest .mpp.
+                IconButton(onClick = onRefresh, enabled = enabled, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = MorpheIcons.Refresh,
+                        contentDescription = "Reload patches",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 0.7f else 0.3f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
         },
         text = {
             // Hoisted so the scrollbar can share the same state as the
@@ -235,6 +254,7 @@ fun SourceManagementSheet(
                         version = sourceVersions[source.id],
                         channel = sourceChannels[source.id],
                         isLoading = isLoading,
+                        error = sourceErrors[source.id],
                         accentColor = accents.primary,
                         borderColor = borderColor,
                         mono = mono,
@@ -271,7 +291,7 @@ fun SourceManagementSheet(
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = MorpheIcons.Add,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp)
                     )
@@ -284,6 +304,10 @@ fun SourceManagementSheet(
                         letterSpacing = 0.5.sp
                     )
                 }
+
+                // Patch-developer extras. Sits under the sources it applies to, and
+                // renders only when Developer options are on.
+                DeveloperMppExclusionsSection(enabled = enabled)
                 }
 
                 if (scrollState.maxValue > 0) {
@@ -342,6 +366,7 @@ private fun SourceRow(
     version: String?,
     channel: app.morphe.gui.util.EnabledSourcesLoader.Channel?,
     isLoading: Boolean,
+    error: String? = null,
     accentColor: Color,
     borderColor: Color,
     mono: androidx.compose.ui.text.font.FontFamily,
@@ -376,6 +401,13 @@ private fun SourceRow(
     // For visual highlight: in MULTI mode highlight when source is enabled; in
     // SINGLE_SELECT highlight when this row is the picked one.
     val isHighlighted = if (mode == SourceSheetMode.SINGLE_SELECT) isActiveSelection else isEnabled
+
+    // The status LED reflects the source's state: red on load failure, otherwise its
+    // release-channel color (green stable-latest, amber stable-older, blue dev-latest,
+    // red dev-older, plus the local tint). Same color source as the home pill LEDs, so
+    // the two always agree. While resolving, channelColor's UNKNOWN default applies.
+    val statusColor = if (error != null) MaterialTheme.colorScheme.error
+                      else app.morphe.gui.ui.theme.channelColor(channel)
 
     val animatedBorder by animateColorAsState(
         targetValue = when {
@@ -428,7 +460,7 @@ private fun SourceRow(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DragIndicator,
+                        imageVector = MorpheIcons.DragIndicator,
                         contentDescription = "Drag to reorder",
                         tint = if (isDragging) accentColor
                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
@@ -445,7 +477,7 @@ private fun SourceRow(
                 )
             }
             // LED indicator — glows when enabled (MULTI) or selected (SINGLE).
-            LedIndicator(isOn = isHighlighted, isHot = isHovered && canInteract, accentColor = accentColor)
+            LedIndicator(isOn = isHighlighted, isHot = isHovered && canInteract, accentColor = statusColor)
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -454,8 +486,12 @@ private fun SourceRow(
                         fontSize = 12.sp,
                         fontWeight = if (isEnabled) FontWeight.SemiBold else FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        // Wrap to a second line instead of cramming/ellipsizing a long name
+                        // against the DEFAULT badge. weight(fill = false) bounds the width so
+                        // it wraps within the row rather than pushing the badge off.
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     if (isDefault) {
                         Text(
@@ -486,7 +522,22 @@ private fun SourceRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    if (isEnabled && version != null) {
+                    if (error != null) {
+                        Text(
+                            text = "·",
+                            fontSize = 10.sp,
+                            fontFamily = mono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            text = "FAILED",
+                            fontSize = 9.sp,
+                            fontFamily = mono,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    } else if (isEnabled && version != null) {
                         Text(
                             text = "·",
                             fontSize = 10.sp,
@@ -524,6 +575,18 @@ private fun SourceRow(
                         )
                     }
                 }
+                if (error != null) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = error,
+                        fontSize = 9.sp,
+                        fontFamily = mono,
+                        lineHeight = 12.sp,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
             // Precise fallback to dragging — nudge one slot at a time.
@@ -541,7 +604,7 @@ private fun SourceRow(
             if (!isDefault && enabled) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        imageVector = MorpheIcons.Edit,
                         contentDescription = "Edit",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                         modifier = Modifier.size(14.dp)
@@ -549,7 +612,7 @@ private fun SourceRow(
                 }
                 IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = MorpheIcons.Close,
                         contentDescription = "Remove",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                         modifier = Modifier.size(14.dp)
@@ -596,8 +659,8 @@ private fun ReorderArrows(
     accentColor: Color,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        ReorderArrow(Icons.Default.KeyboardArrowUp, "Move up", canMoveUp, accentColor, onMoveUp)
-        ReorderArrow(Icons.Default.KeyboardArrowDown, "Move down", canMoveDown, accentColor, onMoveDown)
+        ReorderArrow(MorpheIcons.KeyboardArrowUp, "Move up", canMoveUp, accentColor, onMoveUp)
+        ReorderArrow(MorpheIcons.KeyboardArrowDown, "Move down", canMoveDown, accentColor, onMoveDown)
     }
 }
 
@@ -647,6 +710,7 @@ private fun ChannelBadge(
         app.morphe.gui.util.EnabledSourcesLoader.Channel.STABLE_OLDER -> "STABLE OLDER"
         app.morphe.gui.util.EnabledSourcesLoader.Channel.DEV_LATEST -> "DEV LATEST"
         app.morphe.gui.util.EnabledSourcesLoader.Channel.DEV_OLDER -> "DEV OLDER"
+        app.morphe.gui.util.EnabledSourcesLoader.Channel.LOCAL -> "LOCAL"
         else -> "STABLE LATEST"
     }
     val color = app.morphe.gui.ui.theme.channelColor(channel)
@@ -698,5 +762,148 @@ private fun LedIndicator(isOn: Boolean, isHot: Boolean, accentColor: Color) {
                 .size(7.dp)
                 .background(color, shape = androidx.compose.foundation.shape.CircleShape)
         )
+    }
+}
+
+/**
+ * Developer-only section at the bottom of the source sheet. Lets a patch developer add
+ * glob or plain-word patterns for .mpp files that a folder source should ignore when it
+ * auto-loads the newest build. Self-contained, it reads and persists through
+ * ConfigRepository the same way the add and edit source dialogs pull developer state.
+ * Renders nothing unless Developer options are on.
+ */
+@Composable
+private fun DeveloperMppExclusionsSection(enabled: Boolean) {
+    val configRepository = koinInject<ConfigRepository>()
+    val scope = rememberCoroutineScope()
+    var developerOptions by remember { mutableStateOf(false) }
+    var patterns by remember { mutableStateOf<List<String>>(emptyList()) }
+    var loaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val cfg = configRepository.loadConfig()
+        developerOptions = cfg.developerOptions
+        patterns = cfg.excludedMppPatterns
+        loaded = true
+    }
+
+    if (!loaded || !developerOptions) return
+
+    val mono = LocalMorpheFont.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(4.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+        )
+        Text(
+            "IGNORED .MPP PATTERNS",
+            fontFamily = mono,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+        ExcludedPatternsEditor(
+            patterns = patterns,
+            onChange = { next ->
+                patterns = next
+                scope.launch { configRepository.setExcludedMppPatterns(next) }
+            },
+            enabled = enabled,
+        )
+    }
+}
+
+/**
+ * Editor for extra .mpp exclusion patterns. Type a pattern and add it. Each saved pattern
+ * shows as a removable row. A plain word matches any file that contains it, and a pattern
+ * with a wildcard is treated as a glob. The build classifiers *-sources.mpp and
+ * *-javadoc.mpp are always excluded and are not listed here.
+ */
+@Composable
+private fun ExcludedPatternsEditor(
+    patterns: List<String>,
+    onChange: (List<String>) -> Unit,
+    enabled: Boolean,
+) {
+    val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
+    val corners = LocalMorpheCorners.current
+    var draft by remember { mutableStateOf("") }
+
+    fun commitDraft() {
+        val p = draft.trim()
+        if (p.isNotEmpty() && patterns.none { it.equals(p, ignoreCase = true) }) {
+            onChange(patterns + p)
+        }
+        draft = ""
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Only affects folder sources, which auto-load the newest .mpp in a folder. When " +
+                "picking that newest build, files whose name matches a pattern here are skipped. A " +
+                "plain word matches any file containing it (e.g. debug). Use * for globs (e.g. " +
+                "*-debug.mpp). *-sources.mpp and *-javadoc.mpp are always ignored.",
+            fontSize = 11.sp,
+            fontFamily = mono,
+            lineHeight = 15.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+        SlimTextField(
+            value = draft,
+            onValueChange = { draft = it },
+            placeholder = "e.g. debug or *-debug.mpp",
+            mono = mono,
+            accents = accents,
+            corners = corners,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+            trailing = {
+                IconButton(
+                    onClick = { commitDraft() },
+                    enabled = enabled && draft.isNotBlank(),
+                    modifier = Modifier.size(24.dp),
+                ) {
+                    Icon(
+                        imageVector = MorpheIcons.Add,
+                        contentDescription = "Add pattern",
+                        modifier = Modifier.size(16.dp),
+                        tint = if (draft.isNotBlank()) accents.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    )
+                }
+            },
+        )
+        patterns.forEach { pat ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = pat,
+                    fontFamily = mono,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = { onChange(patterns.filterNot { it == pat }) },
+                    enabled = enabled,
+                    modifier = Modifier.size(20.dp),
+                ) {
+                    Icon(
+                        imageVector = MorpheIcons.Close,
+                        contentDescription = "Remove pattern",
+                        modifier = Modifier.size(13.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                }
+            }
+        }
     }
 }

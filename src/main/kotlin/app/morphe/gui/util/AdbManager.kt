@@ -285,7 +285,10 @@ class AdbManager {
             }
 
             val devices = parseDeviceList(output, adb)
-            Logger.info("Found ${devices.size} device(s)")
+            // No per-call log here: this runs on every 5s device poll, and the log file
+            // has no level filtering (debug writes too), so any line here floods it.
+            // Connect / disconnect / status transitions are logged once each by
+            // DeviceMonitor.refreshDevices instead.
             Result.success(devices)
         } catch (e: Exception) {
             Logger.error("Error getting devices", e)
@@ -579,8 +582,8 @@ class AdbManager {
 
         var stockChanged = false
         if (stockEligible) {
-            val stockCommands = if (enable) AppLinkCommands.disableStock(stockPackage!!)
-            else AppLinkCommands.restoreStock(stockPackage!!)
+            val stockCommands = if (enable) AppLinkCommands.disableStock(stockPackage)
+            else AppLinkCommands.restoreStock(stockPackage)
             onProgress(
                 if (enable) "Disabling links in $stockPackage..."
                 else "Re-enabling links in $stockPackage..."

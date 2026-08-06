@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,19 +14,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.engine.CacheManager
+import app.morphe.engine.MorpheComponents
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
-import app.morphe.engine.CacheManager
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import java.awt.Desktop
@@ -75,7 +76,7 @@ fun ToolsDialog(
             ) {
                 ActionButton(
                     label = "OPEN LOGS",
-                    icon = Icons.Default.BugReport,
+                    icon = MorpheIcons.BugReport,
                     mono = mono,
                     borderColor = borderColor,
                     onClick = {
@@ -94,7 +95,7 @@ fun ToolsDialog(
 
                 ActionButton(
                     label = "OPEN APP DATA",
-                    icon = Icons.Default.FolderOpen,
+                    icon = MorpheIcons.FolderOpen,
                     mono = mono,
                     borderColor = borderColor,
                     onClick = {
@@ -113,7 +114,7 @@ fun ToolsDialog(
 
                 ActionButton(
                     label = "VIEW LICENSES",
-                    icon = Icons.Default.Description,
+                    icon = MorpheIcons.Description,
                     mono = mono,
                     borderColor = borderColor,
                     onClick = { showLicensesDialog = true }
@@ -134,7 +135,7 @@ fun ToolsDialog(
                         cacheClearFailed -> "CLEAR FAILED"
                         else -> "CLEAR CACHE"
                     },
-                    icon = Icons.Default.Delete,
+                    icon = MorpheIcons.Delete,
                     mono = mono,
                     borderColor = if (cacheCleared) MorpheColors.Teal.copy(alpha = 0.3f)
                                   else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
@@ -155,12 +156,25 @@ fun ToolsDialog(
 
                 Spacer(Modifier.height(14.dp))
 
-                // ── About ──
+                // ── About (Morphe ecosystem versions) ──
+                val aboutColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 Text(
                     text = "${AppConstants.APP_NAME} ${AppConstants.APP_VERSION}",
                     fontSize = 10.sp,
                     fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    color = aboutColor,
+                )
+                Text(
+                    text = "Morphe Patcher ${MorpheComponents.patcherVersion ?: "unknown"}",
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = aboutColor,
+                )
+                Text(
+                    text = "Morphe Library ${MorpheComponents.libraryVersion ?: "unknown"}",
+                    fontSize = 10.sp,
+                    fontFamily = mono,
+                    color = aboutColor,
                 )
             }
         },

@@ -1,3 +1,66 @@
+# [1.13.0-dev.9](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.8...v1.13.0-dev.9) (2026-08-05)
+
+
+### Bug Fixes
+
+* move both HTTP clients to OkHttp for parity with manager ([#254](https://github.com/MorpheApp/morphe-desktop/issues/254)) ([e8379be](https://github.com/MorpheApp/morphe-desktop/commit/e8379beee35350ad261282118d76ecb9201f2c9a))
+
+# [1.13.0-dev.8](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.7...v1.13.0-dev.8) (2026-08-04)
+
+
+### Bug Fixes
+
+* Added progress bar to first time GUI download + Switched from materials icon to materials symbol + Cleaned up home screen code ([#234](https://github.com/MorpheApp/morphe-desktop/issues/234)) ([39e948e](https://github.com/MorpheApp/morphe-desktop/commit/39e948e750814707ac2a378f0c40f3751e373520))
+
+# [1.13.0-dev.7](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.6...v1.13.0-dev.7) (2026-08-02)
+
+
+### Bug Fixes
+
+* Resilient patch bundle loading + quieter ADB logging + unique version output naming ([#224](https://github.com/MorpheApp/morphe-desktop/issues/224)) ([8cb5250](https://github.com/MorpheApp/morphe-desktop/commit/8cb5250ed1562b9882cef47497b7edd4c0f64d2d))
+
+# [1.13.0-dev.6](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.5...v1.13.0-dev.6) (2026-08-02)
+
+
+### Features
+
+* developer mode +  configurable data directory ([#220](https://github.com/MorpheApp/morphe-desktop/issues/220)) ([a1ba3a2](https://github.com/MorpheApp/morphe-desktop/commit/a1ba3a2f7e4d2793c0371fc77df2241bc8c828da))
+
+# [1.13.0-dev.5](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.4...v1.13.0-dev.5) (2026-08-02)
+
+
+### Bug Fixes
+
+* Add Enable-Native-Access attribute to jar manifest ([#249](https://github.com/MorpheApp/morphe-desktop/issues/249)) ([d70a4c2](https://github.com/MorpheApp/morphe-desktop/commit/d70a4c2d0de96088c0cb9c7d3a2d341c78e8247a))
+
+# [1.13.0-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.3...v1.13.0-dev.4) (2026-07-29)
+
+
+### Bug Fixes
+
+* Clean up obsolete GUI dependencies ([#233](https://github.com/MorpheApp/morphe-desktop/issues/233)) ([0d6816c](https://github.com/MorpheApp/morphe-desktop/commit/0d6816c6a031afd20a225444776fbc075118aa3b))
+
+# [1.13.0-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.2...v1.13.0-dev.3) (2026-07-29)
+
+
+### Features
+
+* dynamically download GUI dependencies to reduce jar size ([#232](https://github.com/MorpheApp/morphe-desktop/issues/232)) ([d74a3c2](https://github.com/MorpheApp/morphe-desktop/commit/d74a3c2eec569c620d98d3c1a28693a03f5c76f8))
+
+# [1.13.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0-dev.1...v1.13.0-dev.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* resolve deprecation warnings and fix `list-versions` accuracy ([#225](https://github.com/MorpheApp/morphe-desktop/issues/225)) ([9b79d69](https://github.com/MorpheApp/morphe-desktop/commit/9b79d69895f89760e465b63d0b9d9d23c8ba738f))
+
+# [1.13.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.12.0...v1.13.0-dev.1) (2026-07-27)
+
+
+### Features
+
+* Add ProGuard jar shrinking ([#227](https://github.com/MorpheApp/morphe-desktop/issues/227)) ([0e6ae05](https://github.com/MorpheApp/morphe-desktop/commit/0e6ae05523126132449488e80c5f7fcf920948fb))
+
 # [1.12.0](https://github.com/MorpheApp/morphe-desktop/compare/v1.11.0...v1.12.0) (2026-07-23)
 
 

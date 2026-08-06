@@ -29,6 +29,7 @@ import app.morphe.gui.di.appModule
 import kotlinx.coroutines.launch
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
+import org.koin.dsl.koinConfiguration
 import app.morphe.gui.ui.screens.home.HomeScreen
 import app.morphe.gui.ui.screens.quick.QuickPatchContent
 import app.morphe.gui.ui.screens.quick.QuickPatchViewModel
@@ -75,7 +76,7 @@ fun App(
         Logger.init()
     }
 
-    KoinApplication(application = {
+    KoinApplication(koinConfiguration {
         modules(appModule)
     }) {
         AppContent(initialSimplifiedMode = initialSimplifiedMode)

@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,9 +18,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,7 +51,7 @@ import java.awt.Desktop
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
-import javax.swing.JFileChooser
+import app.morphe.gui.util.MorpheFilePicker
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
@@ -91,6 +90,8 @@ fun SettingsDialog(
     onUpdateChannelChange: (app.morphe.gui.data.model.UpdateChannelPreference) -> Unit = {},
     autoStartAdb: Boolean = false,
     onAutoStartAdbChange: (Boolean) -> Unit = {},
+    developerOptions: Boolean = false,
+    onDeveloperOptionsChange: (Boolean) -> Unit = {},
     autoRouteLinksAfterInstall: Boolean = false,
     onAutoRouteLinksChange: (Boolean) -> Unit = {},
     disableStockLinksAfterInstall: Boolean = false,
@@ -275,6 +276,19 @@ fun SettingsDialog(
 
                 SettingsDivider(borderColor)
 
+                // ── Developer options ──
+                SettingToggleRow(
+                    label = "Developer options",
+                    description = "For patch developers. Unlocks a suite of workflow options for building and testing patches (see the documentation for the full list). For now, that's pointing a local source at a folder so Morphe always loads its newest .mpp.",
+                    checked = developerOptions,
+                    onCheckedChange = onDeveloperOptionsChange,
+                    accentColor = accents.primary,
+                    mono = mono,
+                    enabled = !isPatching
+                )
+
+                SettingsDivider(borderColor)
+
                 // ── Link handling ("open with") ──
                 SettingToggleRow(
                     label = "Route links to patched app",
@@ -390,7 +404,7 @@ private fun CollapsibleSection(
             letterSpacing = 1.5.sp
         )
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            imageVector = MorpheIcons.KeyboardArrowLeft,
             contentDescription = if (expanded) "Collapse" else "Expand",
             modifier = Modifier
                 .size(16.dp)
@@ -613,6 +627,7 @@ private fun OutputFolderSection(
 ) {
     val corners = LocalMorpheCorners.current
     val dimens = LocalMorpheDimens.current
+    val scope = rememberCoroutineScope()
     val alpha = if (enabled) 1f else 0.4f
     val outputDir = defaultOutputDirectory?.let { File(it) }
     val outputDirExists = outputDir?.isDirectory == true
@@ -657,14 +672,11 @@ private fun OutputFolderSection(
 
             OutlinedButton(
                 onClick = {
-                    val chooser = JFileChooser().apply {
-                        dialogTitle = "Select Output Folder"
-                        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                        isAcceptAllFileFilterUsed = false
-                        outputDir?.takeIf { it.isDirectory }?.let { currentDirectory = it }
-                    }
-                    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                        onDefaultOutputDirectoryChange(chooser.selectedFile.absolutePath)
+                    scope.launch {
+                        MorpheFilePicker.pickDirectory(
+                            title = "Select Output Folder",
+                            startDir = outputDir?.takeIf { it.isDirectory },
+                        )?.let { onDefaultOutputDirectoryChange(it.absolutePath) }
                     }
                 },
                 enabled = enabled,
@@ -1070,7 +1082,7 @@ private fun SigningSection(
                             modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
-                                imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                imageVector = if (showPassword) MorpheIcons.VisibilityOff else MorpheIcons.Visibility,
                                 contentDescription = if (showPassword) "Hide" else "Show",
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -1117,7 +1129,7 @@ private fun SigningSection(
                             modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
-                                imageVector = if (showEntryPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                imageVector = if (showEntryPassword) MorpheIcons.VisibilityOff else MorpheIcons.Visibility,
                                 contentDescription = if (showEntryPassword) "Hide" else "Show",
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -1138,7 +1150,7 @@ private fun SigningSection(
                 onClick = {
                     verifyResult = null
                     verifySuccess = false
-                    val path = keystorePath ?: return@OutlinedButton
+                    val path = keystorePath
                     val result = readKeystoreInfo(
                         path,
                         localPassword.ifEmpty { null },
@@ -1170,7 +1182,7 @@ private fun SigningSection(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = MorpheIcons.Check,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )
@@ -1263,7 +1275,7 @@ private fun SigningSection(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = MorpheIcons.Add,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
                     tint = if (generateSuccess) MorpheColors.Teal else accentColor
@@ -1317,7 +1329,7 @@ private fun SigningSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = MorpheIcons.Info,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )
@@ -1355,7 +1367,7 @@ private fun SigningSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Share,
+                    imageVector = MorpheIcons.Share,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp)
                 )
@@ -1622,7 +1634,7 @@ private fun readKeystoreInfo(
 
             return KeystoreInfoResult(
                 alias = alias,
-                issuer = cert.issuerDN.name,
+                issuer = cert.issuerX500Principal.name,
                 validFrom = dateFormat.format(cert.notBefore),
                 validTo = dateFormat.format(cert.notAfter),
                 sha256Fingerprint = sha256,
@@ -1741,7 +1753,7 @@ private fun PatchedAppRuntimeLogsSection(
 
             ActionButton(
                 label = if (status is RuntimeLogsStatus.Clearing) "CLEARING…" else "CLEAR DEVICE LOGS",
-                icon = Icons.Default.DeleteSweep,
+                icon = MorpheIcons.DeleteSweep,
                 mono = mono,
                 borderColor = borderColor,
                 enabled = canAct,
@@ -1760,7 +1772,7 @@ private fun PatchedAppRuntimeLogsSection(
 
             ActionButton(
                 label = if (status is RuntimeLogsStatus.Saving) "SAVING…" else "SAVE DEVICE LOGS",
-                icon = Icons.Default.Save,
+                icon = MorpheIcons.Save,
                 mono = mono,
                 borderColor = borderColor,
                 contentColor = accentColor,
@@ -1834,3 +1846,5 @@ private fun PatchedAppRuntimeLogsSection(
         }
     }
 }
+
+// (Excluded-patterns editor moved to SourceManagementSheet, under the sources it applies to.)

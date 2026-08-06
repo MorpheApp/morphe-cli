@@ -5,6 +5,7 @@
 
 package app.morphe.gui.util
 
+import app.morphe.engine.MorpheComponents
 import app.morphe.gui.data.constants.AppConstants
 import java.io.File
 import java.io.PrintWriter
@@ -54,6 +55,8 @@ object Logger {
             info("=".repeat(60))
             info("Morphe-GUI Started")
             info("Version: ${AppConstants.APP_VERSION}")
+            info("morphe-patcher: ${MorpheComponents.patcherVersion ?: "unknown"}")
+            info("morphe-library: ${MorpheComponents.libraryVersion ?: "unknown"}")
             info("OS: ${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})")
             info("Java: ${System.getProperty("java.version")} (${System.getProperty("java.vendor")}) ${System.getProperty("sun.arch.data.model")}-bit")
             info("Memory: ${Runtime.getRuntime().maxMemory() / 1024 / 1024} MB max")
@@ -115,7 +118,7 @@ object Logger {
 
     private fun log(level: Level, message: String) {
         val timestamp = dateFormat.format(Date())
-        val logLine = "[$timestamp] [${level.name.padEnd(5)}] $message"
+        val logLine = "[$timestamp] [${level.name}] $message"
 
         // Print to console
         when (level) {

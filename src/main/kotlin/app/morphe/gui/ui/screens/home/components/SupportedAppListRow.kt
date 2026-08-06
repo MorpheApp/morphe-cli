@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.screens.home.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -21,8 +23,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -311,7 +311,7 @@ private fun VersionChip(
                 if (isLink) Modifier
                     .pointerHoverIcon(PointerIcon.Hand)
                     .clickable {
-                        openUrlAndFollowRedirects(downloadUrl!!) { uriHandler.openUri(it) }
+                        openUrlAndFollowRedirects(downloadUrl) { uriHandler.openUri(it) }
                     }
                 else Modifier
             )
@@ -341,7 +341,7 @@ private fun VersionChip(
         )
         if (isLink) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                imageVector = MorpheIcons.OpenInNew,
                 contentDescription = "Download $channelLabel",
                 tint = color,
                 modifier = Modifier.size(10.dp),
@@ -501,7 +501,7 @@ private fun Pill(
                 if (isInteractive) Modifier
                     .pointerHoverIcon(PointerIcon.Hand)
                     .pointerInput(onClick) {
-                        detectTapGestures(onTap = { onClick?.invoke() })
+                        detectTapGestures(onTap = { onClick() })
                     }
                 else Modifier
             )
@@ -523,7 +523,7 @@ private fun Pill(
             )
             if (isInteractive) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    imageVector = MorpheIcons.OpenInNew,
                     contentDescription = "Open download page",
                     tint = textColor.copy(alpha = if (isHovered) 0.9f else 0.5f),
                     modifier = Modifier.size(9.dp),

@@ -5,6 +5,8 @@
 
 package app.morphe.gui.ui.components
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,9 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -100,7 +99,7 @@ fun MorpheDropdown(
                 color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = accents.secondary.copy(alpha = 0.7f), modifier = Modifier.size(16.dp).rotate(if (expanded) 180f else 0f))
+            Icon(MorpheIcons.ArrowDropDown, contentDescription = null, tint = accents.secondary.copy(alpha = 0.7f), modifier = Modifier.size(16.dp).rotate(if (expanded) 180f else 0f))
         }
 
         if (expanded) {
@@ -153,7 +152,7 @@ private fun SearchField(query: String, mono: FontFamily, accent: Color, onChange
         Modifier.fillMaxWidth().border(1.dp, accent.copy(alpha = 0.15f), RoundedCornerShape(0.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.Search, contentDescription = null, tint = accent.copy(alpha = 0.6f), modifier = Modifier.size(13.dp))
+        Icon(MorpheIcons.Search, contentDescription = null, tint = accent.copy(alpha = 0.6f), modifier = Modifier.size(13.dp))
         Box(Modifier.weight(1f).padding(start = 6.dp)) {
             if (query.isEmpty()) Text("Search…", fontFamily = mono, fontSize = 11.sp, lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
             BasicTextField(

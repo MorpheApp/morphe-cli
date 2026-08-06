@@ -5,6 +5,8 @@
 
 package app.morphe.gui.icon
 
+import app.morphe.gui.ui.icons.MorpheIcons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -21,20 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragIndicator
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.BatteryFull
-import androidx.compose.material.icons.filled.SignalCellular4Bar
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -307,9 +295,9 @@ fun IconStudioDialog(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("ICON STUDIO", fontFamily = mono, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 3.sp, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.weight(1f))
-                    StudioButton("UNDO", accents, mono, enabled = histIndex > 0, filled = false, icon = Icons.AutoMirrored.Filled.Undo) { undo() }
+                    StudioButton("UNDO", accents, mono, enabled = histIndex > 0, filled = false, icon = MorpheIcons.Undo) { undo() }
                     Spacer(Modifier.width(6.dp))
-                    StudioButton("REDO", accents, mono, enabled = histIndex < history.lastIndex, filled = false, icon = Icons.AutoMirrored.Filled.Redo) { redo() }
+                    StudioButton("REDO", accents, mono, enabled = histIndex < history.lastIndex, filled = false, icon = MorpheIcons.Redo) { redo() }
                 }
                 Text(
                     "An adaptive icon = a FOREGROUND (your logo) over a BACKGROUND (fills the tile). Launchers mask the two together into any shape.",
@@ -409,9 +397,9 @@ fun IconStudioDialog(
                                     .padding(10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top,
                             ) {
-                                Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFE0504D), modifier = Modifier.size(14.dp))
+                                Icon(MorpheIcons.Warning, contentDescription = null, tint = Color(0xFFE0504D), modifier = Modifier.size(14.dp))
                                 Text(msg, fontFamily = mono, fontSize = 9.sp, lineHeight = 12.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                                Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp).clickable { importWarning = null })
+                                Icon(MorpheIcons.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp).clickable { importWarning = null })
                             }
                         }
                         LayersPanel(project.layers, selectedId, accents, mono, onSelect = { selectedId = it }, onAddImage = { addImageLayer() }, onAddText = { addLayer(IconProject.LayerContent.Text()) }, onAddShape = { addLayer(IconProject.LayerContent.Shape()) }, onReorder = { f, t -> reorderDisplay(f, t) }, onDelete = { deleteSelected() })
@@ -508,7 +496,7 @@ private fun LayersPanel(
                     .border(1.dp, accents.secondary.copy(alpha = 0.25f), RoundedCornerShape(6.dp)).padding(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(Icons.Default.Info, contentDescription = null, tint = accents.secondary.copy(alpha = 0.8f), modifier = Modifier.size(13.dp))
+                Icon(MorpheIcons.Info, contentDescription = null, tint = accents.secondary.copy(alpha = 0.8f), modifier = Modifier.size(13.dp))
                 Text(
                     "No foreground yet — add a layer (+ IMG / TEXT / SHAPE). Themed & notification icons come from the foreground, so a background-only icon shows nothing there (we fall back to the whole icon).",
                     fontFamily = mono, fontSize = 9.sp, lineHeight = 12.sp, color = accents.secondary.copy(alpha = 0.85f),
@@ -543,10 +531,10 @@ private fun LayersPanel(
                         },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.DragIndicator, contentDescription = "Drag to reorder", tint = accents.secondary.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                        Icon(MorpheIcons.DragIndicator, contentDescription = "Drag to reorder", tint = accents.secondary.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                     }
                     Text(layer.label, fontFamily = mono, fontSize = 10.sp, color = if (sel) accents.secondary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    if (sel) SymBtn(Icons.Default.Delete, accents) { onDelete() }
+                    if (sel) SymBtn(MorpheIcons.Delete, accents) { onDelete() }
                 }
             }
         }
@@ -648,7 +636,7 @@ private fun BackgroundControls(project: IconProject, accents: MorpheAccentColors
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ColorChip(stop.argb) { c -> onChange(project.copy(background = bg.copy(stops = bg.stops.mapIndexed { j, s -> if (j == i) s.copy(argb = c) else s }))) }
                         Slider(value = stop.position, onValueChange = { p -> onChange(project.copy(background = bg.copy(stops = bg.stops.mapIndexed { j, s -> if (j == i) s.copy(position = p) else s }))) }, valueRange = 0f..1f, modifier = Modifier.weight(1f).height(20.dp))
-                        if (bg.stops.size > 2) SymBtn(Icons.Default.Delete, accents) { onChange(project.copy(background = bg.copy(stops = bg.stops.filterIndexed { j, _ -> j != i }))) }
+                        if (bg.stops.size > 2) SymBtn(MorpheIcons.Delete, accents) { onChange(project.copy(background = bg.copy(stops = bg.stops.filterIndexed { j, _ -> j != i }))) }
                     }
                 }
                 Toggle("+ STOP", false, accents, mono) { onChange(project.copy(background = bg.copy(stops = bg.stops + IconProject.Background.Stop(0.5f, 0xFFFFFFFF.toInt())))) }
@@ -697,7 +685,7 @@ private fun SwatchRow(selected: Int, onPick: (Int) -> Unit) {
             Box(
                 Modifier.size(22.dp).clip(RoundedCornerShape(4.dp)).border(1.dp, accents.secondary.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).clickable { pickerOpen = true },
                 contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Default.Palette, contentDescription = "Custom colour", tint = accents.secondary, modifier = Modifier.size(13.dp)) }
+            ) { Icon(MorpheIcons.Palette, contentDescription = "Custom colour", tint = accents.secondary, modifier = Modifier.size(13.dp)) }
             if (pickerOpen) {
                 Popup(alignment = Alignment.TopStart, offset = IntOffset(0, yOff), onDismissRequest = { pickerOpen = false }, properties = PopupProperties(focusable = true)) {
                     ColorPickerCard(selected, accents, mono, onPick)
@@ -754,7 +742,7 @@ private fun ColorPickerCard(argb: Int, accents: MorpheAccentColors, mono: FontFa
                         Box(Modifier.size(24.dp)) {
                             Box(Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)).background(Color(c)).border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(4.dp)).clickable { setFrom(c) })
                             Box(Modifier.align(Alignment.TopEnd).size(11.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surface).clickable { CustomSwatches.remove(c) }, contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Close, contentDescription = "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(9.dp))
+                                Icon(MorpheIcons.Close, contentDescription = "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(9.dp))
                             }
                         }
                     }
@@ -854,10 +842,10 @@ private fun NumberField(value: Float, decimals: Int, range: ClosedFloatingPointR
         )
         Column(Modifier.fillMaxHeight().width(15.dp)) {
             Box(Modifier.weight(1f).fillMaxWidth().clickable { onValue((value + step).coerceIn(range)) }, contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.ArrowDropUp, contentDescription = null, tint = accents.secondary.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                Icon(MorpheIcons.ArrowDropUp, contentDescription = null, tint = accents.secondary.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
             }
             Box(Modifier.weight(1f).fillMaxWidth().clickable { onValue((value - step).coerceIn(range)) }, contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = accents.secondary.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                Icon(MorpheIcons.ArrowDropDown, contentDescription = null, tint = accents.secondary.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
             }
         }
     }
@@ -914,9 +902,9 @@ private fun StatusBarPreview(silhouette: ImageBitmap?, mono: FontFamily) {
             }
         }
         Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.SignalCellular4Bar, contentDescription = null, tint = onSurface, modifier = Modifier.size(14.dp))
-            Icon(Icons.Default.Wifi, contentDescription = null, tint = onSurface, modifier = Modifier.size(14.dp))
-            Icon(Icons.Default.BatteryFull, contentDescription = null, tint = onSurface, modifier = Modifier.size(14.dp))
+            Icon(MorpheIcons.SignalCellular4Bar, contentDescription = null, tint = onSurface, modifier = Modifier.size(14.dp))
+            Icon(MorpheIcons.Wifi, contentDescription = null, tint = onSurface, modifier = Modifier.size(14.dp))
+            Icon(MorpheIcons.BatteryFull, contentDescription = null, tint = onSurface, modifier = Modifier.size(14.dp))
         }
     }
 }

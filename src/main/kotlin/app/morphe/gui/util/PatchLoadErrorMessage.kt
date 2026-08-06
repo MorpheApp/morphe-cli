@@ -5,6 +5,9 @@
 
 package app.morphe.gui.util
 
+import app.morphe.engine.PatchBundleIncompatibleException
+import app.morphe.engine.PatchSourceLoadException
+import app.morphe.engine.readableMessage
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -15,13 +18,13 @@ import java.net.UnknownHostException
  * Map a load failure exception to a short, user-readable line.
  *
  * The raw `Exception.message` is hostile when the underlying cause is a
- * coroutine/Ktor internal — users see "StandaloneCoroutine was cancelled"
+ * coroutine/Ktor internal. Users see "StandaloneCoroutine was cancelled"
  * and assume the app crashed. This translates the common network/IO failures
- * into plain English and falls back to the original message for anything we
- * don't recognize.
+ * into plain English and falls back to the **full cause-chain message** for
+ * anything we don't recognize (never a blank "Failed to load").
  *
- * Intentionally does NOT handle CancellationException — that should never
- * reach the UI; callers must re-throw it from their catch blocks instead of
+ * Intentionally does NOT handle CancellationException. That should never
+ * reach the UI. Callers must re-throw it from their catch blocks instead of
  * surfacing it as an error.
  */
 fun humanizePatchLoadError(e: Throwable): String = when (e) {
@@ -43,5 +46,16 @@ fun humanizePatchLoadError(e: Throwable): String = when (e) {
         }
     }
 
-    else -> e.message?.takeIf { it.isNotBlank() } ?: "Could not load patches"
+    // Already expanded by MultiSourceLoader / PatcherCompatibility
+    is PatchBundleIncompatibleException,
+    is PatchSourceLoadException -> e.message?.takeIf { it.isNotBlank() } ?: e.readableMessage()
+
+    // A bundle built against a newer patcher fails at link time with java.lang.Error
+    // subclasses (NoSuchMethodError / NoClassDefFoundError / AbstractMethodError, all
+    // LinkageError). Prefer the concrete type/message chain so the user (and logs) see
+    // *which* symbol is missing, not a generic "update Morphe".
+    is LinkageError -> e.readableMessage()
+
+    // ExceptionInInitializerError and friends often have null .message.
+    else -> e.readableMessage()
 }
