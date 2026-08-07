@@ -284,6 +284,12 @@ tasks {
     // Shadow JAR — the only distribution artifact
     // ============================================================================
     shadowJar {
+        manifest {
+            attributes(
+                "Enable-Native-Access" to "ALL-UNNAMED"
+            )
+        }
+
         dependencies {
             exclude(dependency("org.jetbrains.skiko:skiko-awt-runtime-.*:.*"))
             exclude(dependency("net.java.dev.jna:jna:.*"))
