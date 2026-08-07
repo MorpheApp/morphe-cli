@@ -1,3 +1,10 @@
+## [1.13.1-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0...v1.13.1-dev.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* Preserve manifest attributes in minimized jar ([#255](https://github.com/MorpheApp/morphe-desktop/issues/255)) ([e5684d9](https://github.com/MorpheApp/morphe-desktop/commit/e5684d99abf36b0b651708b81919ac2b0571b31c))
+
 # [1.13.0](https://github.com/MorpheApp/morphe-desktop/compare/v1.12.0...v1.13.0) (2026-08-06)
 
 
