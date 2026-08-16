@@ -504,13 +504,21 @@ private fun SourceRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (isDefault) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(percent = 50),
+                    ) {
                         Text(
-                            "Default",
+                            text = when (source.type) {
+                                PatchSourceType.DEFAULT -> "Pre-installed"
+                                PatchSourceType.GITHUB, PatchSourceType.GITLAB -> "Remote"
+                                PatchSourceType.LOCAL -> "Local"
+                            },
                             fontSize = 10.sp,
                             fontFamily = font,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
