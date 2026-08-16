@@ -88,6 +88,14 @@ class ConfigRepository {
     }
 
     /**
+     * Update background type.
+     */
+    suspend fun setBackgroundType(type: String) {
+        val current = loadConfig()
+        saveConfig(current.copy(backgroundType = type))
+    }
+
+    /**
      * Update patch channel preference.
      */
     suspend fun setPatchChannel(channel: PatchChannel) {

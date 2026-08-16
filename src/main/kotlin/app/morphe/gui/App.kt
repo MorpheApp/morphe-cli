@@ -29,6 +29,10 @@ import app.morphe.gui.ui.theme.LocalThemeState
 import app.morphe.gui.ui.theme.MorpheTheme
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.ui.theme.ThemeState
+import app.morphe.gui.ui.theme.backgrounds.AnimatedBackground
+import app.morphe.gui.ui.theme.backgrounds.BackgroundType
+import app.morphe.gui.ui.theme.backgrounds.LocalParallaxState
+import app.morphe.gui.ui.theme.backgrounds.rememberParallaxState
 import app.morphe.gui.ui.theme.desktopScreenEnter
 import app.morphe.gui.ui.theme.desktopScreenExit
 import app.morphe.gui.util.DeviceMonitor
@@ -63,6 +67,10 @@ val LocalIsPatching = compositionLocalOf<MutableState<Boolean>> {
 }
 val LocalOnSettingsDismiss = compositionLocalOf<() -> Unit> { {} }
 val LocalOnUpdateChannelChanged = compositionLocalOf<() -> Unit> { {} }
+
+val LocalBackgroundType = compositionLocalOf<MutableState<BackgroundType>> { 
+    error("No background type provided") 
+}
 
 /**
  * Auto-start ADB preference. Exposed as a composition local so the
@@ -101,11 +109,16 @@ private fun appContent(
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
     val scope = rememberCoroutineScope()
+    val (parallaxState, parallaxMod) = rememberParallaxState(
+        enableParallax = true,
+        coroutineScope = scope
+    )
 
     var themePreference by remember { mutableStateOf(ThemePreference.SYSTEM) }
     var isSimplifiedMode by remember { mutableStateOf(initialSimplifiedMode) }
     var autoStartAdb by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
+    val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
 
     // Initialize PatchSourceManager and load config on startup
     LaunchedEffect(Unit) {
@@ -113,6 +126,11 @@ private fun appContent(
         val config = configRepository.loadConfig()
         themePreference = config.getThemePreference()
         isSimplifiedMode = config.useSimplifiedMode
+        backgroundTypeState.value = try {
+            BackgroundType.valueOf(config.backgroundType)
+        } catch (e: Exception) {
+            BackgroundType.CIRCLES
+        }
 
         autoStartAdb = config.autoStartAdb
         // Publish the initial active mode BEFORE the VMs subscribe so their
@@ -207,7 +225,9 @@ private fun appContent(
             LocalModeState provides modeState,
             LocalAdbPreference provides adbPreferenceState,
             LocalSettingsDialogVisible provides settingsDialogVisible,
-            LocalIsPatching provides isPatchingState
+            LocalIsPatching provides isPatchingState,
+            LocalBackgroundType provides backgroundTypeState,
+            LocalParallaxState provides parallaxState
         ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic
             // light contrast) to match the active theme's surface color.
@@ -240,7 +260,9 @@ private fun appContent(
                         }
                     }
 
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f).then(parallaxMod)) {
+                        AnimatedBackground(type = backgroundTypeState.value)
+
                         // Dialog host lives outside the Crossfade so the
                         // SettingsDialog composable is never torn down when
                         // the user toggles Expert Mode.

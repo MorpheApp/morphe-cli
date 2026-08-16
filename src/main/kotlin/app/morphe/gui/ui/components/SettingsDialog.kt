@@ -47,9 +47,11 @@ import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.util.KeystoreImporter
 import app.morphe.engine.util.PortablePaths
+import app.morphe.gui.LocalBackgroundType
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.model.UpdateChannelPreference
+import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
@@ -57,6 +59,7 @@ import app.morphe.gui.ui.theme.LocalMorpheDimens
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.ui.theme.ThemePreference
+import app.morphe.gui.ui.theme.backgrounds.BackgroundType
 import app.morphe.gui.util.AdbManager
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.FileUtils
@@ -75,6 +78,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
 fun SettingsDialog(
@@ -178,6 +182,69 @@ fun SettingsDialog(
                             )
                             Text(
                                 text = theme.toDisplayName(),
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                fontFamily = font,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                SettingsDivider(borderColor)
+
+                // ── Background Animation ──
+                SectionLabel("Background animation", font)
+                Spacer(Modifier.height(8.dp))
+
+                val bgState = LocalBackgroundType.current
+                val scope = rememberCoroutineScope()
+                val configRepo: ConfigRepository = koinInject()
+
+                val onBgChange: (BackgroundType) -> Unit = { newBg ->
+                    bgState.value = newBg
+                    scope.launch { configRepo.setBackgroundType(newBg.name) }
+                }
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    BackgroundType.entries.forEach { bgType ->
+                        val isSelected = bgState.value == bgType
+                        val hoverInteraction = remember { MutableInteractionSource() }
+                        val isHovered by hoverInteraction.collectIsHoveredAsState()
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(corners.small))
+                                .border(
+                                    1.dp,
+                                    when {
+                                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                        else -> borderColor
+                                    },
+                                    RoundedCornerShape(corners.small)
+                                )
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                    else Color.Transparent
+                                )
+                                .hoverable(hoverInteraction)
+                                .clickable { onBgChange(bgType) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = bgType.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = bgType.displayName,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                 fontFamily = font,
