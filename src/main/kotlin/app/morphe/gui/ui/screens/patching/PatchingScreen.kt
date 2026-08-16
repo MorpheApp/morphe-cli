@@ -175,16 +175,11 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
 
                 // Title + status
                 if (uiState.hasAutoNavigated && (uiState.status == PatchingStatus.FAILED || uiState.status == PatchingStatus.CANCELLED)) {
+                    val statusColor = if (uiState.status == PatchingStatus.CANCELLED) accents.warning else MaterialTheme.colorScheme.error
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(MaterialTheme.colorScheme.error, CircleShape)
-                        )
-                        Spacer(Modifier.width(10.dp))
                         Text(
                             text = if (uiState.status == PatchingStatus.CANCELLED) "Patching cancelled" else "Patching failed",
-                            color = MaterialTheme.colorScheme.error,
+                            color = statusColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
                             fontFamily = font
@@ -388,6 +383,9 @@ private fun FailureBottomBar(
     font: FontFamily,
     borderColor: Color
 ) {
+    val accents = LocalMorpheAccents.current
+    val statusColor = if (status == PatchingStatus.CANCELLED) accents.warning else MaterialTheme.colorScheme.error
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -399,7 +397,7 @@ private fun FailureBottomBar(
                     strokeWidth = 1f
                 )
             }
-            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.04f))
+            .background(statusColor.copy(alpha = 0.04f))
             .padding(14.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -407,7 +405,7 @@ private fun FailureBottomBar(
         CircularProgressIndicator(
             modifier = Modifier.size(16.dp),
             strokeWidth = 2.dp,
-            color = MaterialTheme.colorScheme.error
+            color = statusColor
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
@@ -415,7 +413,7 @@ private fun FailureBottomBar(
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = MaterialTheme.colorScheme.error
+            color = statusColor
         )
     }
 }
@@ -568,7 +566,7 @@ fun LogFileViewerDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Log file",
-                            fontSize = 13.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             fontFamily = font,
                             color = MaterialTheme.colorScheme.onSurface
@@ -576,11 +574,12 @@ fun LogFileViewerDialog(
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = file.absolutePath,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                             fontFamily = font,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -615,7 +614,7 @@ fun LogFileViewerDialog(
                         )
                     }
 
-                    Spacer(Modifier.width(16.dp))
+                    Spacer(Modifier.width(4.dp))
 
                     val copyHover = remember { MutableInteractionSource() }
                     val isCopyHovered by copyHover.collectIsHoveredAsState()
@@ -647,7 +646,7 @@ fun LogFileViewerDialog(
                         )
                     }
 
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(16.dp))
 
                     val closeHover = remember { MutableInteractionSource() }
                     val isCloseHovered by closeHover.collectIsHoveredAsState()
@@ -1262,16 +1261,6 @@ private fun ExpertFailureContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = if (uiState.status == PatchingStatus.CANCELLED) "Patching cancelled" else "Patching failed",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = font,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 12.dp)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
 
         // App Info Glass Card
         Box(
