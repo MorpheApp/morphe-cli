@@ -129,7 +129,6 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
     Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
         ) {
             // Header row
         Row(
@@ -287,7 +286,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(corners.medium))
                                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f))
+                                .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
                         ) {
                             LazyColumn(
                                 state = listState,
@@ -857,7 +856,7 @@ private fun HeapUsageGraph(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
         tonalElevation = 0.dp
     ) {
         Column(
@@ -1256,7 +1255,6 @@ private fun ExpertFailureContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1270,7 +1268,7 @@ private fun ExpertFailureContent(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(corners.medium))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f))
+                .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
         ) {
             Column(
                 modifier = Modifier
@@ -1338,7 +1336,7 @@ private fun ExpertFailureContent(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(corners.medium))
                     .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f))
+                    .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
             ) {
                 Column(
                     modifier = Modifier

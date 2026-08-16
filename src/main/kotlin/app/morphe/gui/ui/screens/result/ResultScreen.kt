@@ -230,7 +230,6 @@ fun ResultScreenContent(outputPath: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
     ) {
         // Header row
         Row(
@@ -274,13 +273,7 @@ fun ResultScreenContent(outputPath: String) {
 
                 Spacer(Modifier.width(12.dp))
 
-                // Title + success indicator
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(accents.secondary, CircleShape)
-                )
-                Spacer(Modifier.width(8.dp))
+                // Title
                 Text(
                     text = "Patching complete",
                     fontSize = 13.sp,
