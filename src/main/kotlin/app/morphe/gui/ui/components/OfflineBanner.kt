@@ -5,8 +5,7 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 
@@ -31,7 +31,7 @@ fun OfflineBanner(
     modifier: Modifier = Modifier
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val shape = RoundedCornerShape(corners.medium)
@@ -55,10 +55,11 @@ fun OfflineBanner(
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "Offline — using cached patches",
+                text = "Offline - using cached patches",
                 fontSize = 11.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                fontFamily = font,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             OutlinedButton(
@@ -66,7 +67,7 @@ fun OfflineBanner(
                 modifier = Modifier.hoverable(interactionSource).height(28.dp),
                 shape = RoundedCornerShape(corners.small),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                border = androidx.compose.foundation.BorderStroke(
+                border = BorderStroke(
                     1.dp,
                     if (isHovered) MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
                     else MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
@@ -82,11 +83,10 @@ fun OfflineBanner(
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "RETRY",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = mono,
-                    letterSpacing = 0.5.sp
+                    text = "Retry",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font,
                 )
             }
         }

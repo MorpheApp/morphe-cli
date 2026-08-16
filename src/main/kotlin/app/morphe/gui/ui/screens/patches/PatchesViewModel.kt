@@ -6,26 +6,27 @@
 package app.morphe.gui.ui.screens.patches
 
 import app.morphe.desktop.command.model.toPatchBundle
-import app.morphe.patcher.patch.loadPatchesFromJar
-import cafe.adriel.voyager.core.model.ScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.engine.model.Release
+import app.morphe.engine.model.ReleaseAsset
 import app.morphe.gui.data.model.FollowMode
 import app.morphe.gui.data.model.SourceVersionPref
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.data.repository.PatchSourceManager
-import kotlinx.coroutines.flow.drop
+import app.morphe.gui.util.Logger
+import app.morphe.patcher.patch.loadPatchesFromJar
+import cafe.adriel.voyager.core.model.ScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
+import java.io.File
+import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import app.morphe.gui.util.Logger
-import app.morphe.engine.model.ReleaseAsset
-import java.io.File
 
 class PatchesViewModel(
     private val apkPath: String,
@@ -174,7 +175,7 @@ class PatchesViewModel(
                             cachedReleaseVersions = offlineReleases.map { it.tagName }.toSet(),
                             error = null
                         )
-                        Logger.info("Offline — found ${cachedFiles.size} cached patch file(s), selected=${selected?.tagName}")
+                        Logger.info("Offline - found ${cachedFiles.size} cached patch file(s), selected=${selected?.tagName}")
                     } else {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -243,7 +244,7 @@ class PatchesViewModel(
             tagName = "v$version",
             name = "v$version",
             isPrerelease = version.contains("dev"),
-            publishedAt = java.time.Instant.ofEpochMilli(file.lastModified()).toString(),
+            publishedAt = Instant.ofEpochMilli(file.lastModified()).toString(),
             assets = listOf(
                 ReleaseAsset(
                     id = file.name.hashCode().toLong(),

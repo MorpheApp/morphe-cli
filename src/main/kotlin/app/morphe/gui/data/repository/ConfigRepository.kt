@@ -13,12 +13,12 @@ import app.morphe.gui.data.model.SourceVersionPref
 import app.morphe.gui.data.model.PatchChannel
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.UpdateChannelPreference
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 
 /**
  * Repository for managing app configuration (config.json)

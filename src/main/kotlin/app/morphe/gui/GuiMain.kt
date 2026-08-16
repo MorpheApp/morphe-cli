@@ -9,7 +9,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import app.morphe.gui.ui.components.LocalFrameWindowScope
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -18,12 +17,17 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import app.morphe.gui.data.model.AppConfig
+import app.morphe.gui.ui.components.LocalFrameWindowScope
 import app.morphe.gui.util.DeviceMonitor
+import app.morphe.gui.util.FileUtils
 import io.github.vinceglb.filekit.FileKit
+import java.awt.Dimension
+import java.awt.Taskbar
+import javax.imageio.ImageIO
+import javax.swing.UIManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.Image
-import app.morphe.gui.util.FileUtils
 
 /**
  * Main entry point.
@@ -35,6 +39,12 @@ fun launchGui(args: Array<String>) {
     // appId doubles as the DBus application id on Linux.
     FileKit.init(appId = "app.morphe.desktop")
 
+    // Ensure any residual AWT/Swing surfaces (e.g. Swing fallback
+    // inside FileKit) render with the OS native look instead of Metal.
+    runCatching {
+        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
+    }
+
     application {
     // Determine initial mode from args or config
     val initialSimplifiedMode = when {
@@ -43,10 +53,10 @@ fun launchGui(args: Array<String>) {
         else -> loadConfigSync().useSimplifiedMode
     }
 
-    // Belt-and-braces: on any JVM-normal exit path (window close, Cmd+Q,
-    // SIGTERM), kill the ADB daemon if Morphe spawned it. Compose's
-    // DisposableEffect already cancels polling; this hook covers shutdown
-    // routes where Compose teardown doesn't reach the suspend kill call.
+    // On any JVM-normal exit path (window close, Cmd+Q, SIGTERM),
+    // kill the ADB daemon if Morphe spawned it. Compose's DisposableEffect
+    // already cancels polling; this hook covers shutdown routes
+    // where Compose teardown doesn't reach the suspend kill call.
     remember {
         Runtime.getRuntime().addShutdownHook(Thread {
             runCatching {
@@ -65,13 +75,13 @@ fun launchGui(args: Array<String>) {
     // Set macOS dock icon
     remember {
         try {
-            if (java.awt.Taskbar.isTaskbarSupported()) {
+            if (Taskbar.isTaskbarSupported()) {
                 val stream = Thread.currentThread().contextClassLoader
                     .getResourceAsStream("morphe_logo.png")
                     ?: ClassLoader.getSystemResourceAsStream("morphe_logo.png")
                 if (stream != null) {
-                    java.awt.Taskbar.getTaskbar().iconImage =
-                        javax.imageio.ImageIO.read(stream)
+                    Taskbar.getTaskbar().iconImage =
+                        ImageIO.read(stream)
                 }
             }
         } catch (_: Exception) {
@@ -88,7 +98,7 @@ fun launchGui(args: Array<String>) {
         // Min width keeps the single side-by-side Home layout viable — there is no
         // narrow/stacked variant to fall back to (intentionally removed; one layout
         // to maintain). 900 is the floor at which the two panes still read well.
-        window.minimumSize = java.awt.Dimension(900, 500)
+        window.minimumSize = Dimension(900, 500)
 
         // macOS: hide the OS-drawn title bar so a Compose-rendered colored
         // band can take its place. Traffic lights stay where the OS draws
@@ -109,7 +119,7 @@ fun launchGui(args: Array<String>) {
         }
 
         CompositionLocalProvider(LocalFrameWindowScope provides this) {
-            App(initialSimplifiedMode = initialSimplifiedMode)
+            app(initialSimplifiedMode = initialSimplifiedMode)
         }
     }
     }
@@ -167,4 +177,3 @@ private fun loadAppIcon(): BitmapPainter? {
     }
     return null
 }
-

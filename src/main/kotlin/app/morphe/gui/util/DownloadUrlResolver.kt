@@ -7,14 +7,14 @@ package app.morphe.gui.util
 
 import app.morphe.gui.data.constants.AppConstants.MORPHE_API_URL
 import io.ktor.http.encodeURLParameter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.URL
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object DownloadUrlResolver {
 
@@ -78,5 +78,4 @@ object DownloadUrlResolver {
 
         return url
     }
-
 }

@@ -5,8 +5,6 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,13 +39,15 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -62,7 +62,7 @@ import com.mikepenz.aboutlibraries.entity.License
 @Composable
 internal fun LicensesDialog(onDismiss: () -> Unit) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     val dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
@@ -128,19 +128,18 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "OPEN SOURCE LICENSES",
-                            fontFamily = mono,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            letterSpacing = 1.8.sp,
+                            text = "Open Source licenses",
+                            fontFamily = font,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "[${libs?.libraries?.size ?: 0}]",
-                            fontFamily = mono,
-                            fontSize = 11.sp,
-                            color = accents.primary,
-                            letterSpacing = 0.5.sp
+                            fontFamily = font,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                            color = accents.primary
                         )
                     }
                     Row(
@@ -150,7 +149,7 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                         // GPLv3 §7b requires the warranty NOTICE be provided to the user.
                         NoticeButton(
                             onClick = { showNotice = true },
-                            mono = mono,
+                            font = font,
                             accentColor = accents.primary,
                             corners = corners
                         )
@@ -193,8 +192,8 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                 // ── List ──
                 Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     when {
-                        libs == null -> EmptyHint(text = "// failed to load licenses", mono = mono, isError = true)
-                        filtered.isEmpty() -> EmptyHint(text = "// no matches", mono = mono, isError = false)
+                        libs == null -> EmptyHint(text = "// failed to load licenses", font = font, isError = true)
+                        filtered.isEmpty() -> EmptyHint(text = "// no matches", font = font, isError = false)
                         else -> {
                             LazyColumn(
                                 state = listState,
@@ -204,7 +203,7 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                                 items(items = filtered, key = { it.uniqueId }) { library ->
                                     LibraryRow(
                                         library = library,
-                                        mono = mono,
+                                        font = font,
                                         accents = accents,
                                         corners = corners,
                                         borderColor = borderColor,
@@ -239,10 +238,10 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                     Text(
                         text = if (searchQuery.isBlank()) "${filtered.size} libraries"
                                else "${filtered.size} / ${libs?.libraries?.size ?: 0} matched",
-                        fontFamily = mono,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        letterSpacing = 0.8.sp
+                        fontFamily = font,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     OutlinedButton(
                         onClick = onDismiss,
@@ -250,11 +249,10 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
                         border = BorderStroke(1.dp, borderColor)
                     ) {
                         Text(
-                            "CLOSE",
-                            fontFamily = mono,
-                            fontWeight = FontWeight.SemiBold,
+                            "Close",
+                            fontFamily = font,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 11.sp,
-                            letterSpacing = 0.5.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -275,7 +273,7 @@ internal fun LicensesDialog(onDismiss: () -> Unit) {
 @Composable
 private fun LicenseSearchBar(query: String, onQueryChange: (String) -> Unit) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val searchFocused = remember { mutableStateOf(false) }
     val searchBorderColor by animateColorAsState(
@@ -306,8 +304,9 @@ private fun LicenseSearchBar(query: String, onQueryChange: (String) -> Unit) {
                 Text(
                     text = "Search libraries, SPDX id, uniqueId…",
                     fontSize = 11.sp,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
             BasicTextField(
@@ -316,7 +315,7 @@ private fun LicenseSearchBar(query: String, onQueryChange: (String) -> Unit) {
                 singleLine = true,
                 textStyle = LocalTextStyle.current.copy(
                     fontSize = 12.sp,
-                    fontFamily = mono,
+                    fontFamily = font,
                     color = MaterialTheme.colorScheme.onSurface
                 ),
                 cursorBrush = SolidColor(accents.primary),
@@ -348,7 +347,7 @@ private fun LicenseSearchBar(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 private fun LibraryRow(
     library: Library,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     accents: MorpheAccentColors,
     corners: MorpheCornerStyle,
     borderColor: Color,
@@ -393,7 +392,7 @@ private fun LibraryRow(
                         text = library.name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        fontFamily = mono,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -401,19 +400,20 @@ private fun LibraryRow(
                     library.artifactVersion?.takeIf { it.isNotBlank() }?.let { v ->
                         Text(
                             text = "v$v",
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            color = accents.secondary.copy(alpha = 0.9f),
-                            letterSpacing = 0.3.sp
+                            fontSize = 11.sp,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Medium,
+                            color = accents.secondary
                         )
                     }
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = library.uniqueId,
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -425,8 +425,8 @@ private fun LibraryRow(
             ) {
                 if (library.licenses.isEmpty()) {
                     LicenseChip(
-                        label = "UNKNOWN",
-                        mono = mono,
+                        label = "Unknown",
+                        font = font,
                         corners = corners,
                         accentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                         onClick = null
@@ -435,7 +435,7 @@ private fun LibraryRow(
                     library.licenses.forEach { license ->
                         LicenseChip(
                             label = licenseDisplayLabel(license),
-                            mono = mono,
+                            font = font,
                             corners = corners,
                             accentColor = accents.primary,
                             onClick = { onLicenseClick(license) }
@@ -470,9 +470,10 @@ private fun LibraryRow(
                 library.description?.trim()?.takeIf { it.isNotEmpty() }?.let { desc ->
                     Text(
                         text = desc,
-                        fontSize = 12.sp,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                        fontSize = 11.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 17.sp
                     )
                 }
@@ -482,9 +483,9 @@ private fun LibraryRow(
                 if (devs.isNotEmpty() || org != null) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         if (devs.isNotEmpty()) {
-                            MetaLine(label = "AUTHORS", value = devs.joinToString(", "), mono = mono)
+                            MetaLine(label = "Authors", value = devs.joinToString(", "), font = font)
                         }
-                        org?.let { MetaLine(label = "ORG", value = it, mono = mono) }
+                        org?.let { MetaLine(label = "Org", value = it, font = font) }
                     }
                 }
 
@@ -493,10 +494,10 @@ private fun LibraryRow(
                 if (website != null || source != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         website?.let {
-                            LinkPill(label = "WEBSITE", url = it, mono = mono, corners = corners, borderColor = borderColor)
+                            LinkPill(label = "Website", url = it, font = font, corners = corners, borderColor = borderColor)
                         }
                         source?.let {
-                            LinkPill(label = "SOURCE", url = it, mono = mono, corners = corners, borderColor = borderColor)
+                            LinkPill(label = "Source", url = it, font = font, corners = corners, borderColor = borderColor)
                         }
                     }
                 }
@@ -511,23 +512,23 @@ private fun LibraryRow(
 private fun MetaLine(
     label: String,
     value: String,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = label,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-            letterSpacing = 1.sp,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(56.dp)
         )
         Text(
             text = value,
             fontSize = 11.sp,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -537,7 +538,7 @@ private fun MetaLine(
 @Composable
 private fun LicenseChip(
     label: String,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     corners: MorpheCornerStyle,
     accentColor: Color,
     onClick: (() -> Unit)?,
@@ -560,11 +561,10 @@ private fun LicenseChip(
     ) {
         Text(
             text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
+            fontSize = 11.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
             color = accentColor,
-            letterSpacing = 0.8.sp,
             maxLines = 1
         )
     }
@@ -574,7 +574,7 @@ private fun LicenseChip(
 private fun LinkPill(
     label: String,
     url: String,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     corners: MorpheCornerStyle,
     borderColor: Color,
 ) {
@@ -597,11 +597,10 @@ private fun LinkPill(
     ) {
         Text(
             text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.9f else 0.6f),
-            letterSpacing = 1.sp
+            fontSize = 11.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Icon(
             imageVector = MorpheIcons.OpenInNew,
@@ -613,15 +612,15 @@ private fun LinkPill(
 }
 
 @Composable
-private fun EmptyHint(text: String, mono: androidx.compose.ui.text.font.FontFamily, isError: Boolean) {
+private fun EmptyHint(text: String, font: FontFamily, isError: Boolean) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = text,
-            fontFamily = mono,
-            fontSize = 12.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            fontSize = 11.sp,
             color = if (isError) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-            letterSpacing = 0.8.sp
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     }
 }
@@ -666,7 +665,7 @@ private val MORPHE_NOTICE = """
 @Composable
 private fun NoticeButton(
     onClick: () -> Unit,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     accentColor: Color,
     corners: MorpheCornerStyle,
 ) {
@@ -686,12 +685,11 @@ private fun NoticeButton(
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(
-            text = "NOTICE",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
+            text = "Notice",
+            fontSize = 11.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
             color = accentColor,
-            letterSpacing = 1.sp,
             maxLines = 1
         )
     }
@@ -701,7 +699,7 @@ private fun NoticeButton(
 @Composable
 private fun NoticeTextDialog(onDismiss: () -> Unit) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
 
@@ -729,18 +727,17 @@ private fun NoticeTextDialog(onDismiss: () -> Unit) {
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "MORPHE NOTICE",
-                            fontFamily = mono,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            letterSpacing = 1.5.sp,
-                            color = accents.primary
+                            text = "Morphe Notice",
+                            fontFamily = font,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
                         )
                         Text(
                             text = "Required attribution & warranty statement (GPLv3 §7)",
-                            fontFamily = mono,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Box(
@@ -766,9 +763,10 @@ private fun NoticeTextDialog(onDismiss: () -> Unit) {
                     Text(
                         text = MORPHE_NOTICE,
                         fontSize = 11.sp,
-                        fontFamily = mono,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
                         lineHeight = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
@@ -791,7 +789,7 @@ private fun NoticeTextDialog(onDismiss: () -> Unit) {
 @Composable
 private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     val content = license.licenseContent?.takeIf { it.isNotBlank() }
@@ -822,18 +820,18 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                         val chipLabel = licenseDisplayLabel(license)
                         Text(
                             text = chipLabel.uppercase(),
-                            fontFamily = mono,
+                            fontFamily = font,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
-                            letterSpacing = 1.5.sp,
                             color = accents.primary
                         )
                         if (license.name.isNotBlank() && !license.name.equals(chipLabel, ignoreCase = true)) {
                             Text(
                                 text = license.name,
-                                fontFamily = mono,
+                                fontFamily = font,
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -861,9 +859,10 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                         Text(
                             text = content,
                             fontSize = 11.sp,
-                            fontFamily = mono,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Normal,
                             lineHeight = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(scrollState)
@@ -884,22 +883,23 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                         ) {
                             Text(
                                 text = "// full license text not bundled",
-                                fontFamily = mono,
+                                fontFamily = font,
                                 fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                letterSpacing = 0.5.sp
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             license.url?.takeIf { it.isNotBlank() }?.let { url ->
                                 Text(
                                     text = "Open the canonical license text:",
-                                    fontFamily = mono,
+                                    fontFamily = font,
                                     fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    fontWeight = FontWeight.Normal,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 LinkPill(
-                                    label = "OPEN LICENSE",
+                                    label = "Open license",
                                     url = url,
-                                    mono = mono,
+                                    font = font,
                                     corners = corners,
                                     borderColor = borderColor
                                 )
@@ -922,11 +922,10 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                         border = BorderStroke(1.dp, borderColor)
                     ) {
                         Text(
-                            "CLOSE",
-                            fontFamily = mono,
-                            fontWeight = FontWeight.SemiBold,
+                            "Close",
+                            fontFamily = font,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 11.sp,
-                            letterSpacing = 0.5.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

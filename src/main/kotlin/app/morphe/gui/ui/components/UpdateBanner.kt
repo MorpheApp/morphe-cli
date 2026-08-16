@@ -5,8 +5,6 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -30,11 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.engine.UpdateInfo
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -56,7 +56,7 @@ fun UpdateBanner(
     modifier: Modifier = Modifier,
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val uriHandler = LocalUriHandler.current
     val shape = RoundedCornerShape(corners.medium)
@@ -82,12 +82,11 @@ fun UpdateBanner(
                 modifier = Modifier.size(14.dp),
             )
             Text(
-                text = "UPDATE AVAILABLE · v${info.latestVersion}",
+                text = "Update available · v${info.latestVersion}",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                letterSpacing = 1.sp,
-                color = accent,
+                fontFamily = font,
+                color = accent
             )
             Text(
                 text = if (info.crossesDevToStable) {
@@ -96,9 +95,9 @@ fun UpdateBanner(
                     "from v${info.currentVersion}"
                 },
                 fontSize = 10.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                letterSpacing = 0.3.sp,
+                fontFamily = font,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
 
@@ -123,24 +122,23 @@ fun UpdateBanner(
                 )
                 Spacer(Modifier.width(3.dp))
                 Text(
-                    text = "DOWNLOAD",
+                    text = "Download",
                     fontSize = 9.sp,
                     fontWeight = FontWeight.SemiBold,
-                    fontFamily = mono,
-                    letterSpacing = 0.5.sp,
+                    fontFamily = font
                 )
             }
 
             // LATER — session-only dismiss (reappears next startup). Yellow on hover.
             DismissTextAction(
-                label = "LATER",
+                label = "Later",
                 hoverAccent = MaterialTheme.colorScheme.tertiary,
                 onClick = onDismissForSession,
             )
 
             // SKIP v{ver} — persistent dismiss for this version only. Red on hover.
             DismissTextAction(
-                label = "SKIP v${info.latestVersion}",
+                label = "Skip v${info.latestVersion}",
                 hoverAccent = MaterialTheme.colorScheme.error,
                 onClick = onDismissForVersion,
             )
@@ -157,10 +155,10 @@ fun UpdateBanner(
 @Composable
 private fun DismissTextAction(
     label: String,
-    hoverAccent: androidx.compose.ui.graphics.Color,
+    hoverAccent: Color,
     onClick: () -> Unit,
 ) {
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
@@ -172,7 +170,7 @@ private fun DismissTextAction(
     )
     val textColor by animateColorAsState(
         if (isHovered) hoverAccent
-        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = tween(150),
     )
 
@@ -190,9 +188,8 @@ private fun DismissTextAction(
             text = label,
             fontSize = 9.sp,
             fontWeight = FontWeight.SemiBold,
-            fontFamily = mono,
-            color = textColor,
-            letterSpacing = 0.5.sp,
+            fontFamily = font,
+            color = textColor
         )
     }
 }

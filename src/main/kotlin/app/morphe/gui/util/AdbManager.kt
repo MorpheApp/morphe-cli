@@ -190,7 +190,7 @@ class AdbManager {
                 // Don't touch the ownership flag (a prior tick may have set
                 // it to true and the daemon is still ours).
                 if (!weStartedDaemon && !loggedAttachOnce) {
-                    Logger.info("ADB daemon was already running — leaving it alone on shutdown")
+                    Logger.info("ADB daemon was already running - leaving it alone on shutdown")
                     loggedAttachOnce = true
                 }
                 return@withContext Result.success(Unit)
@@ -210,7 +210,7 @@ class AdbManager {
 
             if (isDaemonAlive()) {
                 if (!weStartedDaemon) {
-                    Logger.info("ADB daemon spawned by Morphe — will kill on shutdown")
+                    Logger.info("ADB daemon spawned by Morphe - will kill on shutdown")
                 }
                 weStartedDaemon = true
                 loggedAttachOnce = false
@@ -233,7 +233,7 @@ class AdbManager {
      */
     suspend fun killServerIfOwned(): Result<Boolean> = withContext(Dispatchers.IO) {
         if (!weStartedDaemon) {
-            Logger.debug("Skipping adb kill-server — daemon wasn't started by Morphe")
+            Logger.debug("Skipping adb kill-server - daemon wasn't started by Morphe")
             return@withContext Result.success(false)
         }
         val adb = findAdb() ?: return@withContext Result.success(false)
@@ -522,7 +522,7 @@ class AdbManager {
             }
 
             if (kept.isEmpty()) {
-                Logger.info("No matching logcat lines on $deviceId — skipping file write")
+                Logger.info("No matching logcat lines on $deviceId - skipping file write")
             } else {
                 outputFile.parentFile?.mkdirs()
                 outputFile.writeText(kept.joinToString("\n") + "\n")
@@ -765,21 +765,21 @@ class AdbManager {
         // Common ADB install errors
         return when {
             output.contains("INSTALL_FAILED_VERSION_DOWNGRADE") ->
-                "Cannot downgrade - a newer version is installed. Uninstall the existing app first."
+                "Cannot downgrade - a newer version is installed. Uninstall the existing app first"
             output.contains("INSTALL_FAILED_ALREADY_EXISTS") ->
-                "App already exists. Try uninstalling it first."
+                "App already exists. Try uninstalling it first"
             output.contains("INSTALL_FAILED_INSUFFICIENT_STORAGE") ->
-                "Not enough storage space on device."
+                "Not enough storage space on device"
             output.contains("INSTALL_FAILED_INVALID_APK") ->
-                "Invalid APK file."
+                "Invalid APK file"
             output.contains("INSTALL_PARSE_FAILED_NO_CERTIFICATES") ->
-                "APK is not signed properly."
+                "APK is not signed properly"
             output.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE") ->
-                "Incompatible update - signatures don't match. Uninstall the existing app first."
+                "Incompatible update - signatures don't match. Uninstall the existing app first"
             output.contains("INSTALL_FAILED_USER_RESTRICTED") ->
-                "Installation restricted by user settings."
+                "Installation restricted by user settings"
             output.contains("INSTALL_FAILED_VERIFICATION_FAILURE") ->
-                "Package verification failed."
+                "Package verification failed"
             output.contains("Failure") -> {
                 // Extract the failure reason
                 val match = Regex("Failure \\[(.+)]").find(output)

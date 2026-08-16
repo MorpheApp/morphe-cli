@@ -7,6 +7,7 @@ package app.morphe.gui.ui.screens.quick.components
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -14,14 +15,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.theme.*
 import app.morphe.morphe_desktop.generated.resources.Res
 import app.morphe.morphe_desktop.generated.resources.morphe_dark
 import app.morphe.morphe_desktop.generated.resources.morphe_light
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import app.morphe.gui.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
 
 // ============================================================================
@@ -51,34 +53,38 @@ internal fun PatchesVersionBadge(
     latestLabel: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
     val accents = LocalMorpheAccents.current
     val interactive = onClick != null
+    val isDark = isSystemInDarkTheme()
+    val containerAlpha = if (isDark) 0.35f else 0.6f
+    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = containerAlpha)
+    val borderAlpha = if (isDark) 0.4f else 0.6f
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = borderAlpha)
 
     if (isLoading) {
         Row(
             modifier = Modifier
                 .height(34.dp)
                 .clip(RoundedCornerShape(corners.small))
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(containerColor)
+                .border(1.dp, borderColor, RoundedCornerShape(corners.small))
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.size(12.dp),
                 strokeWidth = 1.5.dp,
-                color = accents.primary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "LOADING…",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                letterSpacing = 1.sp
+                text = "Loading…",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     } else if (patchesVersion != null) {
@@ -86,11 +92,11 @@ internal fun PatchesVersionBadge(
             modifier = Modifier
                 .height(34.dp)
                 .clip(RoundedCornerShape(corners.small))
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(containerColor)
+                .border(1.dp, borderColor, RoundedCornerShape(corners.small))
                 .then(
                     if (interactive) Modifier
-                        .pointerHoverIcon(androidx.compose.ui.input.pointer.PointerIcon.Hand)
+                        .pointerHoverIcon(PointerIcon.Hand)
                         .clickable(onClick = onClick)
                     else Modifier
                 )
@@ -98,24 +104,24 @@ internal fun PatchesVersionBadge(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = patchSourceName?.uppercase() ?: "PATCHES",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                letterSpacing = 1.5.sp
+                text = patchSourceName ?: "Patches",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = " · ",
-                fontSize = 10.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = patchesVersion,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                fontFamily = mono,
+                fontFamily = font,
                 color = accents.primary
             )
             if (latestLabel != null) {
@@ -128,15 +134,13 @@ internal fun PatchesVersionBadge(
                 ) {
                     Text(
                         text = latestLabel,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = font,
                         color = accents.secondary,
-                        letterSpacing = 1.sp
                     )
                 }
             }
         }
     }
 }
-

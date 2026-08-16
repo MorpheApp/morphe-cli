@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -65,7 +66,7 @@ fun MorpheErrorBar(
 ) {
     val accents = LocalMorpheAccents.current
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
 
     val accentColor = if (isWarning) accents.warning else MaterialTheme.colorScheme.error
     val borderCol = accentColor.copy(alpha = 0.4f)
@@ -90,13 +91,14 @@ fun MorpheErrorBar(
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .background(accentColor, RoundedCornerShape(1.dp))
+                .background(accentColor, CircleShape)
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = message,
-            fontFamily = mono,
-            fontSize = 12.sp,
+            fontFamily = font,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
             lineHeight = 16.sp,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
@@ -121,13 +123,12 @@ fun MorpheErrorBar(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "DISMISS",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
+                text = "Dismiss",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
                 color = if (isDismissHovered) accentColor
-                        else accentColor.copy(alpha = 0.7f),
-                letterSpacing = 1.sp
+                        else accentColor.copy(alpha = 0.7f)
             )
         }
     }

@@ -11,6 +11,7 @@ import app.morphe.library.logging.Logger
 import java.awt.GraphicsEnvironment
 import java.io.File
 import java.util.logging.Logger.getLogger as JVLogger
+import kotlin.system.exitProcess
 import picocli.CommandLine
 
 fun main(args: Array<String>) {
@@ -46,7 +47,7 @@ fun main(args: Array<String>) {
                     // BootstrapProgressWindow.onError has already shown a dialog and
                     // waited for the user to acknowledge; clean up and exit.
                     progress.close()
-                    System.exit(1)
+                    exitProcess(1)
                     return
                 }
                 progress.close()
@@ -66,7 +67,7 @@ fun main(args: Array<String>) {
                 processBuilder.inheritIO()
                 val process = processBuilder.start()
                 process.waitFor()
-                System.exit(process.exitValue())
+                exitProcess(process.exitValue())
             }
         }
     } else {

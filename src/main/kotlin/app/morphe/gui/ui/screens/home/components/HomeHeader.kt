@@ -5,9 +5,6 @@
 
 package app.morphe.gui.ui.screens.home.components
 
-import app.morphe.gui.ui.screens.home.HomeUiState
-
-import app.morphe.gui.ui.icons.MorpheIcons
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -17,7 +14,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,23 +26,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.isSystemInDarkTheme
+import app.morphe.gui.ui.components.SourceLedState
+import app.morphe.gui.ui.components.SourcesCountPill
+import app.morphe.gui.ui.components.TopBarRow
+import app.morphe.gui.ui.components.sourceLedState
+import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.screens.home.HomeUiState
+import app.morphe.gui.ui.theme.LocalMorpheAccents
+import app.morphe.gui.ui.theme.LocalMorpheCorners
+import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.LocalThemeState
+import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.morphe_desktop.generated.resources.Res
 import app.morphe.morphe_desktop.generated.resources.morphe_dark
 import app.morphe.morphe_desktop.generated.resources.morphe_light
-import app.morphe.gui.ui.theme.LocalMorpheCorners
-import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.ui.theme.LocalMorpheAccents
-import app.morphe.gui.ui.theme.LocalThemeState
-import app.morphe.gui.ui.theme.ThemePreference
 import org.jetbrains.compose.resources.painterResource
-import app.morphe.gui.ui.components.SourceLedState
-import app.morphe.gui.ui.components.SourcesCountPill
-import app.morphe.gui.ui.components.sourceLedState
-import app.morphe.gui.ui.components.TopBarRow
 
 // ============================================================================
 // HEADER BAR AND STATUS INDICATORS
@@ -58,7 +59,7 @@ internal fun HeaderBar(
     sourceStates: List<SourceLedState> = emptyList(),
 ) {
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
-    val density = androidx.compose.ui.platform.LocalDensity.current
+    val density = LocalDensity.current
     var leadingWidthPx by remember { mutableIntStateOf(0) }
     var trailingWidthPx by remember { mutableIntStateOf(0) }
     val centerSidePadding = with(density) { maxOf(leadingWidthPx, trailingWidthPx).toDp() } + 16.dp
@@ -136,7 +137,7 @@ internal fun MultiSourceHintBanner(
     modifier: Modifier = Modifier
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     Row(
         modifier = modifier
@@ -148,11 +149,11 @@ internal fun MultiSourceHintBanner(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
-            text = "MULTIPLE SOURCES ACTIVE: Patches from every enabled source are unioned. Manage from the SOURCES button above.",
+            text = "Patches from every enabled source are unioned. Manage from the sources button above",
             fontSize = 11.sp,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            letterSpacing = 0.2.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
@@ -179,7 +180,7 @@ internal fun SourcesFailedBanner(
     modifier: Modifier = Modifier,
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val warn = accents.warning
     Row(
@@ -199,11 +200,11 @@ internal fun SourcesFailedBanner(
         )
         Text(
             text = (if (count == 1) "A patch source" else "$count patch sources") +
-                " failed to load. Using the ones that loaded successfully.",
+                " failed to load. Using the ones that loaded successfully",
             fontSize = 11.sp,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            letterSpacing = 0.2.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
         // House-style pill: corners.small with an animated hover border/text, matching the
@@ -230,11 +231,10 @@ internal fun SourcesFailedBanner(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "MANAGE SOURCES",
-                fontFamily = mono,
+                "Manage sources",
+                fontFamily = font,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp,
                 color = actionText,
             )
         }
@@ -255,19 +255,35 @@ internal fun SourcesFailedBanner(
 
 @Composable
 internal fun PatchesLoadingIndicator() {
-    val mono = LocalMorpheFont.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    val corners = LocalMorpheCorners.current
+    val font = LocalMorpheFont.current
+    val isDark = isSystemInDarkTheme()
+    val containerAlpha = if (isDark) 0.35f else 0.6f
+    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = containerAlpha)
+    val borderAlpha = if (isDark) 0.4f else 0.6f
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = borderAlpha)
+
+    Row(
+        modifier = Modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(corners.small))
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         CircularProgressIndicator(
-            modifier = Modifier.size(14.dp),
-            strokeWidth = 2.dp,
+            modifier = Modifier.size(12.dp),
+            strokeWidth = 1.5.dp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "Loading patches…",
+            text = "Loading…",
             fontSize = 11.sp,
-            fontFamily = mono,
-            color = homeMutedTextColor(0.5f)
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -275,7 +291,7 @@ internal fun PatchesLoadingIndicator() {
 @Composable
 internal fun OfflineBadge(onRetry: () -> Unit) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
     val borderColor by animateColorAsState(
@@ -296,16 +312,15 @@ internal fun OfflineBadge(onRetry: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(1.dp))
+                .background(MaterialTheme.colorScheme.error, CircleShape)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "OFFLINE",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
+            text = "Offline",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
             color = MaterialTheme.colorScheme.error,
-            letterSpacing = 1.sp
         )
     }
 }
