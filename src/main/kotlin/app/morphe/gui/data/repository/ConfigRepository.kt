@@ -96,6 +96,14 @@ class ConfigRepository {
     }
 
     /**
+     * Update parallax enabled state.
+     */
+    suspend fun setEnableParallax(enabled: Boolean) {
+        val current = loadConfig()
+        saveConfig(current.copy(enableParallax = enabled))
+    }
+
+    /**
      * Update patch channel preference.
      */
     suspend fun setPatchChannel(channel: PatchChannel) {

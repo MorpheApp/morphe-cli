@@ -72,6 +72,10 @@ val LocalBackgroundType = compositionLocalOf<MutableState<BackgroundType>> {
     error("No background type provided") 
 }
 
+val LocalEnableParallax = compositionLocalOf<MutableState<Boolean>> {
+    error("No LocalEnableParallax provided")
+}
+
 /**
  * Auto-start ADB preference. Exposed as a composition local so the
  * SettingsDialog (writer) and DeviceIndicator + install buttons (readers)
@@ -109,8 +113,9 @@ private fun appContent(
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
     val scope = rememberCoroutineScope()
+    val enableParallaxState = remember { mutableStateOf(true) }
     val (parallaxState, parallaxMod) = rememberParallaxState(
-        enableParallax = true,
+        enableParallax = enableParallaxState.value,
         coroutineScope = scope
     )
 
@@ -131,6 +136,7 @@ private fun appContent(
         } catch (e: Exception) {
             BackgroundType.CIRCLES
         }
+        enableParallaxState.value = config.enableParallax
 
         autoStartAdb = config.autoStartAdb
         // Publish the initial active mode BEFORE the VMs subscribe so their
@@ -227,6 +233,7 @@ private fun appContent(
             LocalSettingsDialogVisible provides settingsDialogVisible,
             LocalIsPatching provides isPatchingState,
             LocalBackgroundType provides backgroundTypeState,
+            LocalEnableParallax provides enableParallaxState,
             LocalParallaxState provides parallaxState
         ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic

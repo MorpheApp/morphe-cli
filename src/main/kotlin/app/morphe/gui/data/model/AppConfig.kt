@@ -53,6 +53,7 @@ data class SourceVersionPref(
 data class AppConfig(
     val themePreference: String = ThemePreference.SYSTEM.name,
     val backgroundType: String = "CIRCLES",
+    val enableParallax: Boolean = true,
     val lastCliVersion: String? = null,
     /**
      * LEGACY single-source version pin. Kept only so it can be migrated (via

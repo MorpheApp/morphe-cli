@@ -48,6 +48,7 @@ import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.util.KeystoreImporter
 import app.morphe.engine.util.PortablePaths
 import app.morphe.gui.LocalBackgroundType
+import app.morphe.gui.LocalEnableParallax
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.model.UpdateChannelPreference
@@ -199,6 +200,7 @@ fun SettingsDialog(
                 Spacer(Modifier.height(8.dp))
 
                 val bgState = LocalBackgroundType.current
+                val parallaxState = LocalEnableParallax.current
                 val scope = rememberCoroutineScope()
                 val configRepo: ConfigRepository = koinInject()
 
@@ -254,6 +256,20 @@ fun SettingsDialog(
                         }
                     }
                 }
+
+                Spacer(Modifier.height(14.dp))
+
+                SettingToggleRow(
+                    label = "Parallax effect",
+                    description = "Smooth background shifting when moving the mouse",
+                    checked = parallaxState.value,
+                    onCheckedChange = {
+                        parallaxState.value = it
+                        scope.launch { configRepo.setEnableParallax(it) }
+                    },
+                    accentColor = accents.primary,
+                    font = font
+                )
 
                 SettingsDivider(borderColor)
 
