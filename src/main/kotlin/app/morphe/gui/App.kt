@@ -6,6 +6,7 @@
 package app.morphe.gui
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
@@ -15,29 +16,31 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import app.morphe.gui.ui.components.LocalFrameWindowScope
-import app.morphe.gui.ui.components.SettingsDialogHost
-import app.morphe.gui.util.applyTitleBarTint
-import cafe.adriel.voyager.navigator.Navigator
-import cafe.adriel.voyager.transitions.SlideTransition
 import app.morphe.gui.data.repository.ActiveMode
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.di.appModule
-import kotlinx.coroutines.launch
-import org.koin.compose.KoinApplication
-import org.koin.compose.koinInject
-import org.koin.dsl.koinConfiguration
+import app.morphe.gui.ui.components.LocalFrameWindowScope
+import app.morphe.gui.ui.components.SettingsDialogHost
 import app.morphe.gui.ui.screens.home.HomeScreen
 import app.morphe.gui.ui.screens.quick.QuickPatchContent
 import app.morphe.gui.ui.screens.quick.QuickPatchViewModel
-import app.morphe.gui.util.PatchService
 import app.morphe.gui.ui.theme.LocalThemeState
 import app.morphe.gui.ui.theme.MorpheTheme
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.ui.theme.ThemeState
+import app.morphe.gui.ui.theme.desktopScreenEnter
+import app.morphe.gui.ui.theme.desktopScreenExit
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.Logger
+import app.morphe.gui.util.PatchService
+import app.morphe.gui.util.applyTitleBarTint
+import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.transitions.ScreenTransition
+import kotlinx.coroutines.launch
+import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
+import org.koin.dsl.koinConfiguration
 
 /**
  * Mode state for switching between simplified and full mode.
@@ -261,7 +264,10 @@ private fun appContent(
                                     QuickPatchContent(quickViewModel)
                                 } else {
                                     Navigator(HomeScreen()) { navigator ->
-                                        SlideTransition(navigator)
+                                        ScreenTransition(
+                                            navigator = navigator,
+                                            transition = { desktopScreenEnter togetherWith desktopScreenExit }
+                                        )
                                     }
                                 }
                             }
