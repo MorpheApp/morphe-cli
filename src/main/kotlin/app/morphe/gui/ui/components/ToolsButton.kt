@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +50,7 @@ fun ToolsButton(
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
     
-    val containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
     
     val borderColor by animateColorAsState(
         MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),

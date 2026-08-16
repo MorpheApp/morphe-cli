@@ -137,9 +137,7 @@ fun AppListFilterChips(
 fun PatchedUpdatesBanner(count: Int, onView: () -> Unit) {
     val font = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
-    val blue = MorpheColors.Blue
     val hover = remember { MutableInteractionSource() }
-    val isHovered by hover.collectIsHoveredAsState()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -147,24 +145,23 @@ fun PatchedUpdatesBanner(count: Int, onView: () -> Unit) {
             .fillMaxWidth()
             .padding(end = 12.dp, bottom = 8.dp)
             .clip(RoundedCornerShape(corners.medium))
-            .border(1.dp, blue.copy(alpha = if (isHovered) 0.55f else 0.35f), RoundedCornerShape(corners.medium))
-            .background(blue.copy(alpha = if (isHovered) 0.14f else 0.09f))
+            .background(MaterialTheme.colorScheme.primaryContainer)
             .hoverable(hover)
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onView)
             .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
-        Icon(MorpheIcons.Refresh, contentDescription = null, tint = blue, modifier = Modifier.size(15.dp))
+        Icon(MorpheIcons.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(15.dp))
         Text(
             text = if (count == 1) "1 patched app has an update available"
                    else "$count patched apps have updates available",
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = blue,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.weight(1f),
         )
-        Text("View", fontSize = 11.sp, fontWeight = FontWeight.Normal, fontFamily = font, color = blue)
+        Text("View", fontSize = 11.sp, fontWeight = FontWeight.Normal, fontFamily = font, color = MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }
 

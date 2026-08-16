@@ -65,9 +65,8 @@ fun UpdateBanner(
 
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .border(1.dp, accent.copy(alpha = 0.25f), shape),
-        color = accent.copy(alpha = 0.06f),
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
         shape = shape,
     ) {
         Row(
@@ -78,7 +77,7 @@ fun UpdateBanner(
             Icon(
                 imageVector = MorpheIcons.NewReleases,
                 contentDescription = null,
-                tint = accent,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(14.dp),
             )
             Text(
@@ -86,7 +85,7 @@ fun UpdateBanner(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = font,
-                color = accent
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
             Text(
                 text = if (info.crossesDevToStable) {
@@ -97,13 +96,14 @@ fun UpdateBanner(
                 fontSize = 11.sp,
                 fontFamily = font,
                 fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                 modifier = Modifier.weight(1f),
             )
 
             // DOWNLOAD button
             val downloadHover = remember { MutableInteractionSource() }
             val isDownloadHovered by downloadHover.collectIsHoveredAsState()
+            val onContainer = MaterialTheme.colorScheme.onSecondaryContainer
             OutlinedButton(
                 onClick = { uriHandler.openUri(info.downloadLink) },
                 modifier = Modifier.hoverable(downloadHover).height(24.dp),
@@ -111,9 +111,9 @@ fun UpdateBanner(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 border = BorderStroke(
                     1.dp,
-                    if (isDownloadHovered) accent.copy(alpha = 0.5f) else accent.copy(alpha = 0.3f),
+                    if (isDownloadHovered) onContainer.copy(alpha = 0.5f) else onContainer.copy(alpha = 0.3f),
                 ),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = accent),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = onContainer),
             ) {
                 Icon(
                     imageVector = MorpheIcons.Download,
@@ -164,13 +164,13 @@ private fun DismissTextAction(
     val isHovered by hover.collectIsHoveredAsState()
 
     val borderColor by animateColorAsState(
-        if (isHovered) hoverAccent.copy(alpha = 0.5f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        if (isHovered) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
         animationSpec = tween(150),
     )
     val textColor by animateColorAsState(
-        if (isHovered) hoverAccent
-        else MaterialTheme.colorScheme.onSurfaceVariant,
+        if (isHovered) MaterialTheme.colorScheme.onSecondaryContainer
+        else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
         animationSpec = tween(150),
     )
 

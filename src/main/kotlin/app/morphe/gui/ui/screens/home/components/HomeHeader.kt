@@ -58,7 +58,7 @@ internal fun HeaderBar(
     onManageSourcesClick: () -> Unit = {},
     sourceStates: List<SourceLedState> = emptyList(),
 ) {
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     val density = LocalDensity.current
     var leadingWidthPx by remember { mutableIntStateOf(0) }
     var trailingWidthPx by remember { mutableIntStateOf(0) }
@@ -142,8 +142,7 @@ internal fun MultiSourceHintBanner(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(corners.small))
-            .border(1.dp, accents.primary.copy(alpha = 0.3f), RoundedCornerShape(corners.small))
-            .background(accents.primary.copy(alpha = 0.06f))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -153,14 +152,14 @@ internal fun MultiSourceHintBanner(
             fontSize = 11.sp,
             fontFamily = font,
             fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
             Icon(
                 imageVector = MorpheIcons.Clear,
                 contentDescription = "Dismiss",
-                tint = accents.primary,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(14.dp),
             )
         }
@@ -182,12 +181,11 @@ internal fun SourcesFailedBanner(
     val corners = LocalMorpheCorners.current
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val warn = accents.warning
+    val warn = MaterialTheme.colorScheme.onErrorContainer
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(corners.small))
-            .border(1.dp, warn.copy(alpha = 0.3f), RoundedCornerShape(corners.small))
-            .background(warn.copy(alpha = 0.06f))
+            .background(MaterialTheme.colorScheme.errorContainer)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -204,7 +202,7 @@ internal fun SourcesFailedBanner(
             fontSize = 11.sp,
             fontFamily = font,
             fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = warn,
             modifier = Modifier.weight(1f),
         )
         // House-style pill: corners.small with an animated hover border/text, matching the
@@ -213,7 +211,7 @@ internal fun SourcesFailedBanner(
         val actionHover = remember { MutableInteractionSource() }
         val isActionHovered by actionHover.collectIsHoveredAsState()
         val actionBorder by animateColorAsState(
-            if (isActionHovered) warn.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            if (isActionHovered) warn.copy(alpha = 0.5f) else warn.copy(alpha = 0.2f),
             animationSpec = tween(150),
         )
         val actionText by animateColorAsState(

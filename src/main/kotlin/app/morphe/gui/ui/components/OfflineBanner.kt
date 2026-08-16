@@ -38,9 +38,8 @@ fun OfflineBanner(
 
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f), shape),
-        color = MaterialTheme.colorScheme.error.copy(alpha = 0.06f),
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.errorContainer,
         shape = shape
     ) {
         Row(
@@ -51,7 +50,7 @@ fun OfflineBanner(
             Icon(
                 imageVector = MorpheIcons.WifiOff,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                tint = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.size(16.dp)
             )
             Text(
@@ -59,7 +58,7 @@ fun OfflineBanner(
                 fontSize = 11.sp,
                 fontFamily = font,
                 fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f)
             )
             OutlinedButton(
@@ -69,11 +68,11 @@ fun OfflineBanner(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 border = BorderStroke(
                     1.dp,
-                    if (isHovered) MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
-                    else MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                    if (isHovered) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.4f)
+                    else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) {
                 Icon(

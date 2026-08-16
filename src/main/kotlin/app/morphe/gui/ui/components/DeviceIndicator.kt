@@ -64,7 +64,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
     }
 
     val isDark = isSystemInDarkTheme()
-    val containerAlpha = if (isDark) 0.35f else 0.6f
+    val containerAlpha = if (isDark) 0.50f else 0.70f
     val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = containerAlpha)
     
     val borderAlpha = if (isDark) 0.4f else 0.6f
@@ -119,11 +119,11 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                     fontFamily = font,
                     fontWeight = FontWeight.Normal,
                     color = when {
-                        isAdbDisabledByUser -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        isAdbAvailable == false -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        isAdbDisabledByUser -> MaterialTheme.colorScheme.onSurfaceVariant
+                        isAdbAvailable == false -> MaterialTheme.colorScheme.error
                         selectedDevice != null -> MaterialTheme.colorScheme.onSurfaceVariant
                         unauthorizedDevices.isNotEmpty() -> accents.warning
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
