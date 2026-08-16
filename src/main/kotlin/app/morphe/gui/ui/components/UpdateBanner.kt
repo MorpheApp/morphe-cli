@@ -59,7 +59,7 @@ fun UpdateBanner(
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val uriHandler = LocalUriHandler.current
-    val shape = RoundedCornerShape(corners.medium)
+    val shape = RoundedCornerShape(corners.small)
 
     val accent = accents.secondary
 
@@ -83,8 +83,8 @@ fun UpdateBanner(
             )
             Text(
                 text = "Update available · v${info.latestVersion}",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
                 fontFamily = font,
                 color = accent
             )
@@ -94,7 +94,7 @@ fun UpdateBanner(
                 } else {
                     "from v${info.currentVersion}"
                 },
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontFamily = font,
                 fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -123,8 +123,8 @@ fun UpdateBanner(
                 Spacer(Modifier.width(3.dp))
                 Text(
                     text = "Download",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
                     fontFamily = font
                 )
             }
@@ -186,8 +186,8 @@ private fun DismissTextAction(
     ) {
         Text(
             text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
             fontFamily = font,
             color = textColor
         )
