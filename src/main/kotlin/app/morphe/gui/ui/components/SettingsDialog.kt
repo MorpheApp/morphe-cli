@@ -1735,7 +1735,7 @@ private fun ThemePreference.toDisplayName(): String {
     return when (this) {
         ThemePreference.LIGHT -> "Light"
         ThemePreference.DARK -> "Dark"
-        ThemePreference.AMOLED -> "AMOLED"
+        ThemePreference.PURE_BLACK -> "Pure black"
         ThemePreference.SYSTEM -> "System"
     }
 }
@@ -1744,7 +1744,7 @@ private fun ThemePreference.icon(): ImageVector {
     return when (this) {
         ThemePreference.LIGHT -> MorpheIcons.LightMode
         ThemePreference.DARK -> MorpheIcons.DarkMode
-        ThemePreference.AMOLED -> MorpheIcons.Contrast
+        ThemePreference.PURE_BLACK -> MorpheIcons.Contrast
         ThemePreference.SYSTEM -> MorpheIcons.Settings
     }
 }
@@ -1753,7 +1753,7 @@ private fun ThemePreference.accentColor(): Color {
     return when (this) {
         ThemePreference.LIGHT -> Color(0xFF005FAC)
         ThemePreference.DARK -> Color(0xFFA4C9FF)
-        ThemePreference.AMOLED -> Color(0xFFA4C9FF)
+        ThemePreference.PURE_BLACK -> Color(0xFFA4C9FF)
         ThemePreference.SYSTEM -> Color(0xFFA4C9FF)
     }
 }

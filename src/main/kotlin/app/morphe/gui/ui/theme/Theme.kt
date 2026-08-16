@@ -123,7 +123,7 @@ private val MorpheDarkColorScheme = darkColorScheme(
     onError = Color(0xFF690005),
 )
 
-private val MorpheAmoledColorScheme = darkColorScheme(
+private val MorphePureBlackColorScheme = darkColorScheme(
     primary = Color(0xFFA4C9FF),
     onPrimary = Color(0xFF00315D),
     primaryContainer = Color(0xFF004884),
@@ -173,12 +173,12 @@ private val MorpheLightColorScheme = lightColorScheme(
 enum class ThemePreference {
     LIGHT,
     DARK,
-    AMOLED,
+    PURE_BLACK,
     SYSTEM;
 
     /** Whether this theme uses dark color scheme (for resource qualifiers). */
     fun isDark(): Boolean = when (this) {
-        DARK, AMOLED -> true
+        DARK, PURE_BLACK -> true
         LIGHT -> false
         SYSTEM -> false // caller should check isSystemInDarkTheme()
     }
@@ -196,7 +196,7 @@ fun MorpheTheme(
 ) {
     val colorScheme = when (themePreference) {
         ThemePreference.DARK -> MorpheDarkColorScheme
-        ThemePreference.AMOLED -> MorpheAmoledColorScheme
+        ThemePreference.PURE_BLACK -> MorphePureBlackColorScheme
         ThemePreference.LIGHT -> MorpheLightColorScheme
         ThemePreference.SYSTEM -> {
             if (isSystemInDarkTheme()) MorpheDarkColorScheme else MorpheLightColorScheme
@@ -208,7 +208,7 @@ fun MorpheTheme(
     val monoFont = RobotoMono
     val accents = when (themePreference) {
         ThemePreference.DARK -> DarkAccents
-        ThemePreference.AMOLED -> DarkAccents
+        ThemePreference.PURE_BLACK -> DarkAccents
         ThemePreference.LIGHT -> LightAccents
         ThemePreference.SYSTEM -> if (isSystemInDarkTheme()) DarkAccents else LightAccents
     }
