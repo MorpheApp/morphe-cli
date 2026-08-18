@@ -1,3 +1,17 @@
+## [1.13.1-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.1-dev.1...v1.13.1-dev.2) (2026-08-18)
+
+
+### Bug Fixes
+
+* Update patcher dependency ([7ba5e1c](https://github.com/MorpheApp/morphe-desktop/commit/7ba5e1ca6fbda3e0a78cca978bff0c464bdd6256))
+
+## [1.13.1-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.0...v1.13.1-dev.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* Preserve manifest attributes in minimized jar ([#255](https://github.com/MorpheApp/morphe-desktop/issues/255)) ([e5684d9](https://github.com/MorpheApp/morphe-desktop/commit/e5684d99abf36b0b651708b81919ac2b0571b31c))
+
 # [1.13.0](https://github.com/MorpheApp/morphe-desktop/compare/v1.12.0...v1.13.0) (2026-08-06)
 
 
