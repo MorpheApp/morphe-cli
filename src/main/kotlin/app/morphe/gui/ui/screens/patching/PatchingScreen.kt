@@ -755,17 +755,15 @@ private fun ExpertProgressHeader(
             if (uiState.totalPatches > 0) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (uiState.status == PatchingStatus.COMPLETED)
-                        PatcherProgressTealColor.copy(alpha = 0.18f)
-                    else
-                        MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.border(1.dp, (if (uiState.status == PatchingStatus.COMPLETED) PatcherProgressTealColor else MaterialTheme.colorScheme.primary).copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                 ) {
                     Text(
                         text = "${uiState.patchedCount} / ${uiState.totalPatches}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = font,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = if (uiState.status == PatchingStatus.COMPLETED) PatcherProgressTealColor else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
@@ -791,14 +789,15 @@ private fun PercentageBadge(progress: Float) {
     val font = LocalMorpheFont.current
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.primaryContainer
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
     ) {
         Text(
             text = "${(progress * 100).toInt()}%",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = font,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
         )
     }
@@ -940,13 +939,10 @@ private fun PatcherInfoCard(
         CardVariant.Start -> MaterialTheme.colorScheme.primary
         CardVariant.Success -> PatcherProgressTealColor
     }
-    val bgColor = when (variant) {
-        CardVariant.Start -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-        CardVariant.Success -> PatcherProgressTealColor.copy(alpha = 0.10f)
-    }
+    val bgColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().border(1.dp, accentColor.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         color = bgColor,
         tonalElevation = 0.dp
