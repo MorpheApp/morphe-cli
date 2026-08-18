@@ -47,7 +47,6 @@ internal fun ErrorContent(
     val mono = LocalMorpheMono.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
     val cardBg = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-    val errorColor = MaterialTheme.colorScheme.error
     val accents = LocalMorpheAccents.current
 
     Column(
@@ -59,10 +58,10 @@ internal fun ErrorContent(
     ) {
         Text(
             text = "Patching failed",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
             fontFamily = font,
-            color = errorColor
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -158,7 +157,7 @@ internal fun ErrorContent(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             fontFamily = font,
-                            color = errorColor
+                            color = MaterialTheme.colorScheme.error
                         )
 
                         val clipboard = LocalClipboard.current

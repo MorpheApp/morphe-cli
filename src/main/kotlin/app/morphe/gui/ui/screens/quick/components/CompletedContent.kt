@@ -75,7 +75,7 @@ internal fun CompletedContent(
     ) {
         Text(
             text = "Patching complete",
-            fontSize = 14.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             fontFamily = font,
             color = MaterialTheme.colorScheme.onSurface
