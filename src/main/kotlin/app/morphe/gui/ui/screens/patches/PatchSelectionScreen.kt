@@ -20,9 +20,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -480,7 +477,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             else -> {
                 // Patch list — single-bundle renders flat (no box chrome),
                 // multi-bundle renders per-bundle collapsible boxes.
-                val lazyListState = rememberLazyListState()
+                val scrollState = rememberScrollState()
 
                 // Expand/collapse state for multi-bundle, keyed by bundleId.
                 // Default: all bundles expanded. Uses plain `remember` — state
@@ -489,28 +486,24 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 val collapsedBundles = remember { mutableStateListOf<String>() }
 
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    LazyColumn(
-                        state = lazyListState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         val showBanner = uiState.stripLibsStatus !is StripLibsStatus.NoNativeLibs
                         if (showBanner) {
-                            item(key = "strip_libs_banner") {
-                                StripLibsStatusBanner(status = uiState.stripLibsStatus)
-                            }
+                            StripLibsStatusBanner(status = uiState.stripLibsStatus)
                         }
 
                         if (isSingleBundle) {
                             // ── Flat rendering (single bundle, no chrome) ──
-                            val bundle = uiState.filteredBundles.firstOrNull() ?: return@LazyColumn
+                            val bundle = uiState.filteredBundles.firstOrNull() ?: return@Column
                             val bundleId = bundle.bundleId
                             val selectedInBundle = uiState.selectedByBundle[bundleId].orEmpty()
-                            items(
-                                items = bundle.patches,
-                                key = { it.uniqueId }
-                            ) { patch ->
+                            bundle.patches.forEach { patch ->
                                 PatchListItem(
                                     patch = patch,
                                     isSelected = selectedInBundle.contains(patch.uniqueId),
@@ -537,39 +530,37 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                                 bundlesById[fb.bundleId]?.patches?.isNotEmpty() == true
                             }
                             visibleBundles.forEach { bundle ->
-                                item(key = "bundle-${bundle.bundleId}") {
-                                    BundleBox(
-                                        bundle = bundle,
-                                        packageName = targetPackage,
-                                        selectedInBundle = uiState.selectedByBundle[bundle.bundleId].orEmpty(),
-                                        selectionMode = uiState.selectionModeFor(bundle.bundleId),
-                                        hasSavedForBundle = uiState.savedSelectedByBundle?.containsKey(bundle.bundleId) == true,
-                                        expanded = bundle.bundleId !in collapsedBundles,
-                                        searchActive = uiState.searchQuery.isNotBlank(),
-                                        onExpandToggle = {
-                                            if (bundle.bundleId in collapsedBundles) collapsedBundles.remove(bundle.bundleId)
-                                            else collapsedBundles.add(bundle.bundleId)
-                                        },
-                                        onTogglePatch = { patchId -> viewModel.togglePatch(bundle.bundleId, patchId) },
-                                        onSelectAll = { viewModel.selectAllInBundle(bundle.bundleId) },
-                                        onDeselectAll = { viewModel.deselectAllInBundle(bundle.bundleId) },
-                                        onApplyDefaults = { viewModel.applyPatchDefaultsInBundle(bundle.bundleId) },
-                                        onApplySaved = { viewModel.applySavedDefaultsInBundle(bundle.bundleId) },
-                                        getOptionValue = { patchName, optionKey, default ->
-                                            viewModel.getOptionValue(patchName, optionKey, default)
-                                        },
-                                        onOptionValueChange = { patchName, optionKey, value ->
-                                            viewModel.setOptionValue(patchName, optionKey, value)
-                                        },
-                                    )
-                                }
+                                BundleBox(
+                                    bundle = bundle,
+                                    packageName = targetPackage,
+                                    selectedInBundle = uiState.selectedByBundle[bundle.bundleId].orEmpty(),
+                                    selectionMode = uiState.selectionModeFor(bundle.bundleId),
+                                    hasSavedForBundle = uiState.savedSelectedByBundle?.containsKey(bundle.bundleId) == true,
+                                    expanded = bundle.bundleId !in collapsedBundles,
+                                    searchActive = uiState.searchQuery.isNotBlank(),
+                                    onExpandToggle = {
+                                        if (bundle.bundleId in collapsedBundles) collapsedBundles.remove(bundle.bundleId)
+                                        else collapsedBundles.add(bundle.bundleId)
+                                    },
+                                    onTogglePatch = { patchId -> viewModel.togglePatch(bundle.bundleId, patchId) },
+                                    onSelectAll = { viewModel.selectAllInBundle(bundle.bundleId) },
+                                    onDeselectAll = { viewModel.deselectAllInBundle(bundle.bundleId) },
+                                    onApplyDefaults = { viewModel.applyPatchDefaultsInBundle(bundle.bundleId) },
+                                    onApplySaved = { viewModel.applySavedDefaultsInBundle(bundle.bundleId) },
+                                    getOptionValue = { patchName, optionKey, default ->
+                                        viewModel.getOptionValue(patchName, optionKey, default)
+                                    },
+                                    onOptionValueChange = { patchName, optionKey, value ->
+                                        viewModel.setOptionValue(patchName, optionKey, value)
+                                    },
+                                )
                             }
                         }
                     }
 
                     VerticalScrollbar(
                         modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                        adapter = rememberScrollbarAdapter(lazyListState),
+                        adapter = rememberScrollbarAdapter(scrollState),
                         style = morpheScrollbarStyle()
                     )
                 }
@@ -1152,12 +1143,8 @@ private fun PatchOptionEditor(
             }
         }
         if (option.description.isNotBlank()) {
-            // customIcon's description is a long multi-line folder spec with a blank
-            // line after the first sentence — that blank line rendered as a gap. Show
-            // just its summary line (the full spec is handled by the studio / import).
-            val descText = if (option.key.equals("customIcon", ignoreCase = true))
-                option.description.lineSequence().firstOrNull { it.isNotBlank() }?.trim() ?: option.description
-            else option.description
+            val descText = option.description.lineSequence().firstOrNull { it.isNotBlank() }?.trim()
+                ?: option.description
             Text(
                 text = descText,
                 fontSize = 10.sp,
