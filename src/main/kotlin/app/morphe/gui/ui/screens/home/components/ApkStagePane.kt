@@ -105,6 +105,7 @@ internal fun DropPromptSection(
                 .fillMaxWidth()
                 .aspectRatio(1.4f)
                 .clip(RoundedCornerShape(corners.medium))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 .background(animatedBgColor)
                 .clickable { onBrowseClick() }
                 .drawBehind {

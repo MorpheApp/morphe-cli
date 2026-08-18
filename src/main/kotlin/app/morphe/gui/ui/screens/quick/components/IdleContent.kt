@@ -51,6 +51,7 @@ internal fun IdleContent(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(corners.medium))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .background(animatedBgColor)
             .clickable(enabled = !isAnalyzing) { onBrowse() }
             .drawBehind {
