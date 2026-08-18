@@ -155,9 +155,11 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                 )
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
                         .hoverable(backHover)
                         .clip(RoundedCornerShape(corners.small))
+                        .border(1.dp, if (uiState.isInProgress) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(corners.small))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(corners.small))
                         .background(backBg)
                         .clickable(enabled = !uiState.isInProgress) { navigator.pop() },
                     contentAlignment = Alignment.Center
@@ -165,10 +167,10 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                     Icon(
                         imageVector = MorpheIcons.ArrowBack,
                         contentDescription = "Back",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = if (uiState.isInProgress)
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -176,33 +178,23 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
 
                 // Title + status
                 if (uiState.hasAutoNavigated && (uiState.status == PatchingStatus.FAILED || uiState.status == PatchingStatus.CANCELLED)) {
-                    val statusColor = if (uiState.status == PatchingStatus.CANCELLED) accents.warning else MaterialTheme.colorScheme.error
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = if (uiState.status == PatchingStatus.CANCELLED) "Patching cancelled" else "Patching failed",
-                            color = statusColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
                             fontFamily = font
                         )
                     }
                 } else {
-                    Column {
-                        Text(
-                            text = "Patching",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = font,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = getStatusText(uiState.status),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            fontFamily = font,
-                            color = getStatusColor(uiState.status)
-                        )
-                    }
+                    Text(
+                        text = "Patching: ${getStatusText(uiState.status)}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
 
                 Spacer(Modifier.weight(1f))
@@ -227,6 +219,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                             .hoverable(cancelHover)
                             .clip(RoundedCornerShape(corners.small))
                             .border(1.dp, cancelBorder, RoundedCornerShape(corners.small))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                             .background(cancelBg)
                             .clickable { viewModel.cancelPatching() }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -336,7 +329,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                                                 strokeWidth = 1f
                                             )
                                         }
-                                        .background(accents.secondary.copy(alpha = 0.04f))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)).background(accents.secondary.copy(alpha = 0.08f))
                                         .padding(14.dp),
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
@@ -396,7 +389,7 @@ private fun FailureBottomBar(
                     strokeWidth = 1f
                 )
             }
-            .background(statusColor.copy(alpha = 0.04f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)).background(statusColor.copy(alpha = 0.08f))
             .padding(14.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -492,21 +485,10 @@ private fun getStatusText(status: PatchingStatus): String {
     return when (status) {
         PatchingStatus.IDLE -> "Ready"
         PatchingStatus.PREPARING -> "Preparing..."
-        PatchingStatus.PATCHING -> "Patching in progress..."
+        PatchingStatus.PATCHING -> "In progress..."
         PatchingStatus.COMPLETED -> "Completed"
         PatchingStatus.FAILED -> "Failed"
         PatchingStatus.CANCELLED -> "Cancelled"
-    }
-}
-
-@Composable
-private fun getStatusColor(status: PatchingStatus): Color {
-    val accents = LocalMorpheAccents.current
-    return when (status) {
-        PatchingStatus.COMPLETED -> accents.secondary
-        PatchingStatus.FAILED -> MaterialTheme.colorScheme.error
-        PatchingStatus.CANCELLED -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     }
 }
 
@@ -1519,6 +1501,10 @@ private fun ExpertFailureContent(
                 onClick = { navigator.popUntilRoot() },
                 modifier = Modifier.weight(1f).height(40.dp),
                 shape = RoundedCornerShape(corners.small),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
                 Text(

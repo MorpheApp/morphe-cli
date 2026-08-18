@@ -88,9 +88,8 @@ internal fun DropPromptSection(
     val corners = LocalMorpheCorners.current
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val bracketColor = if (isDragHovering) accents.primary.copy(alpha = 0.72f)
-        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-
+    val bracketColor = if (isDragHovering) accents.primary.copy(alpha = 0.7f)
+        else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     val targetBgColor = if (isDragHovering) accents.primary.copy(alpha = 0.08f) else Color.Transparent
     val animatedBgColor by animateColorAsState(targetValue = targetBgColor, animationSpec = tween(150))
 
@@ -189,12 +188,6 @@ internal fun ApkSelectedSection(
                 contentColor = warningColor
             )
         }
-        apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> {
-            ButtonDefaults.filledTonalButtonColors(
-                containerColor = accentColor.copy(alpha = 0.2f),
-                contentColor = accentColor
-            )
-        }
         else -> ButtonDefaults.filledTonalButtonColors()
     }
 
@@ -218,6 +211,7 @@ internal fun ApkSelectedSection(
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                 colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
@@ -306,7 +300,7 @@ internal fun AnalyzingSection() {
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

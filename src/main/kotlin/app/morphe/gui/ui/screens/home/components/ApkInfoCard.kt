@@ -61,7 +61,7 @@ fun ApkInfoCard(
                           
     val accentColor = when {
         isWarningState -> if (statusColorType == StatusColorType.PRIMARY) accents.warning else statusColorType.toColor()
-        statusColorType == StatusColorType.PRIMARY -> accents.secondary
+        statusColorType == StatusColorType.PRIMARY -> accents.primary
         else -> statusColorType.toColor()
     }
     val cardShape = RoundedCornerShape(corners.medium)
@@ -455,14 +455,6 @@ private fun StatusBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawLine(
-                    color = borderColor,
-                    start = Offset(20.dp.toPx(), 0f),
-                    end = Offset(size.width - 20.dp.toPx(), 0f),
-                    strokeWidth = 1f
-                )
-            }
             .background(color.copy(alpha = 0.04f))
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

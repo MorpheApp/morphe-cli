@@ -42,7 +42,7 @@ internal fun IdleContent(
     val accents = LocalMorpheAccents.current
     val font = LocalMorpheFont.current
     val bracketColor = if (isDragHovering) accents.primary.copy(alpha = 0.7f)
-        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+        else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
 
     val targetBgColor = if (isDragHovering) accents.primary.copy(alpha = 0.08f) else Color.Transparent
     val animatedBgColor by animateColorAsState(targetValue = targetBgColor, animationSpec = tween(150))

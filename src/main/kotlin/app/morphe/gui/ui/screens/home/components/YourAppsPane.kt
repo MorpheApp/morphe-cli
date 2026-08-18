@@ -191,7 +191,7 @@ private fun FilterChip(
         modifier = Modifier
             .clip(RoundedCornerShape(corner))
             .border(1.dp, border, RoundedCornerShape(corner))
-            .background(if (selected) accent.copy(alpha = 0.12f) else Color.Transparent)
+            .background(if (selected) accent.copy(alpha = 0.20f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .hoverable(hover)
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onClick)
@@ -203,7 +203,7 @@ private fun FilterChip(
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             fontFamily = font,
             color = if (selected) accent
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (count != null) {
             Text(
@@ -211,7 +211,7 @@ private fun FilterChip(
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = font,
-                color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -1091,18 +1091,18 @@ internal fun YourAppsEmptyHint(title: String, subtitle: String, font: FontFamily
     ) {
         Text(
             text = title,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = font,
-            color = homeMutedTextColor(0.55f),
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = subtitle,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = homeMutedTextColor(0.4f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
     }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -256,9 +257,11 @@ fun ResultScreenContent(outputPath: String) {
                 )
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
                         .hoverable(backHover)
                         .clip(RoundedCornerShape(corners.small))
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = if (isSystemInDarkTheme()) 0.4f else 0.6f), RoundedCornerShape(corners.small))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(corners.small))
                         .background(backBg)
                         .clickable { navigator.pop() },
                     contentAlignment = Alignment.Center
@@ -266,8 +269,8 @@ fun ResultScreenContent(outputPath: String) {
                     Icon(
                         imageVector = MorpheIcons.ArrowBack,
                         contentDescription = "Back",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -276,10 +279,10 @@ fun ResultScreenContent(outputPath: String) {
                 // Title
                 Text(
                     text = "Patching complete",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = font,
-                    color = accents.secondary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(Modifier.weight(1f))
@@ -1171,7 +1174,7 @@ private fun OutputFileCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 14.dp)
             ) {
                 Text(
                     text = "Output file",
@@ -1197,7 +1200,7 @@ private fun OutputFileCard(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = font,
-                        color = accents.secondary
+                        color = accents.primary
                     )
                 }
                 Spacer(Modifier.height(2.dp))
@@ -1216,15 +1219,7 @@ private fun OutputFileCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .drawBehind {
-                        drawLine(
-                            color = borderColor,
-                            start = Offset(20.dp.toPx(), 0f),
-                            end = Offset(size.width - 20.dp.toPx(), 0f),
-                            strokeWidth = 1f
-                        )
-                    }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val folderHover = remember { MutableInteractionSource() }

@@ -244,8 +244,9 @@ internal fun SupportedAppsListPane(
                     Text(
                         text = if (searchQuery.isBlank()) "No supported apps"
                                else "No apps match \"$searchQuery\"",
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         fontFamily = font,
+                        fontWeight = FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -333,8 +334,8 @@ internal fun SlimSearchField(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val borderColor by animateColorAsState(
-        if (isFocused) MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+        if (isFocused) MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(150),
         label = "slimSearchBorder"
     )
@@ -356,6 +357,7 @@ internal fun SlimSearchField(
             .fillMaxWidth()
             .height(dimens.controlHeight)
             .clip(RoundedCornerShape(corners.small))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
             .border(1.dp, borderColor, RoundedCornerShape(corners.small)),
         decorationBox = { innerTextField ->
             Row(

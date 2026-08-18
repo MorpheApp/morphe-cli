@@ -183,10 +183,10 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     var showCommandPreview by remember { mutableStateOf(false) }
     var continueOnError by remember { mutableStateOf(false) }
 
-    val dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
     Column(modifier = Modifier.fillMaxSize()) {
-        val containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+        val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
         val baseBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
         val baseIconTint = MaterialTheme.colorScheme.primary
 
@@ -235,23 +235,21 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             // Title block
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = "Select patches",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = font,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 14.sp
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${uiState.selectedCount} of ${uiState.totalCount} selected",
                     fontSize = 11.sp,
                     fontFamily = font,
                     fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 8.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -270,7 +268,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         .size(34.dp)
                         .hoverable(cmdHover)
                         .clip(RoundedCornerShape(corners.small))
-                        .background(if (cmdActive) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else containerColor)
+                        .background(containerColor)
+                        .background(if (cmdActive) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent)
                         .border(1.dp, cmdBorder, RoundedCornerShape(corners.small))
                         .clickable { showCommandPreview = !showCommandPreview },
                     contentAlignment = Alignment.Center
@@ -313,7 +312,8 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                             .size(34.dp)
                             .hoverable(errHover)
                             .clip(RoundedCornerShape(corners.small))
-                            .background(if (continueOnError) MaterialTheme.colorScheme.error.copy(alpha = 0.08f) else containerColor)
+                            .background(containerColor)
+                            .background(if (continueOnError) MaterialTheme.colorScheme.error.copy(alpha = 0.08f) else Color.Transparent)
                             .border(1.dp, errBorder, RoundedCornerShape(corners.small))
                             .clickable { continueOnError = !continueOnError },
                         contentAlignment = Alignment.Center
@@ -469,10 +469,10 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 ) {
                     Text(
                         text = "No patches match your search",
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Normal,
                         fontFamily = font,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -637,7 +637,7 @@ private fun PatchSearchBar(
         val searchFocused = remember { mutableStateOf(false) }
         val searchBorderColor by animateColorAsState(
             if (searchFocused.value) accents.primary.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+            else MaterialTheme.colorScheme.outlineVariant,
             animationSpec = tween(150)
         )
 
@@ -646,6 +646,7 @@ private fun PatchSearchBar(
                 .weight(1f)
                 .height(32.dp)
                 .clip(RoundedCornerShape(corners.small))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                 .border(1.dp, searchBorderColor, RoundedCornerShape(corners.small))
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -712,7 +713,7 @@ private fun PatchSearchBar(
             when {
                 showOnlySelected -> accents.primary.copy(alpha = 0.5f)
                 isChipHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                else -> MaterialTheme.colorScheme.outlineVariant
             },
             animationSpec = tween(150)
         )
@@ -722,6 +723,7 @@ private fun PatchSearchBar(
                 .height(38.dp)
                 .hoverable(chipHover)
                 .clip(RoundedCornerShape(corners.small))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                 .border(1.dp, chipBorder, RoundedCornerShape(corners.small))
                 .then(
                     if (showOnlySelected) Modifier.background(
@@ -1451,16 +1453,16 @@ private fun SelectionModeChip(
             !enabled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
             active -> accents.primary.copy(alpha = 0.55f)
             isHovered -> accents.primary.copy(alpha = 0.35f)
-            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+            else -> MaterialTheme.colorScheme.outlineVariant
         },
         animationSpec = tween(150)
     )
     val bgColor by animateColorAsState(
         when {
-            !enabled -> Color.Transparent
-            active -> accents.primary.copy(alpha = 0.10f)
-            isHovered -> accents.primary.copy(alpha = 0.04f)
-            else -> Color.Transparent
+            !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            active -> accents.primary.copy(alpha = 0.20f)
+            isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         },
         animationSpec = tween(150)
     )
@@ -1698,8 +1700,8 @@ private fun StripLibsStatusBanner(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.small))
-            .border(1.dp, dotColor.copy(alpha = 0.18f), RoundedCornerShape(corners.small))
-            .background(dotColor.copy(alpha = 0.035f))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(corners.small))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1731,13 +1733,13 @@ private fun StripLibsStatusBanner(
         )
         Spacer(modifier = Modifier.weight(1f))
         keepChips.forEach { arch ->
-            ArchChip(label = arch, accent = dotColor, role = ArchChipRole.KEEP)
+            ArchChip(label = arch, accent = accents.secondary, role = ArchChipRole.KEEP)
         }
         stripChips.forEach { arch ->
-            ArchChip(label = arch, accent = dotColor, role = ArchChipRole.STRIP)
+            ArchChip(label = arch, accent = MaterialTheme.colorScheme.error, role = ArchChipRole.STRIP)
         }
         notInApkChips.forEach { arch ->
-            ArchChip(label = arch, accent = dotColor, role = ArchChipRole.NOT_IN_APK)
+            ArchChip(label = arch, accent = accents.primary, role = ArchChipRole.NOT_IN_APK)
         }
     }
 }
@@ -1760,8 +1762,8 @@ private fun ArchChip(
     //                 signals "this preference has no effect on this APK"
     val borderAlpha = when (role) {
         ArchChipRole.KEEP -> 0.4f
-        ArchChipRole.STRIP -> 0.15f
-        ArchChipRole.NOT_IN_APK -> 0.12f
+        ArchChipRole.STRIP -> 0.3f
+        ArchChipRole.NOT_IN_APK -> 0.3f
     }
     val textAlpha = when (role) {
         ArchChipRole.KEEP -> 1f

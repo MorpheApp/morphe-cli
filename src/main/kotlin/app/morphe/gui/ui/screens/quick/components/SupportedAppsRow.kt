@@ -104,7 +104,7 @@ internal fun SupportedAppsRow(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Normal,
                         fontFamily = font,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -166,6 +166,7 @@ internal fun SupportedAppsRow(
                             .fillMaxWidth()
                             .height(32.dp)
                             .clip(RoundedCornerShape(corners.small))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                             .border(1.dp, searchBorder, RoundedCornerShape(corners.small)),
                         decorationBox = { innerTextField ->
                             Row(

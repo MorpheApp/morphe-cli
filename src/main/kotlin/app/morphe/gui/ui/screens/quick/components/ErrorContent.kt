@@ -46,7 +46,7 @@ internal fun ErrorContent(
     val font = LocalMorpheFont.current
     val mono = LocalMorpheMono.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
-    val cardBg = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f)
+    val cardBg = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
     val errorColor = MaterialTheme.colorScheme.error
     val accents = LocalMorpheAccents.current
 
@@ -241,6 +241,10 @@ internal fun ErrorContent(
                     .weight(1f)
                     .height(42.dp),
                 shape = RoundedCornerShape(corners.small),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Text(

@@ -225,7 +225,7 @@ internal fun UpdateAvailableDialog(
             }
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            MorpheDialogButton("Use my APK", LocalMorpheAccents.current.secondary, filled = false, onClick = onUseMyApk)
+            MorpheDialogButton("Use my APK", MaterialTheme.colorScheme.onSurfaceVariant, filled = false, onClick = onUseMyApk)
             MorpheDialogButton("Get v$targetVersion", LocalMorpheAccents.current.primary, filled = true, onClick = onGetNewer)
         }
     }

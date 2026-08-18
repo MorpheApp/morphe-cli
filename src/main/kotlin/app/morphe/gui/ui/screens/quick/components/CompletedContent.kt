@@ -75,10 +75,10 @@ internal fun CompletedContent(
     ) {
         Text(
             text = "Patching complete",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
             fontFamily = font,
-            color = accents.secondary
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -108,7 +108,7 @@ internal fun CompletedContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                        .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 14.dp)
                 ) {
                     Text(
                         text = "Output file",
@@ -134,7 +134,7 @@ internal fun CompletedContent(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                             fontFamily = font,
-                            color = accents.secondary
+                            color = accents.primary
                         )
                     }
                 }
@@ -143,15 +143,7 @@ internal fun CompletedContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .drawBehind {
-                            drawLine(
-                                color = borderColor,
-                                start = Offset(20.dp.toPx(), 0f),
-                                end = Offset(size.width - 20.dp.toPx(), 0f),
-                                strokeWidth = 1f
-                            )
-                        }
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val folderHover = remember { MutableInteractionSource() }
@@ -343,7 +335,7 @@ internal fun CompletedContent(
                         fontSize = 11.sp,
                         fontFamily = font,
                         fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

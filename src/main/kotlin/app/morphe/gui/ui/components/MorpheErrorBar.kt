@@ -76,7 +76,8 @@ fun MorpheErrorBar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.small))
             .border(1.dp, borderCol, RoundedCornerShape(corners.small))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surface)
+            .background(accentColor.copy(alpha = 0.10f))
             .drawBehind {
                 drawRect(
                     color = accentColor,

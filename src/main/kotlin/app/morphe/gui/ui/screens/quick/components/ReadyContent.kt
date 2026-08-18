@@ -65,7 +65,7 @@ internal fun ReadyContent(
                           
     val accentColor = when {
         isWarningState -> if (statusColorType == StatusColorType.PRIMARY) accents.warning else statusColorType.toColor()
-        statusColorType == StatusColorType.PRIMARY -> accents.secondary
+        statusColorType == StatusColorType.PRIMARY -> accents.primary
         else -> statusColorType.toColor()
     }
     
@@ -77,12 +77,6 @@ internal fun ReadyContent(
             ButtonDefaults.filledTonalButtonColors(
                 containerColor = warningColor.copy(alpha = 0.2f),
                 contentColor = warningColor
-            )
-        }
-        apkInfo.versionStatus == VersionStatus.LATEST_STABLE -> {
-            ButtonDefaults.filledTonalButtonColors(
-                containerColor = accentColor.copy(alpha = 0.2f),
-                contentColor = accentColor
             )
         }
         else -> ButtonDefaults.filledTonalButtonColors()
