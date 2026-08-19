@@ -197,7 +197,7 @@ fun SettingsDialog(
                 ) {
                     when (selectedCategory) {
                         "Appearance" -> {
-                            SectionLabel("Theme", font)
+                            SectionLabel("Theme", font, icon = MorpheIcons.Palette)
                             Spacer(Modifier.height(8.dp))
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -250,7 +250,7 @@ fun SettingsDialog(
 
                             SettingsDivider(borderColor)
 
-                            SectionLabel("Background animation", font)
+                            SectionLabel("Background animation", font, icon = MorpheIcons.Wallpaper)
                             Spacer(Modifier.height(8.dp))
 
                             val bgState = LocalBackgroundType.current
@@ -322,7 +322,8 @@ fun SettingsDialog(
                                     scope.launch { configRepo.setEnableParallax(it) }
                                 },
                                 accentColor = accents.primary,
-                                font = font
+                                font = font,
+                                icon = MorpheIcons.Mouse
                             )
                         }
                         "Advanced" -> {
@@ -333,7 +334,8 @@ fun SettingsDialog(
                                 onCheckedChange = onExpertModeChange,
                                 accentColor = accents.primary,
                                 font = font,
-                                enabled = !isPatching
+                                enabled = !isPatching,
+                                icon = MorpheIcons.Psychology
                             )
 
                             SettingsDivider(borderColor)
@@ -345,7 +347,8 @@ fun SettingsDialog(
                                 onCheckedChange = onAutoRouteLinksChange,
                                 accentColor = accents.primary,
                                 font = font,
-                                enabled = !isPatching
+                                enabled = !isPatching,
+                                icon = MorpheIcons.Route
                             )
                             AnimatedVisibility(visible = autoRouteLinksAfterInstall) {
                                 Column {
@@ -377,6 +380,7 @@ fun SettingsDialog(
                                 borderColor = borderColor,
                                 enabled = !isPatching,
                                 expanded = collapsibleSectionStates["SIGNING"] == true,
+                                icon = MorpheIcons.Key,
                                 onExpandedChange = { onCollapsibleSectionToggle("SIGNING", it) }
                             )
 
@@ -389,6 +393,7 @@ fun SettingsDialog(
                                 accentColor = accents.primary,
                                 enabled = !isPatching,
                                 expanded = collapsibleSectionStates["STRIP LIBS"] == true,
+                                icon = MorpheIcons.LayersClear,
                                 onExpandedChange = { onCollapsibleSectionToggle("STRIP LIBS", it) }
                             )
 
@@ -401,7 +406,8 @@ fun SettingsDialog(
                                 onCheckedChange = onDeveloperOptionsChange,
                                 accentColor = accents.primary,
                                 font = font,
-                                enabled = !isPatching
+                                enabled = !isPatching,
+                                icon = MorpheIcons.CodeXml
                             )
 
                             SettingsDivider(borderColor)
@@ -412,6 +418,7 @@ fun SettingsDialog(
                                 borderColor = borderColor,
                                 enabled = !isPatching,
                                 expanded = collapsibleSectionStates["RUNTIME LOGS"] == true,
+                                icon = MorpheIcons.DeployedCode,
                                 onExpandedChange = { onCollapsibleSectionToggle("RUNTIME LOGS", it) }
                             )
                         }
@@ -423,7 +430,8 @@ fun SettingsDialog(
                                 onCheckedChange = onAutoCleanupChange,
                                 accentColor = accents.primary,
                                 font = font,
-                                enabled = !isPatching
+                                enabled = !isPatching,
+                                icon = MorpheIcons.DeleteSweep
                             )
 
                             SettingsDivider(borderColor)
@@ -435,6 +443,7 @@ fun SettingsDialog(
                                 font = font,
                                 borderColor = borderColor,
                                 enabled = !isPatching,
+                                icon = MorpheIcons.Update
                             )
 
                             SettingsDivider(borderColor)
@@ -444,7 +453,8 @@ fun SettingsDialog(
                                 onDefaultOutputDirectoryChange = onDefaultOutputDirectoryChange,
                                 font = font,
                                 borderColor = borderColor,
-                                enabled = !isPatching
+                                enabled = !isPatching,
+                                icon = MorpheIcons.FolderOpen
                             )
 
                             SettingsDivider(borderColor)
@@ -457,7 +467,8 @@ fun SettingsDialog(
                                 onCheckedChange = onAutoStartAdbChange,
                                 accentColor = accents.primary,
                                 font = font,
-                                enabled = !isPatching
+                                enabled = !isPatching,
+                                icon = MorpheIcons.ADB
                             )
                         }
                     }
@@ -487,15 +498,35 @@ fun SettingsDialog(
 @Composable
 private fun SectionLabel(
     text: String,
-    font: FontFamily
+    font: FontFamily,
+    icon: ImageVector? = null
 ) {
-    Text(
-        text = text,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        fontFamily = font
-    )
+    if (icon != null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                fontFamily = font
+            )
+        }
+    } else {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            fontFamily = font
+        )
+    }
 }
 
 @Composable
@@ -504,6 +535,7 @@ private fun CollapsibleSection(
     font: FontFamily,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    icon: ImageVector? = null,
     content: @Composable () -> Unit
 ) {
     val corners = LocalMorpheCorners.current
@@ -528,13 +560,24 @@ private fun CollapsibleSection(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-            fontFamily = font
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                fontFamily = font
+            )
+        }
         Icon(
             imageVector = MorpheIcons.KeyboardArrowLeft,
             contentDescription = if (expanded) "Collapse" else "Expand",
@@ -583,6 +626,7 @@ private fun UpdateChannelRow(
     font: FontFamily,
     borderColor: Color,
     enabled: Boolean,
+    icon: ImageVector? = null,
 ) {
     val corners = LocalMorpheCorners.current
     val alpha = if (enabled) 1f else 0.5f
@@ -601,22 +645,33 @@ private fun UpdateChannelRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Check for updates",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
-                fontFamily = font,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = description,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-                fontFamily = font,
-            )
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+            }
+            Column {
+                Text(
+                    text = "Check for updates",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                    fontFamily = font,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    fontFamily = font,
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         UpdateChannelSegmentedToggle(
@@ -717,7 +772,8 @@ private fun SettingToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     accentColor: Color,
     font: FontFamily,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    icon: ImageVector? = null
 ) {
     val alpha = if (enabled) 1f else 0.5f
     Row(
@@ -725,22 +781,33 @@ private fun SettingToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
-                fontFamily = font
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = if (!enabled) "Disabled while patching" else description,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-                fontFamily = font
-            )
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+            }
+            Column {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                    fontFamily = font
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = if (!enabled) "Disabled while patching" else description,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    fontFamily = font
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         MorpheSwitch(
@@ -758,7 +825,8 @@ private fun OutputFolderSection(
     onDefaultOutputDirectoryChange: (String?) -> Unit,
     font: FontFamily,
     borderColor: Color,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
 ) {
     val corners = LocalMorpheCorners.current
     val dimens = LocalMorpheDimens.current
@@ -768,7 +836,7 @@ private fun OutputFolderSection(
     val outputDirExists = outputDir?.isDirectory == true
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SectionLabel("Output folder", font)
+        SectionLabel("Output folder", font, icon = icon)
         Spacer(Modifier.height(6.dp))
 
         Text(
@@ -914,12 +982,14 @@ private fun StripLibsSection(
     accentColor: Color,
     enabled: Boolean = true,
     expanded: Boolean = false,
+    icon: ImageVector? = null,
     onExpandedChange: (Boolean) -> Unit = {}
 ) {
     CollapsibleSection(
         title = "Strip libs",
         font = font,
         expanded = expanded,
+        icon = icon,
         onExpandedChange = onExpandedChange
     ) {
         Column(
@@ -967,6 +1037,7 @@ private fun SigningSection(
     borderColor: Color,
     enabled: Boolean = true,
     expanded: Boolean = false,
+    icon: ImageVector? = null,
     onExpandedChange: (Boolean) -> Unit = {}
 ) {
     val corners = LocalMorpheCorners.current
@@ -991,6 +1062,7 @@ private fun SigningSection(
             title = "Signing",
             font = font,
             expanded = expanded,
+            icon = icon,
             onExpandedChange = onExpandedChange
         ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1836,6 +1908,7 @@ private fun PatchedAppRuntimeLogsSection(
     borderColor: Color,
     enabled: Boolean = true,
     expanded: Boolean = false,
+    icon: ImageVector? = null,
     onExpandedChange: (Boolean) -> Unit = {}
 ) {
     val monitorState by DeviceMonitor.state.collectAsState()
@@ -1852,6 +1925,7 @@ private fun PatchedAppRuntimeLogsSection(
         title = "Patched app runtime logs",
         font = font,
         expanded = expanded,
+        icon = icon,
         onExpandedChange = onExpandedChange
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
