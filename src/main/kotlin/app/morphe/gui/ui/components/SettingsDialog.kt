@@ -118,7 +118,7 @@ fun SettingsDialog(
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-
+    var selectedCategory by remember { mutableStateOf("Appearance") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -134,290 +134,334 @@ fun SettingsDialog(
             )
         },
         text = {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .widthIn(min = 340.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
+            Row(
+                modifier = Modifier.width(640.dp).height(480.dp)
             ) {
-                // ── Theme ──
-                SectionLabel("Theme", font)
-                Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                Column(
+                    modifier = Modifier
+                        .width(160.dp)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    ThemePreference.entries.forEach { theme ->
-                        val isSelected = currentTheme == theme
-                        val themeAccent = theme.accentColor()
+                    val navItems = listOf(
+                        "Appearance" to MorpheIcons.Palette,
+                        "Advanced" to MorpheIcons.Tune,
+                        "System" to MorpheIcons.Monitor
+                    )
+                    navItems.forEach { (category, icon) ->
+                        val isSelected = selectedCategory == category
                         val hoverInteraction = remember { MutableInteractionSource() }
-                        val isHovered by hoverInteraction.collectIsHoveredAsState()
                         Row(
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .clip(RoundedCornerShape(corners.small))
-                                .border(
-                                    1.dp,
-                                    when {
-                                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                        isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                        else -> borderColor
-                                    },
-                                    RoundedCornerShape(corners.small)
-                                )
                                 .background(
                                     if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                                     else Color.Transparent
                                 )
                                 .hoverable(hoverInteraction)
-                                .clickable { onThemeChange(theme) }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                .clickable { selectedCategory = category }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Themed icon
                             Icon(
-                                imageVector = theme.icon(),
+                                imageVector = icon,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
                             )
+                            Spacer(Modifier.width(12.dp))
                             Text(
-                                text = theme.toDisplayName(),
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                text = category,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                 fontFamily = font,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
                 }
 
-                SettingsDivider(borderColor)
+                Spacer(modifier = Modifier.width(8.dp))
+                VerticalDivider(color = borderColor, modifier = Modifier.fillMaxHeight())
+                Spacer(modifier = Modifier.width(16.dp))
 
-                // ── Background Animation ──
-                SectionLabel("Background animation", font)
-                Spacer(Modifier.height(8.dp))
-
-                val bgState = LocalBackgroundType.current
-                val parallaxState = LocalEnableParallax.current
-                val scope = rememberCoroutineScope()
-                val configRepo: ConfigRepository = koinInject()
-
-                val onBgChange: (BackgroundType) -> Unit = { newBg ->
-                    bgState.value = newBg
-                    scope.launch { configRepo.setBackgroundType(newBg.name) }
-                }
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    BackgroundType.entries.forEach { bgType ->
-                        val isSelected = bgState.value == bgType
-                        val hoverInteraction = remember { MutableInteractionSource() }
-                        val isHovered by hoverInteraction.collectIsHoveredAsState()
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(corners.small))
-                                .border(
-                                    1.dp,
-                                    when {
-                                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                        isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                        else -> borderColor
-                                    },
-                                    RoundedCornerShape(corners.small)
-                                )
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                    else Color.Transparent
-                                )
-                                .hoverable(hoverInteraction)
-                                .clickable { onBgChange(bgType) }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = bgType.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                    when (selectedCategory) {
+                        "Appearance" -> {
+                            SectionLabel("Theme", font)
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                ThemePreference.entries.forEach { theme ->
+                                    val isSelected = currentTheme == theme
+                                    val themeAccent = theme.accentColor()
+                                    val hoverInteraction = remember { MutableInteractionSource() }
+                                    val isHovered by hoverInteraction.collectIsHoveredAsState()
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(corners.small))
+                                            .border(
+                                                1.dp,
+                                                when {
+                                                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                    isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                                    else -> borderColor
+                                                },
+                                                RoundedCornerShape(corners.small)
+                                            )
+                                            .background(
+                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                else Color.Transparent
+                                            )
+                                            .hoverable(hoverInteraction)
+                                            .clickable { onThemeChange(theme) }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = theme.icon(),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = theme.toDisplayName(),
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            fontFamily = font,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            SettingsDivider(borderColor)
+
+                            SectionLabel("Background animation", font)
+                            Spacer(Modifier.height(8.dp))
+
+                            val bgState = LocalBackgroundType.current
+                            val parallaxState = LocalEnableParallax.current
+                            val scope = rememberCoroutineScope()
+                            val configRepo: ConfigRepository = koinInject()
+
+                            val onBgChange: (BackgroundType) -> Unit = { newBg ->
+                                bgState.value = newBg
+                                scope.launch { configRepo.setBackgroundType(newBg.name) }
+                            }
+
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                BackgroundType.entries.forEach { bgType ->
+                                    val isSelected = bgState.value == bgType
+                                    val hoverInteraction = remember { MutableInteractionSource() }
+                                    val isHovered by hoverInteraction.collectIsHoveredAsState()
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(corners.small))
+                                            .border(
+                                                1.dp,
+                                                when {
+                                                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                    isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                                    else -> borderColor
+                                                },
+                                                RoundedCornerShape(corners.small)
+                                            )
+                                            .background(
+                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                else Color.Transparent
+                                            )
+                                            .hoverable(hoverInteraction)
+                                            .clickable { onBgChange(bgType) }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = bgType.icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = bgType.displayName,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            fontFamily = font,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(14.dp))
+
+                            SettingToggleRow(
+                                label = "Parallax effect",
+                                description = "Smooth background shifting when moving the mouse",
+                                checked = parallaxState.value,
+                                onCheckedChange = {
+                                    parallaxState.value = it
+                                    scope.launch { configRepo.setEnableParallax(it) }
+                                },
+                                accentColor = accents.primary,
+                                font = font
                             )
-                            Text(
-                                text = bgType.displayName,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                fontFamily = font,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        "Advanced" -> {
+                            SettingToggleRow(
+                                label = "Expert mode",
+                                description = "Full control over patch selection and configuration",
+                                checked = useExpertMode,
+                                onCheckedChange = onExpertModeChange,
+                                accentColor = accents.primary,
+                                font = font,
+                                enabled = !isPatching
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            SettingToggleRow(
+                                label = "Route links to patched app",
+                                description = "After installing via ADB, make the patched app open its supported web links instead of the browser or the stock/default app",
+                                checked = autoRouteLinksAfterInstall,
+                                onCheckedChange = onAutoRouteLinksChange,
+                                accentColor = accents.primary,
+                                font = font,
+                                enabled = !isPatching
+                            )
+                            AnimatedVisibility(visible = autoRouteLinksAfterInstall) {
+                                Column {
+                                    Spacer(Modifier.height(12.dp))
+                                    SettingToggleRow(
+                                        label = "Disable stock app's links",
+                                        description = "Also stop the original app from opening these links (only when a " +
+                                            "rename patch was used and the stock app is installed). Reversible.",
+                                        checked = disableStockLinksAfterInstall,
+                                        onCheckedChange = onDisableStockLinksChange,
+                                        accentColor = accents.primary,
+                                        font = font,
+                                        enabled = !isPatching
+                                    )
+                                }
+                            }
+
+                            SettingsDivider(borderColor)
+
+                            SigningSection(
+                                keystorePath = keystorePath,
+                                keystorePassword = keystorePassword,
+                                keystoreAlias = keystoreAlias,
+                                keystoreEntryPassword = keystoreEntryPassword,
+                                onKeystorePathChange = onKeystorePathChange,
+                                onCredentialsChange = onKeystoreCredentialsChange,
+                                font = font,
+                                accentColor = accents.primary,
+                                borderColor = borderColor,
+                                enabled = !isPatching,
+                                expanded = collapsibleSectionStates["SIGNING"] == true,
+                                onExpandedChange = { onCollapsibleSectionToggle("SIGNING", it) }
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            StripLibsSection(
+                                keepArchitectures = keepArchitectures,
+                                onChange = onKeepArchitecturesChange,
+                                font = font,
+                                accentColor = accents.primary,
+                                enabled = !isPatching,
+                                expanded = collapsibleSectionStates["STRIP LIBS"] == true,
+                                onExpandedChange = { onCollapsibleSectionToggle("STRIP LIBS", it) }
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            SettingToggleRow(
+                                label = "Developer options",
+                                description = "For patch developers. Unlocks a suite of workflow options for building and testing patches (see the documentation for the full list). For now, that's pointing a local source at a folder so Morphe always loads its newest .mpp",
+                                checked = developerOptions,
+                                onCheckedChange = onDeveloperOptionsChange,
+                                accentColor = accents.primary,
+                                font = font,
+                                enabled = !isPatching
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            PatchedAppRuntimeLogsSection(
+                                font = font,
+                                accentColor = accents.primary,
+                                borderColor = borderColor,
+                                enabled = !isPatching,
+                                expanded = collapsibleSectionStates["RUNTIME LOGS"] == true,
+                                onExpandedChange = { onCollapsibleSectionToggle("RUNTIME LOGS", it) }
+                            )
+                        }
+                        "System" -> {
+                            SettingToggleRow(
+                                label = "Auto-cleanup temp files",
+                                description = "Delete temporary files after patching",
+                                checked = autoCleanupTempFiles,
+                                onCheckedChange = onAutoCleanupChange,
+                                accentColor = accents.primary,
+                                font = font,
+                                enabled = !isPatching
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            UpdateChannelRow(
+                                selected = updateChannelPreference,
+                                onChange = onUpdateChannelChange,
+                                accentColor = accents.primary,
+                                font = font,
+                                borderColor = borderColor,
+                                enabled = !isPatching,
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            OutputFolderSection(
+                                defaultOutputDirectory = defaultOutputDirectory,
+                                onDefaultOutputDirectoryChange = onDefaultOutputDirectoryChange,
+                                font = font,
+                                borderColor = borderColor,
+                                enabled = !isPatching
+                            )
+
+                            SettingsDivider(borderColor)
+
+                            SettingToggleRow(
+                                label = "Auto-start ADB",
+                                description = "Spawn the ADB daemon on launch so connected devices are monitored. " +
+                                    "When off, Morphe never starts the server, and install/push features are disabled",
+                                checked = autoStartAdb,
+                                onCheckedChange = onAutoStartAdbChange,
+                                accentColor = accents.primary,
+                                font = font,
+                                enabled = !isPatching
                             )
                         }
                     }
                 }
-
-                Spacer(Modifier.height(14.dp))
-
-                SettingToggleRow(
-                    label = "Parallax effect",
-                    description = "Smooth background shifting when moving the mouse",
-                    checked = parallaxState.value,
-                    onCheckedChange = {
-                        parallaxState.value = it
-                        scope.launch { configRepo.setEnableParallax(it) }
-                    },
-                    accentColor = accents.primary,
-                    font = font
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Expert Mode ──
-                SettingToggleRow(
-                    label = "Expert mode",
-                    description = "Full control over patch selection and configuration",
-                    checked = useExpertMode,
-                    onCheckedChange = onExpertModeChange,
-                    accentColor = accents.primary,
-                    font = font,
-                    enabled = !isPatching
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Auto Cleanup ──
-                SettingToggleRow(
-                    label = "Auto-cleanup temp files",
-                    description = "Delete temporary files after patching",
-                    checked = autoCleanupTempFiles,
-                    onCheckedChange = onAutoCleanupChange,
-                    accentColor = accents.primary,
-                    font = font,
-                    enabled = !isPatching
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Update Channel ──
-                UpdateChannelRow(
-                    selected = updateChannelPreference,
-                    onChange = onUpdateChannelChange,
-                    accentColor = accents.primary,
-                    font = font,
-                    borderColor = borderColor,
-                    enabled = !isPatching,
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Output Folder ──
-                OutputFolderSection(
-                    defaultOutputDirectory = defaultOutputDirectory,
-                    onDefaultOutputDirectoryChange = onDefaultOutputDirectoryChange,
-                    font = font,
-                    borderColor = borderColor,
-                    enabled = !isPatching
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Signing / Keystore ──
-                SigningSection(
-                    keystorePath = keystorePath,
-                    keystorePassword = keystorePassword,
-                    keystoreAlias = keystoreAlias,
-                    keystoreEntryPassword = keystoreEntryPassword,
-                    onKeystorePathChange = onKeystorePathChange,
-                    onCredentialsChange = onKeystoreCredentialsChange,
-                    font = font,
-                    accentColor = accents.primary,
-                    borderColor = borderColor,
-                    enabled = !isPatching,
-                    expanded = collapsibleSectionStates["SIGNING"] == true,
-                    onExpandedChange = { onCollapsibleSectionToggle("SIGNING", it) }
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Strip Libs ──
-                StripLibsSection(
-                    keepArchitectures = keepArchitectures,
-                    onChange = onKeepArchitecturesChange,
-                    font = font,
-                    accentColor = accents.primary,
-                    enabled = !isPatching,
-                    expanded = collapsibleSectionStates["STRIP LIBS"] == true,
-                    onExpandedChange = { onCollapsibleSectionToggle("STRIP LIBS", it) }
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Auto-start ADB ──
-                SettingToggleRow(
-                    label = "Auto-start ADB",
-                    description = "Spawn the ADB daemon on launch so connected devices are monitored. " +
-                        "When off, Morphe never starts the server, and install/push features are disabled",
-                    checked = autoStartAdb,
-                    onCheckedChange = onAutoStartAdbChange,
-                    accentColor = accents.primary,
-                    font = font,
-                    enabled = !isPatching
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Developer options ──
-                SettingToggleRow(
-                    label = "Developer options",
-                    description = "For patch developers. Unlocks a suite of workflow options for building and testing patches (see the documentation for the full list). For now, that's pointing a local source at a folder so Morphe always loads its newest .mpp",
-                    checked = developerOptions,
-                    onCheckedChange = onDeveloperOptionsChange,
-                    accentColor = accents.primary,
-                    font = font,
-                    enabled = !isPatching
-                )
-
-                SettingsDivider(borderColor)
-
-                // ── Link handling ("open with") ──
-                SettingToggleRow(
-                    label = "Route links to patched app",
-                    description = "After installing via ADB, make the patched app open its supported web links instead of the browser or the stock/default app",
-                    checked = autoRouteLinksAfterInstall,
-                    onCheckedChange = onAutoRouteLinksChange,
-                    accentColor = accents.primary,
-                    font = font,
-                    enabled = !isPatching
-                )
-                AnimatedVisibility(visible = autoRouteLinksAfterInstall) {
-                    Column {
-                        Spacer(Modifier.height(12.dp))
-                        SettingToggleRow(
-                            label = "Disable stock app's links",
-                            description = "Also stop the original app from opening these links (only when a " +
-                                "rename patch was used and the stock app is installed). Reversible.",
-                            checked = disableStockLinksAfterInstall,
-                            onCheckedChange = onDisableStockLinksChange,
-                            accentColor = accents.primary,
-                            font = font,
-                            enabled = !isPatching
-                        )
-                    }
-                }
-
-                SettingsDivider(borderColor)
-
-                // ── Patched App Runtime Logs ──
-                PatchedAppRuntimeLogsSection(
-                    font = font,
-                    accentColor = accents.primary,
-                    borderColor = borderColor,
-                    enabled = !isPatching,
-                    expanded = collapsibleSectionStates["RUNTIME LOGS"] == true,
-                    onExpandedChange = { onCollapsibleSectionToggle("RUNTIME LOGS", it) }
-                )
-
             }
         },
         confirmButton = {
