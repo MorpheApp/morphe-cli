@@ -524,7 +524,7 @@ class QuickPatchViewModel(
                 phase = QuickPatchPhase.PATCHING,
                 statusMessage = "Patching...",
                 completedPatches = 0,
-                totalPatches = _uiState.value.compatiblePatches.size
+                totalPatches = _uiState.value.compatiblePatches.count { it.isEnabled }
             )
 
             // Generate output path via the shared engine helper — same path
