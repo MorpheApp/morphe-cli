@@ -7,6 +7,7 @@ package app.morphe.gui.ui.screens.result
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1272,13 +1273,18 @@ private fun PatchAnotherButton(
     val font = LocalMorpheFont.current
     val navigator = LocalNavigator.currentOrThrow
     val accents = LocalMorpheAccents.current
-    FilledTonalButton(
+    OutlinedButton(
         onClick = { navigator.popUntilRoot() },
         modifier = Modifier
             .widthIn(max = 520.dp)
             .fillMaxWidth()
             .height(42.dp),
-        shape = RoundedCornerShape(corners.small)
+        shape = RoundedCornerShape(corners.small),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            contentColor = MaterialTheme.colorScheme.primary
+        )
     ) {
         Text(
             text = "Patch another",

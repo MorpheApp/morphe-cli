@@ -33,15 +33,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import app.morphe.engine.MorpheData
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
@@ -53,7 +58,9 @@ import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.model.UpdateChannelPreference
 import app.morphe.gui.data.repository.ConfigRepository
+import app.morphe.gui.ui.components.MorpheColorPickerCard
 import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.theme.THEME_PRESET_COLORS
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheDimens
@@ -112,13 +119,16 @@ fun SettingsDialog(
     disableStockLinksAfterInstall: Boolean = false,
     onDisableStockLinksChange: (Boolean) -> Unit = {},
     collapsibleSectionStates: Map<String, Boolean> = emptyMap(),
-    onCollapsibleSectionToggle: (id: String, expanded: Boolean) -> Unit = { _, _ -> }
+    onCollapsibleSectionToggle: (id: String, expanded: Boolean) -> Unit = { _, _ -> },
+    customAccentColorArgb: Int? = null,
+    onCustomAccentColorChange: (Int?) -> Unit = {}
 ) {
     val corners = LocalMorpheCorners.current
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     var selectedCategory by remember { mutableStateOf("Appearance") }
+    var showCustomColorDialog by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -244,6 +254,91 @@ fun SettingsDialog(
                                             color = if (isSelected) MaterialTheme.colorScheme.primary
                                                     else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
+                                    }
+                                }
+                            }
+
+                            SettingsDivider(borderColor)
+
+                            SectionLabel("Accent color", font, icon = MorpheIcons.Palette)
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(corners.small))
+                                        .border(
+                                            2.dp,
+                                            if (customAccentColorArgb == null) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            RoundedCornerShape(corners.small)
+                                        )
+                                        .clickable { onCustomAccentColorChange(null) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = MorpheIcons.Close,
+                                        contentDescription = "Clear accent color",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                THEME_PRESET_COLORS.forEach { preset ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(RoundedCornerShape(corners.small))
+                                            .background(preset)
+                                            .border(
+                                                2.dp,
+                                                if (customAccentColorArgb == preset.toArgb()) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                RoundedCornerShape(corners.small)
+                                            )
+                                            .clickable { onCustomAccentColorChange(preset.toArgb()) }
+                                    )
+                                }
+
+                                val isCustomNonPreset = customAccentColorArgb != null && THEME_PRESET_COLORS.none { it.toArgb() == customAccentColorArgb }
+                                Box {
+                                    val yOff = with(LocalDensity.current) { 46.dp.roundToPx() }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(RoundedCornerShape(corners.small))
+                                            .background(
+                                                if (isCustomNonPreset) Color(customAccentColorArgb) else MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                            .border(
+                                                2.dp,
+                                                if (isCustomNonPreset) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                RoundedCornerShape(corners.small)
+                                            )
+                                            .clickable { showCustomColorDialog = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = MorpheIcons.Edit,
+                                            contentDescription = "Custom Accent Color",
+                                            tint = if (isCustomNonPreset) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (showCustomColorDialog) {
+                                        Popup(
+                                            alignment = Alignment.TopStart,
+                                            offset = IntOffset(0, yOff),
+                                            onDismissRequest = { showCustomColorDialog = false },
+                                            properties = PopupProperties(focusable = true)
+                                        ) {
+                                            MorpheColorPickerCard(
+                                                argb = customAccentColorArgb ?: 0xFFF44336.toInt(),
+                                                accents = accents,
+                                                font = font,
+                                                showAlphaAndSaved = false,
+                                                onPick = { onCustomAccentColorChange(it) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -540,7 +635,7 @@ private fun CollapsibleSection(
 ) {
     val corners = LocalMorpheCorners.current
     val rotationAngle by animateFloatAsState(
-        targetValue = if (expanded) -90f else 0f,
+        targetValue = if (expanded) 270f else 180f,
         animationSpec = tween(200)
     )
     val hoverInteraction = remember { MutableInteractionSource() }
@@ -584,7 +679,7 @@ private fun CollapsibleSection(
             modifier = Modifier
                 .size(16.dp)
                 .graphicsLayer { rotationZ = rotationAngle },
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isHovered) 0.5f else 0.3f)
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = if (isHovered) 1f else 0.8f)
         )
     }
 
@@ -650,7 +745,7 @@ private fun UpdateChannelRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    tint = accentColor.copy(alpha = alpha),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(12.dp))
@@ -786,7 +881,7 @@ private fun SettingToggleRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    tint = accentColor.copy(alpha = alpha),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(12.dp))

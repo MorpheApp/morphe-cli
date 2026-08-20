@@ -74,12 +74,15 @@ internal fun ReadyContent(
     val buttonColors = when {
         showWarning -> {
             val warningColor = statusColorType.toColor()
-            ButtonDefaults.filledTonalButtonColors(
-                containerColor = warningColor.copy(alpha = 0.2f),
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = warningColor.copy(alpha = 0.15f),
                 contentColor = warningColor
             )
         }
-        else -> ButtonDefaults.filledTonalButtonColors()
+        else -> ButtonDefaults.outlinedButtonColors(
+            containerColor = accentColor.copy(alpha = 0.15f),
+            contentColor = accentColor
+        )
     }
 
     val enabledPatches = compatiblePatches.filter { it.isEnabled }
@@ -599,12 +602,14 @@ internal fun ReadyContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        FilledTonalButton(
+        val buttonBorderColor = if (showWarning) statusColorType.toColor() else accentColor
+        OutlinedButton(
             onClick = onPatch,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             colors = buttonColors,
+            border = BorderStroke(1.dp, buttonBorderColor.copy(alpha = 0.35f)),
             shape = RoundedCornerShape(corners.small)
         ) {
             Text(

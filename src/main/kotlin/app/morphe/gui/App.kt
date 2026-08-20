@@ -76,6 +76,10 @@ val LocalEnableParallax = compositionLocalOf<MutableState<Boolean>> {
     error("No LocalEnableParallax provided")
 }
 
+val LocalCustomAccentColor = compositionLocalOf<MutableState<Int?>> {
+    error("No LocalCustomAccentColor provided") 
+}
+
 /**
  * Auto-start ADB preference. Exposed as a composition local so the
  * SettingsDialog (writer) and DeviceIndicator + install buttons (readers)
@@ -145,6 +149,12 @@ private fun appContent(
             if (isSimplifiedMode) ActiveMode.QUICK else ActiveMode.EXPERT
         )
         isLoading = false
+    }
+
+    val customAccentColorState = remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(Unit) {
+        val config = configRepository.loadConfig()
+        customAccentColorState.value = config.customAccentColorArgb
     }
 
     // Callback for changing theme
@@ -225,7 +235,7 @@ private fun appContent(
     val settingsDialogVisible = remember { mutableStateOf(false) }
     val isPatchingState = remember { mutableStateOf(false) }
 
-    MorpheTheme(themePreference = themePreference) {
+    MorpheTheme(themePreference = themePreference, customAccentColorArgb = customAccentColorState.value) {
         CompositionLocalProvider(
             LocalThemeState provides themeState,
             LocalModeState provides modeState,
@@ -234,7 +244,8 @@ private fun appContent(
             LocalIsPatching provides isPatchingState,
             LocalBackgroundType provides backgroundTypeState,
             LocalEnableParallax provides enableParallaxState,
-            LocalParallaxState provides parallaxState
+            LocalParallaxState provides parallaxState,
+            LocalCustomAccentColor provides customAccentColorState
         ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic
             // light contrast) to match the active theme's surface color.

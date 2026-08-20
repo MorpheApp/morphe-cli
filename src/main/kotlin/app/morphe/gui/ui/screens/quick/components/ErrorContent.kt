@@ -255,15 +255,16 @@ internal fun ErrorContent(
                 )
             }
             
-            FilledTonalButton(
+            OutlinedButton(
                 onClick = onViewLogs,
                 modifier = Modifier
                     .weight(1f)
                     .height(42.dp),
                 shape = RoundedCornerShape(corners.small),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-                    contentColor = MaterialTheme.colorScheme.onSurface
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    contentColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text(

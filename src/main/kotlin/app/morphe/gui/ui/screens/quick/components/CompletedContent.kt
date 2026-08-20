@@ -356,13 +356,18 @@ internal fun CompletedContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Patch another button
-        FilledTonalButton(
+        OutlinedButton(
             onClick = onPatchAnother,
             modifier = Modifier
                 .widthIn(max = 480.dp)
                 .fillMaxWidth()
                 .height(42.dp),
-            shape = RoundedCornerShape(corners.small)
+            shape = RoundedCornerShape(corners.small),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             Text(
                 text = "Patch another",

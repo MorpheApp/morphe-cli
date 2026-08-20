@@ -173,19 +173,20 @@ internal fun PatchingContent(
 
         val isWrappingUp = progress >= 1f
 
-        val cancelHover = remember { MutableInteractionSource() }
-        val isCancelHovered by cancelHover.collectIsHoveredAsState()
-        val cancelBg by animateColorAsState(if (isWrappingUp) Color.Transparent else if (isCancelHovered) MaterialTheme.colorScheme.error.copy(alpha = 0.25f) else MaterialTheme.colorScheme.error.copy(alpha = 0.15f), animationSpec = tween(150))
-
-        Box(
+        OutlinedButton(
+            onClick = onCancel,
+            enabled = !isWrappingUp,
             modifier = Modifier
                 .widthIn(min = 160.dp)
-                .height(44.dp)
-                .then(if (!isWrappingUp) Modifier.hoverable(cancelHover) else Modifier)
-                .clip(RoundedCornerShape(corners.small))
-                .background(cancelBg)
-                .clickable(enabled = !isWrappingUp, onClick = onCancel),
-            contentAlignment = Alignment.Center
+                .height(44.dp),
+            shape = RoundedCornerShape(corners.small),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                contentColor = MaterialTheme.colorScheme.error,
+                disabledContainerColor = Color.Transparent,
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            ),
+            border = BorderStroke(1.dp, if (isWrappingUp) Color.Transparent else MaterialTheme.colorScheme.error.copy(alpha = 0.35f))
         ) {
             Text(
                 text = "Cancel",

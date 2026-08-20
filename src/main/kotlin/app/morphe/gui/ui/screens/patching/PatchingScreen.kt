@@ -7,6 +7,7 @@ package app.morphe.gui.ui.screens.patching
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -436,6 +437,12 @@ private fun LogEntryRow(
         LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     
+    val badgeTextColor = when (entry.level) {
+        LogLevel.ERROR -> MaterialTheme.colorScheme.error
+        LogLevel.WARNING -> accents.warning
+        LogLevel.INFO -> MaterialTheme.colorScheme.onSurface
+    }
+    
     val badge = when (entry.level) {
         LogLevel.ERROR -> "E"
         LogLevel.WARNING -> "W"
@@ -455,7 +462,7 @@ private fun LogEntryRow(
                 text = badge,
                 fontFamily = mono,
                 fontWeight = FontWeight.Medium,
-                color = text,
+                color = badgeTextColor,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 fontSize = 10.sp
             )
@@ -1510,13 +1517,14 @@ private fun ExpertFailureContent(
                     fontWeight = FontWeight.Normal
                 )
             }
-            FilledTonalButton(
+            OutlinedButton(
                 onClick = { showLogViewer = true },
                 modifier = Modifier.weight(1f).height(40.dp),
                 shape = RoundedCornerShape(corners.small),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-                    contentColor = MaterialTheme.colorScheme.onSurface
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    contentColor = MaterialTheme.colorScheme.primary
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {

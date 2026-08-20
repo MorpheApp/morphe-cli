@@ -30,6 +30,7 @@ import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.UpdateChecker
 import app.morphe.gui.LocalAdbPreference
+import app.morphe.gui.LocalCustomAccentColor
 import app.morphe.gui.LocalIsPatching
 import app.morphe.gui.LocalModeState
 import app.morphe.gui.LocalOnSettingsDismiss
@@ -61,6 +62,7 @@ fun SettingsDialogHost() {
     val updateCheckRepository: UpdateCheckRepository = koinInject()
     val scope = rememberCoroutineScope()
 
+    var customAccentColorArgb by LocalCustomAccentColor.current
     var autoCleanupTempFiles by remember { mutableStateOf(true) }
     var defaultOutputDirectory by remember { mutableStateOf<String?>(null) }
     var keystorePath by remember { mutableStateOf<String?>(null) }
@@ -186,6 +188,11 @@ fun SettingsDialogHost() {
             onCollapsibleSectionToggle = { id, expanded ->
                 collapsibleSectionStates = collapsibleSectionStates + (id to expanded)
                 scope.launch { configRepository.setCollapsibleSectionExpanded(id, expanded) }
+            },
+            customAccentColorArgb = customAccentColorArgb,
+            onCustomAccentColorChange = {
+                customAccentColorArgb = it
+                scope.launch { configRepository.setCustomAccentColorArgb(it) }
             }
         )
     }

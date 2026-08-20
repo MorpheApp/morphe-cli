@@ -102,6 +102,14 @@ class ConfigRepository {
         val current = loadConfig()
         saveConfig(current.copy(enableParallax = enabled))
     }
+    
+    /**
+     * Update custom accent color.
+     */
+    suspend fun setCustomAccentColorArgb(color: Int?) {
+        val current = loadConfig()
+        saveConfig(current.copy(customAccentColorArgb = color))
+    }
 
     /**
      * Update patch channel preference.

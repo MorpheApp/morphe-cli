@@ -10,6 +10,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -581,7 +582,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 ) {
                     val patchEnabled = uiState.selectedCount > 0
 
-                    FilledTonalButton(
+                    OutlinedButton(
                         onClick = {
                             val config = viewModel.createPatchConfig(continueOnError)
                             navigator.push(PatchingScreen(config))
@@ -590,6 +591,11 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(42.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                         shape = RoundedCornerShape(corners.small)
                     ) {
                         Text(

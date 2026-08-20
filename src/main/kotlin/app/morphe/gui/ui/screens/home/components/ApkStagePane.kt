@@ -184,12 +184,15 @@ internal fun ApkSelectedSection(
         isWarningState -> {
             // For unsupported or limited info, use accents.warning instead of statusColorType if status is PRIMARY
             val warningColor = if (statusColorType == StatusColorType.PRIMARY) accents.warning else statusColorType.toColor()
-            ButtonDefaults.filledTonalButtonColors(
-                containerColor = warningColor.copy(alpha = 0.2f),
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = warningColor.copy(alpha = 0.15f),
                 contentColor = warningColor
             )
         }
-        else -> ButtonDefaults.filledTonalButtonColors()
+        else -> ButtonDefaults.outlinedButtonColors(
+            containerColor = accents.primary.copy(alpha = 0.15f),
+            contentColor = accents.primary
+        )
     }
 
     Column(
@@ -223,11 +226,15 @@ internal fun ApkSelectedSection(
                     fontFamily = font
                 )
             }
-            FilledTonalButton(
+            val buttonBorderColor = if (showWarning) {
+                if (statusColorType == StatusColorType.PRIMARY) accents.warning else statusColorType.toColor()
+            } else accents.primary
+            OutlinedButton(
                 onClick = onContinueClick,
                 enabled = patchesLoaded,
                 modifier = Modifier.widthIn(min = 160.dp).height(44.dp),
                 colors = buttonColors,
+                border = BorderStroke(1.dp, buttonBorderColor.copy(alpha = 0.35f)),
                 shape = RoundedCornerShape(corners.small),
                 interactionSource = remember { MutableInteractionSource() }
             ) {

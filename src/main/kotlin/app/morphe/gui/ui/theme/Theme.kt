@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -27,6 +28,26 @@ object MorpheColors {
     val TextLight = Color(0xFFE3E3E3)
     val TextDark = Color(0xFF1C1C1C)
 }
+
+// Morphe Preset Colors
+val THEME_PRESET_COLORS = listOf(
+    Color(0xFF6750A4),
+    Color(0xFF386641),
+    Color(0xFF0061A4),
+    Color(0xFF8E24AA),
+    Color(0xFFEF6C00),
+    Color(0xFF00897B),
+    Color(0xFFD81B60),
+    Color(0xFF5C6BC0),
+    Color(0xFF43A047),
+    Color(0xFF1DE9B6),
+    Color(0xFFFFC400),
+    Color(0xFF00B8D4),
+    Color(0xFFD32F2F),
+    Color(0xFFAFB42B),
+    Color(0xFF795548),
+    Color(0xFF546E7A)
+)
 
 // ════════════════════════════════════════════════════════════════════
 //  ACCENT COLOR SYSTEM
@@ -192,9 +213,10 @@ enum class ThemePreference {
 @Composable
 fun MorpheTheme(
     themePreference: ThemePreference = ThemePreference.SYSTEM,
+    customAccentColorArgb: Int? = null,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when (themePreference) {
+    val baseColorScheme = when (themePreference) {
         ThemePreference.DARK -> MorpheDarkColorScheme
         ThemePreference.PURE_BLACK -> MorphePureBlackColorScheme
         ThemePreference.LIGHT -> MorpheLightColorScheme
@@ -203,14 +225,53 @@ fun MorpheTheme(
         }
     }
 
+    val customPrimary = customAccentColorArgb?.let { Color(it) }
+
+    val colorScheme = if (customPrimary != null) {
+        val isDark = baseColorScheme.background.luminance() < 0.5f
+        val secondary = customPrimary.shiftLightness(if (isDark) 0.15f else -0.15f)
+        val tertiary = customPrimary.shiftLightness(if (isDark) -0.10f else 0.10f)
+        val primaryContainer = customPrimary.shiftLightness(if (isDark) 0.25f else -0.25f)
+        val secondaryContainer = customPrimary.shiftLightness(if (isDark) 0.35f else -0.35f)
+        
+        baseColorScheme.copy(
+            primary = customPrimary,
+            onPrimary = customPrimary.contrastingForeground(),
+            secondary = secondary,
+            onSecondary = secondary.contrastingForeground(),
+            tertiary = tertiary,
+            onTertiary = tertiary.contrastingForeground(),
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = primaryContainer.contrastingForeground(),
+            secondaryContainer = secondaryContainer,
+            onSecondaryContainer = secondaryContainer.contrastingForeground(),
+            surfaceTint = customPrimary
+        )
+    } else {
+        baseColorScheme
+    }
+
     val corners = Corners
     val font = Roboto
     val monoFont = RobotoMono
-    val accents = when (themePreference) {
+    val baseAccents = when (themePreference) {
         ThemePreference.DARK -> DarkAccents
         ThemePreference.PURE_BLACK -> DarkAccents
         ThemePreference.LIGHT -> LightAccents
         ThemePreference.SYSTEM -> if (isSystemInDarkTheme()) DarkAccents else LightAccents
+    }
+
+    val accents = if (customPrimary != null) {
+        val isDark = baseColorScheme.background.luminance() < 0.5f
+        val secondary = customPrimary.shiftLightness(if (isDark) 0.15f else -0.15f)
+        val tertiary = customPrimary.shiftLightness(if (isDark) -0.10f else 0.10f)
+        baseAccents.copy(
+            primary = customPrimary,
+            secondary = secondary,
+            tertiary = tertiary
+        )
+    } else {
+        baseAccents
     }
 
     CompositionLocalProvider(
@@ -225,4 +286,67 @@ fun MorpheTheme(
             content = content
         )
     }
+}
+
+fun Color.shiftLightness(delta: Float): Color {
+    val hsl = FloatArray(3)
+    colorToHSL(this, hsl)
+    hsl[2] = (hsl[2] + delta).coerceIn(0f, 1f)
+    return hslToColor(hsl)
+}
+
+fun Color.contrastingForeground(): Color {
+    return if (this.luminance() > 0.5f) Color.Black else Color.White
+}
+
+private fun colorToHSL(color: Color, hsl: FloatArray) {
+    val r = color.red
+    val g = color.green
+    val b = color.blue
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    var h = 0f
+    var s = 0f
+    val l = (max + min) / 2f
+    if (max != min) {
+        val d = max - min
+        s = if (l > 0.5f) d / (2f - max - min) else d / (max + min)
+        h = when (max) {
+            r -> (g - b) / d + (if (g < b) 6f else 0f)
+            g -> (b - r) / d + 2f
+            b -> (r - g) / d + 4f
+            else -> 0f
+        }
+        h /= 6f
+    }
+    hsl[0] = h * 360f
+    hsl[1] = s
+    hsl[2] = l
+}
+
+private fun hslToColor(hsl: FloatArray): Color {
+    val h = hsl[0] / 360f
+    val s = hsl[1]
+    val l = hsl[2]
+    var r = l
+    var g = l
+    var b = l
+    if (s != 0f) {
+        val q = if (l < 0.5f) l * (1f + s) else l + s - l * s
+        val p = 2f * l - q
+        r = hueToRGB(p, q, h + 1f / 3f)
+        g = hueToRGB(p, q, h)
+        b = hueToRGB(p, q, h - 1f / 3f)
+    }
+    return Color(r, g, b)
+}
+
+private fun hueToRGB(p: Float, q: Float, t: Float): Float {
+    var t0 = t
+    if (t0 < 0f) t0 += 1f
+    if (t0 > 1f) t0 -= 1f
+    if (t0 < 1f / 6f) return p + (q - p) * 6f * t0
+    if (t0 < 1f / 2f) return q
+    if (t0 < 2f / 3f) return p + (q - p) * (2f / 3f - t0) * 6f
+    return p
 }
