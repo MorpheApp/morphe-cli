@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import oshi.SystemInfo
 
 class PatchingViewModel(
     private val config: PatchConfig,
@@ -101,13 +102,22 @@ class PatchingViewModel(
             )
             
             val startTime = System.currentTimeMillis()
+            val cpuSampler = CpuUsageSampler()
+            val ioSampler = IoUsageSampler()
+
             val memoryJob = launch(Dispatchers.Default) {
                 while (true) {
                     val runtime = Runtime.getRuntime()
                     val usedMemoryMb = ((runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)).toInt()
 
+                    val coreLoads = cpuSampler.sample()
+                    val ioSample = ioSampler.sample()
+
                     _uiState.update { it.copy(
-                        heapSamples = (it.heapSamples + usedMemoryMb).takeLast(60)
+                        heapSamples = (it.heapSamples + usedMemoryMb).takeLast(60),
+                        cpuCoreLoads = coreLoads.ifEmpty { it.cpuCoreLoads },
+                        ioSamples = if (ioSample != null) (it.ioSamples + ioSample).takeLast(60) else it.ioSamples,
+                        ioPeakKbPerSec = if (ioSample != null) maxOf(it.ioPeakKbPerSec, ioSample.totalKbPerSec) else it.ioPeakKbPerSec
                     ) }
                     delay(500.milliseconds)
                 }
@@ -353,6 +363,9 @@ data class PatchingUiState(
     
     // Expert Mode Fields
     val heapSamples: List<Int> = emptyList(),
+    val cpuCoreLoads: List<Int> = emptyList(),
+    val ioSamples: List<IoUsage> = emptyList(),
+    val ioPeakKbPerSec: Int = 0,
     val heapLimitMb: Int = 0,
     val apkSizeMb: String = "?",
     val androidVersion: String = "?",
@@ -378,4 +391,60 @@ data class PatchingUiState(
     // Only show determinate progress if we've actually received progress updates from CLI
     val hasProgress: Boolean
         get() = hasReceivedProgressUpdate && progress > 0f
+}
+
+data class IoUsage(val readKbPerSec: Int, val writeKbPerSec: Int, val totalKbPerSec: Int = readKbPerSec + writeKbPerSec)
+
+/**
+ * Storage throughput of the patcher process.
+ * Uses OSHI for cross-platform compatibility (Windows, macOS, Linux).
+ */
+class IoUsageSampler {
+    private val os = SystemInfo().operatingSystem
+    private val currentProcess = os.getProcess(os.processId)
+
+    private var previousRead = -1L
+    private var previousWrite = -1L
+    private var previousUptimeMs = 0L
+
+    fun sample(): IoUsage? {
+        currentProcess.updateAttributes()
+        val read = currentProcess.bytesRead
+        val write = currentProcess.bytesWritten
+
+        val uptimeMs = System.currentTimeMillis()
+        val elapsed = uptimeMs - previousUptimeMs
+        val hadReading = previousRead >= 0L
+        val readDelta = read - previousRead
+        val writeDelta = write - previousWrite
+
+        previousRead = read
+        previousWrite = write
+        previousUptimeMs = uptimeMs
+
+        if (!hadReading || elapsed <= 0L) return null
+
+        return IoUsage(
+            readKbPerSec = rate(readDelta, elapsed),
+            writeKbPerSec = rate(writeDelta, elapsed)
+        )
+    }
+
+    private fun rate(bytes: Long, elapsedMs: Long) =
+        ((bytes * 1000) / (elapsedMs * 1024)).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+}
+
+/**
+ * Per-core CPU load.
+ * Uses OSHI for cross-platform compatibility (Windows, macOS, Linux).
+ */
+class CpuUsageSampler {
+    private val processor = SystemInfo().hardware.processor
+    private var previousTicks = processor.processorCpuLoadTicks
+
+    fun sample(): List<Int> {
+        val loads = processor.getProcessorCpuLoadBetweenTicks(previousTicks)
+        previousTicks = processor.processorCpuLoadTicks
+        return loads.map { (it * 100).toInt().coerceIn(0, 100) }
+    }
 }

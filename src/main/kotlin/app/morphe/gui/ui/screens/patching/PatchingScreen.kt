@@ -8,6 +8,7 @@ package app.morphe.gui.ui.screens.patching
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +30,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -718,7 +721,7 @@ private fun ExpertProgressHeader(
                 modifier = Modifier.weight(1f, fill = false)
             )
 
-            PercentageBadge(progress = smoothProgress)
+            PercentageBadge(progress = smoothProgress, status = uiState.status)
         }
 
         // Progress bar
@@ -752,9 +755,8 @@ private fun ExpertProgressHeader(
 
             if (uiState.totalPatches > 0) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.border(1.dp, (if (uiState.status == PatchingStatus.COMPLETED) PatcherProgressTealColor else MaterialTheme.colorScheme.primary).copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    shape = CircleShape,
+                    color = if (uiState.status == PatchingStatus.COMPLETED) PatcherProgressTealColor.copy(alpha = 0.18f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                 ) {
                     Text(
                         text = "${uiState.patchedCount} / ${uiState.totalPatches}",
@@ -772,30 +774,42 @@ private fun ExpertProgressHeader(
         AnimatedVisibility(
             visible = uiState.heapSamples.isNotEmpty()
         ) {
-            HeapUsageGraph(
-                samples = uiState.heapSamples,
-                maxHeapMb = uiState.heapLimitMb,
-                modifier = Modifier.fillMaxWidth(),
-                font = font
-            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HeapUsageGraph(
+                    samples = uiState.heapSamples,
+                    maxHeapMb = uiState.heapLimitMb,
+                    modifier = Modifier.weight(1f),
+                    font = font
+                )
+                IoUsageGraph(
+                    samples = uiState.ioSamples,
+                    modifier = Modifier.weight(1f),
+                    font = font
+                )
+                CpuUsageGraph(
+                    coreLoads = uiState.cpuCoreLoads,
+                    modifier = Modifier.weight(1f),
+                    font = font
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PercentageBadge(progress: Float) {
+private fun PercentageBadge(progress: Float, status: PatchingStatus) {
     val font = LocalMorpheFont.current
+    val isCompleted = status == PatchingStatus.COMPLETED
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary
     ) {
         Text(
             text = "${(progress * 100).toInt()}%",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = font,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
         )
     }
@@ -834,50 +848,60 @@ private fun HeapUsageGraph(
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top
             ) {
+                Box(modifier = Modifier.height(12.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(barColor))
+                }
                 Text(
                     text = "Memory usage",
                     fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp
-                )
-                Text(
-                    text = "${samples.lastOrNull() ?: 0} MB / $maxHeapMb MB",
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp
                 )
             }
+
+            Text(
+                text = "${samples.lastOrNull() ?: 0} MB",
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
 
             val slotCount = 60
             val padded = List(slotCount - samples.size) { 0 } + samples.takeLast(slotCount)
 
-            Row(
+            Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(36.dp),
-                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                verticalAlignment = Alignment.Bottom
+                    .height(36.dp)
             ) {
+                if (padded.isEmpty()) return@Canvas
+                val gap = 1.dp.toPx()
+                val barWidth = (size.width - (gap * (slotCount - 1))) / slotCount
+                val corner = CornerRadius(2.dp.toPx())
+                val minimumHeight = size.height * 0.04f
                 val redThresholdForMaxColor = 1.0f
                 val smoothStart = 0.7f
                 val memoryFractionRollingAverageSamples = 3
                 var memoryFractionAverage = 0.0
 
-                padded.forEach { sample ->
+                padded.forEachIndexed { index, sample ->
                     val memoryUsage = if (maxHeapMb > 0) {
                         (sample / maxHeapMb.toFloat()).coerceIn(0f, 1f)
                     } else 0f
@@ -894,28 +918,216 @@ private fun HeapUsageGraph(
                             .toFloat()
                     }
 
-                    val color = lerp(barColor, warnColor, t)
+                    val color = lerp(barColor, warnColor, t).copy(alpha = 0.75f)
+                    val activeFraction = maxOf(memoryUsage, 0.04f)
+                    val left = index * (barWidth + gap)
 
-                    Box(modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                                .background(if (sample > 0) trackColor.copy(alpha = 0.3f) else Color.Transparent)
+                    drawRoundRect(
+                        color = trackColor.copy(alpha = 0.12f),
+                        topLeft = Offset(left, 0f),
+                        size = Size(barWidth, size.height),
+                        cornerRadius = corner
+                    )
+
+                    if (sample > 0) {
+                        val barHeight = (size.height * activeFraction).coerceAtLeast(minimumHeight)
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(left, size.height - barHeight),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = corner
                         )
-                        if (memoryUsage > 0f) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(memoryUsage)
-                                    .align(Alignment.BottomCenter)
-                                    .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                                    .background(color.copy(alpha = 0.75f))
-                            )
-                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IoUsageGraph(
+    samples: List<IoUsage>,
+    modifier: Modifier = Modifier,
+    font: FontFamily
+) {
+    val mono = LocalMorpheMono.current
+    val accentColor = MaterialTheme.colorScheme.secondary
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+    val current = samples.lastOrNull()
+    val formatRate = { kbPerSec: Int -> 
+        if (kbPerSec >= 1024) "%.1f MB/s".format(kbPerSec / 1024f) else "$kbPerSec KB/s"
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(modifier = Modifier.height(12.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(accentColor))
+                }
+                Text(
+                    text = "Storage I/O",
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp
+                )
+            }
+
+            Text(
+                text = current?.let { formatRate(it.totalKbPerSec) } ?: "0.0 MB/s",
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+
+            val slotCount = 60
+
+            val peak = (samples.maxOfOrNull { it.totalKbPerSec } ?: 0).toFloat()
+            val fractions = samples.map { if (peak > 0f) (it.totalKbPerSec / peak).coerceIn(0f, 1f) else 0f }
+            val padded = List(slotCount - fractions.size) { 0f } + fractions.takeLast(slotCount)
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+            ) {
+                if (padded.isEmpty()) return@Canvas
+                val gap = 1.dp.toPx()
+                val barWidth = (size.width - (gap * (slotCount - 1))) / slotCount
+                val corner = CornerRadius(2.dp.toPx())
+                val minimumHeight = size.height * 0.04f
+
+                padded.forEachIndexed { index, fraction ->
+                    val left = index * (barWidth + gap)
+
+                    drawRoundRect(
+                        color = trackColor.copy(alpha = 0.12f),
+                        topLeft = Offset(left, 0f),
+                        size = Size(barWidth, size.height),
+                        cornerRadius = corner
+                    )
+
+                    if (fraction > 0f) {
+                        val barHeight = (size.height * maxOf(fraction, 0.04f)).coerceAtLeast(minimumHeight)
+                        drawRoundRect(
+                            color = accentColor,
+                            topLeft = Offset(left, size.height - barHeight),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = corner
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CpuUsageGraph(
+    coreLoads: List<Int>,
+    modifier: Modifier = Modifier,
+    font: FontFamily
+) {
+    val mono = LocalMorpheMono.current
+    val accentColor = MaterialTheme.colorScheme.tertiary
+    val warnColor = MaterialTheme.colorScheme.error
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+    val average = if (coreLoads.isNotEmpty()) coreLoads.average().toInt() else 0
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(modifier = Modifier.height(12.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(accentColor))
+                }
+                Text(
+                    text = "CPU usage",
+                    fontFamily = mono,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp
+                )
+            }
+
+            Text(
+                text = "$average%",
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+
+            val slotCount = if (coreLoads.isNotEmpty()) coreLoads.size else 8
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+            ) {
+                val gap = 4.dp.toPx()
+                val evenSlot = size.width / slotCount
+                val barWidth = minOf(evenSlot - gap, 20.dp.toPx()).coerceAtLeast(1f)
+                val leadingOffset = 0f
+                val barInset = (evenSlot - barWidth) / 2f
+                val corner = CornerRadius(2.dp.toPx())
+                val minimumHeight = size.height * 0.04f
+
+                val sortedLoads = coreLoads.sorted()
+
+                repeat(slotCount) { index ->
+                    val load = sortedLoads.getOrNull(index) ?: 0
+                    val fraction = (load / 100f).coerceIn(0f, 1f)
+
+                    val left = leadingOffset + index * evenSlot + barInset
+
+                    drawRoundRect(
+                        color = trackColor.copy(alpha = 0.3f),
+                        topLeft = Offset(left, 0f),
+                        size = Size(barWidth, size.height),
+                        cornerRadius = corner
+                    )
+
+                    if (fraction > 0f) {
+                        val barHeight = (size.height * maxOf(fraction, 0.04f)).coerceAtLeast(minimumHeight)
+                        val t = ((fraction - 0.7f) / 0.3f).coerceIn(0f, 1f)
+                        val color = lerp(accentColor, warnColor, t)
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(left, size.height - barHeight),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = corner
+                        )
                     }
                 }
             }
@@ -1174,6 +1386,20 @@ private fun SuccessSummaryCard(
                     value = "$maxMemory MB",
                     font = font,
                     modifier = Modifier.weight(1f))
+            }
+            if (uiState.ioPeakKbPerSec > 0) {
+                val peakRate = if (uiState.ioPeakKbPerSec >= 1024) "%.1f MB/s".format(uiState.ioPeakKbPerSec / 1024f) else "${uiState.ioPeakKbPerSec} KB/s"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BannerFieldCell(
+                        label = "Storage I/O peak",
+                        value = peakRate,
+                        font = font,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

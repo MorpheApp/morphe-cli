@@ -133,6 +133,9 @@ dependencies {
     implementation(libs.jna)
     implementation(libs.jna.platform)
 
+    // -- OSHI (cross-platform CPU / I/O telemetry) -------------------------
+    implementation("com.github.oshi:oshi-core:6.8.0")
+
     // -- FileKit (native file/folder pickers) ------------------------------
     implementation(libs.filekit.dialogs)
 
@@ -369,6 +372,8 @@ tasks {
             exclude(dependency("net.java.dev.jna:.*"))
             // Skiko uses ServiceLoader for native registration. Same class of problem as Ktor / Koin / JNA above.
             exclude(dependency("org.jetbrains.skiko:.*"))
+            // OSHI uses reflection + ServiceLoader for platform-specific OS detection.
+            exclude(dependency("com.github.oshi:.*"))
             // FileKit + its DBus transport (Linux XDG portal) are reached reflectively /
             // via ServiceLoader. Keep them whole so minimize doesn't prune the pickers.
             exclude(dependency("io.github.vinceglb:.*"))
