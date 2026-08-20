@@ -23,8 +23,7 @@ import app.morphe.gui.di.appModule
 import app.morphe.gui.ui.components.LocalFrameWindowScope
 import app.morphe.gui.ui.components.SettingsDialogHost
 import app.morphe.gui.ui.screens.home.HomeScreen
-import app.morphe.gui.ui.screens.quick.QuickPatchContent
-import app.morphe.gui.ui.screens.quick.QuickPatchViewModel
+import app.morphe.gui.ui.screens.quick.QuickPatchScreen
 import app.morphe.gui.ui.theme.LocalThemeState
 import app.morphe.gui.ui.theme.MorpheTheme
 import app.morphe.gui.ui.theme.ThemePreference
@@ -287,29 +286,24 @@ private fun appContent(
                         SettingsDialogHost()
 
                         if (!isLoading) {
-                            val patchService: PatchService = koinInject()
-                            val updateCheckRepository: app.morphe.gui.data.repository.UpdateCheckRepository =
-                                koinInject()
-                            val quickViewModel = remember {
-                                QuickPatchViewModel(
-                                    patchSourceManager,
-                                    patchService,
-                                    configRepository,
-                                    updateCheckRepository
-                                )
+                            val initialScreen = remember {
+                                if (isSimplifiedMode) QuickPatchScreen() else HomeScreen()
                             }
 
-                            Crossfade(targetState = isSimplifiedMode) { simplified ->
-                                if (simplified) {
-                                    QuickPatchContent(quickViewModel)
-                                } else {
-                                    Navigator(HomeScreen()) { navigator ->
-                                        ScreenTransition(
-                                            navigator = navigator,
-                                            transition = { desktopScreenEnter togetherWith desktopScreenExit }
-                                        )
+                            Navigator(initialScreen) { navigator ->
+                                LaunchedEffect(isSimplifiedMode) {
+                                    val isCurrentlyQuick = navigator.lastItem is QuickPatchScreen
+                                    if (isSimplifiedMode && !isCurrentlyQuick) {
+                                        navigator.replaceAll(QuickPatchScreen())
+                                    } else if (!isSimplifiedMode && isCurrentlyQuick) {
+                                        navigator.replaceAll(HomeScreen())
                                     }
                                 }
+
+                                ScreenTransition(
+                                    navigator = navigator,
+                                    transition = { desktopScreenEnter togetherWith desktopScreenExit }
+                                )
                             }
                         }
                     }

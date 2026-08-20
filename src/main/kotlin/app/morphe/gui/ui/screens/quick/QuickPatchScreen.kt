@@ -44,9 +44,19 @@ import app.morphe.gui.util.MorpheFilePicker
 import app.morphe.gui.util.sourceChannelMap
 import app.morphe.gui.util.sourceErrorMap
 import app.morphe.gui.util.sourceVersionMap
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
 import java.io.File
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+
+class QuickPatchScreen : Screen {
+    @Composable
+    override fun Content() {
+        val viewModel = koinScreenModel<QuickPatchViewModel>()
+        QuickPatchContent(viewModel)
+    }
+}
 
 @Composable
 fun QuickPatchContent(viewModel: QuickPatchViewModel) {

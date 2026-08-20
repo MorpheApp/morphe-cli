@@ -14,6 +14,7 @@ import app.morphe.gui.ui.screens.home.HomeViewModel
 import app.morphe.gui.ui.screens.patches.PatchSelectionViewModel
 import app.morphe.gui.ui.screens.patches.PatchesViewModel
 import app.morphe.gui.ui.screens.patching.PatchingViewModel
+import app.morphe.gui.ui.screens.quick.QuickPatchViewModel
 import app.morphe.gui.util.Logger as MorpheLogger
 import app.morphe.gui.util.PatchService
 import io.ktor.client.*
@@ -96,6 +97,9 @@ val appModule = module {
     // ViewModels observe PatchSourceManager.sourceVersion and reload on source changes.
     factory {
         HomeViewModel(get(), get(), get(), get(), get())
+    }
+    factory {
+        QuickPatchViewModel(get(), get(), get(), get())
     }
     factory { params ->
         val psm = get<PatchSourceManager>()
