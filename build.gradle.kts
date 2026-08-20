@@ -86,23 +86,23 @@ dependencies {
     implementation(libs.picocli)
 
     // -- Bootstrap (Code Generation) ---------------------------------------
-    bootstrapDependencies("net.java.dev.jna:jna:${libs.versions.jna.get()}")
-    bootstrapDependencies("net.java.dev.jna:jna-platform:${libs.versions.jna.get()}")
-    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-x64:${libs.versions.skiko.get()}")
-    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-macos-arm64:${libs.versions.skiko.get()}")
-    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-linux-x64:${libs.versions.skiko.get()}")
-    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-linux-arm64:${libs.versions.skiko.get()}")
-    bootstrapDependencies("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:${libs.versions.skiko.get()}")
+    bootstrapDependencies(libs.jna.core)
+    bootstrapDependencies(libs.jna.platform)
+    bootstrapDependencies(libs.skiko.macos.x64)
+    bootstrapDependencies(libs.skiko.macos.arm64)
+    bootstrapDependencies(libs.skiko.linux.x64)
+    bootstrapDependencies(libs.skiko.linux.arm64)
+    bootstrapDependencies(libs.skiko.windows.x64)
 
     // -- Compose Desktop ---------------------------------------------------
     // Platform-independent: single JAR runs on all supported OSes.
     // Skiko auto-detects the OS at runtime and loads the correct native library.
-    implementation("org.jetbrains.compose.desktop:desktop-jvm-macos-arm64:${libs.versions.compose.get()}")
-    implementation("org.jetbrains.compose.desktop:desktop-jvm-macos-x64:${libs.versions.compose.get()}")
-    implementation("org.jetbrains.compose.desktop:desktop-jvm-linux-x64:${libs.versions.compose.get()}")
-    implementation("org.jetbrains.compose.desktop:desktop-jvm-linux-arm64:${libs.versions.compose.get()}")
-    implementation("org.jetbrains.compose.desktop:desktop-jvm-windows-x64:${libs.versions.compose.get()}")
-    implementation("org.jetbrains.compose.components:components-resources:${libs.versions.compose.get()}")
+    implementation(libs.compose.desktop.macos.arm64)
+    implementation(libs.compose.desktop.macos.x64)
+    implementation(libs.compose.desktop.linux.x64)
+    implementation(libs.compose.desktop.linux.arm64)
+    implementation(libs.compose.desktop.windows.x64)
+    implementation(libs.compose.components.resources)
     @Suppress("DEPRECATION")
     implementation(compose.material3)
 
@@ -130,11 +130,11 @@ dependencies {
     implementation(libs.voyager.transitions)
 
     // -- JNA (Windows DWM title bar tinting) -------------------------------
-    implementation(libs.jna)
+    implementation(libs.jna.core)
     implementation(libs.jna.platform)
 
     // -- OSHI (cross-platform CPU / I/O telemetry) -------------------------
-    implementation("com.github.oshi:oshi-core:6.8.0")
+    implementation(libs.oshi.core)
 
     // -- FileKit (native file/folder pickers) ------------------------------
     implementation(libs.filekit.dialogs)
@@ -458,6 +458,19 @@ tasks {
     named("shadowDistZip") { dependsOn(overwriteShadowJar) }
     named("shadowDistTar") { dependsOn(overwriteShadowJar) }
     named("startShadowScripts") { dependsOn(overwriteShadowJar) }
+
+    register("printSkikoVersion") {
+        group = "help"
+        description = "Prints the Skiko version resolved by Jetpack Compose"
+        doLast {
+            val skikoVersion = configurations.runtimeClasspath.get().incoming.resolutionResult.allComponents
+                .mapNotNull { it.moduleVersion }
+                .firstOrNull { it.group == "org.jetbrains.skiko" }
+                ?.version
+                ?: "NOT FOUND"
+            println("🎯 REQUIRED SKIKO VERSION: $skikoVersion")
+        }
+    }
 }
 
 // ============================================================================
