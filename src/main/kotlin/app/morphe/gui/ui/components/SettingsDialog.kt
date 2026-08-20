@@ -474,9 +474,9 @@ fun SettingsDialog(
                                 accentColor = accents.primary,
                                 borderColor = borderColor,
                                 enabled = !isPatching,
-                                expanded = collapsibleSectionStates["SIGNING"] == true,
+                                expanded = collapsibleSectionStates["Signing"] == true,
                                 icon = MorpheIcons.Key,
-                                onExpandedChange = { onCollapsibleSectionToggle("SIGNING", it) }
+                                onExpandedChange = { onCollapsibleSectionToggle("Signing", it) }
                             )
 
                             SettingsDivider(borderColor)
@@ -487,9 +487,9 @@ fun SettingsDialog(
                                 font = font,
                                 accentColor = accents.primary,
                                 enabled = !isPatching,
-                                expanded = collapsibleSectionStates["STRIP LIBS"] == true,
+                                expanded = collapsibleSectionStates["Strip libs"] == true,
                                 icon = MorpheIcons.LayersClear,
-                                onExpandedChange = { onCollapsibleSectionToggle("STRIP LIBS", it) }
+                                onExpandedChange = { onCollapsibleSectionToggle("Strip libs", it) }
                             )
 
                             SettingsDivider(borderColor)
@@ -512,9 +512,9 @@ fun SettingsDialog(
                                 accentColor = accents.primary,
                                 borderColor = borderColor,
                                 enabled = !isPatching,
-                                expanded = collapsibleSectionStates["RUNTIME LOGS"] == true,
+                                expanded = collapsibleSectionStates["Runtime logs"] == true,
                                 icon = MorpheIcons.DeployedCode,
-                                onExpandedChange = { onCollapsibleSectionToggle("RUNTIME LOGS", it) }
+                                onExpandedChange = { onCollapsibleSectionToggle("Runtime logs", it) }
                             )
                         }
                         "System" -> {

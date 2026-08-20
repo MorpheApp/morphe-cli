@@ -1360,8 +1360,8 @@ data class HomeUiState(
     val latestPatchesLabel: String?
         get() = when (patchesVersion) {
             null -> null
-            latestPatchesVersion -> "LATEST STABLE"
-            latestDevPatchesVersion -> "LATEST DEV"
+            latestPatchesVersion -> "Latest Stable"
+            latestDevPatchesVersion -> "Latest Dev"
             else -> null
         }
 }

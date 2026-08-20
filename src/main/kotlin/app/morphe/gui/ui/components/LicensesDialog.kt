@@ -819,7 +819,7 @@ private fun LicenseTextDialog(license: License, onDismiss: () -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         val chipLabel = licenseDisplayLabel(license)
                         Text(
-                            text = chipLabel.uppercase(),
+                            text = chipLabel,
                             fontFamily = font,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
