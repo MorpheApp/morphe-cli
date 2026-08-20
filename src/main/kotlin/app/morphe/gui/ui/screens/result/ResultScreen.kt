@@ -261,8 +261,8 @@ fun ResultScreenContent(outputPath: String) {
                         .size(34.dp)
                         .hoverable(backHover)
                         .clip(RoundedCornerShape(corners.small))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = if (isSystemInDarkTheme()) 0.4f else 0.6f), RoundedCornerShape(corners.small))
-                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(corners.small))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                         .background(backBg)
                         .clickable { navigator.pop() },
                     contentAlignment = Alignment.Center
@@ -271,7 +271,7 @@ fun ResultScreenContent(outputPath: String) {
                         imageVector = MorpheIcons.ArrowBack,
                         contentDescription = "Back",
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 

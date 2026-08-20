@@ -50,10 +50,10 @@ fun ToolsButton(
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
     
-    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f)
     
     val borderColor by animateColorAsState(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+        MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(150)
     )
 
@@ -70,7 +70,7 @@ fun ToolsButton(
         Icon(
             imageVector = MorpheIcons.Build,
             contentDescription = "Tools",
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp)
         )
     }

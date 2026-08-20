@@ -207,7 +207,7 @@ fun SettingsButton(
 
     val hoverInteraction = remember { MutableInteractionSource() }
 
-    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f)
 
     val borderColor by animateColorAsState(
         MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),

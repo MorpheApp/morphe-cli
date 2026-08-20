@@ -184,9 +184,9 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
     Column(modifier = Modifier.fillMaxSize()) {
-        val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-        val baseBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-        val baseIconTint = MaterialTheme.colorScheme.primary
+        val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f)
+        val baseBorderColor = MaterialTheme.colorScheme.outlineVariant
+        val baseIconTint = MaterialTheme.colorScheme.onSurfaceVariant
 
         // ── Header bar ──
         Row(

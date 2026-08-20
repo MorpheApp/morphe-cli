@@ -153,8 +153,8 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                         .size(34.dp)
                         .hoverable(backHover)
                         .clip(RoundedCornerShape(corners.small))
-                        .border(1.dp, if (uiState.isInProgress) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(corners.small))
-                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(corners.small))
+                        .border(1.dp, if (uiState.isInProgress) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                         .background(backBg)
                         .clickable(enabled = !uiState.isInProgress) { navigator.pop() },
                     contentAlignment = Alignment.Center
@@ -165,7 +165,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                         modifier = Modifier.size(16.dp),
                         tint = if (uiState.isInProgress)
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                        else MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
