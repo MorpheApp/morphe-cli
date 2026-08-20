@@ -16,9 +16,6 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.CircleShape
@@ -104,13 +101,10 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
     }
 
     // Auto-scroll to bottom of logs
-    val listState = rememberLazyListState()
+    val scrollState = rememberScrollState()
     LaunchedEffect(uiState.logs.size, uiState.status) {
         if (uiState.logs.isNotEmpty()) {
-            val extraItem = if (uiState.status == PatchingStatus.COMPLETED) 1 else 0
-            // Index 0 is StartBannerCard, so logs are indices 1..size.
-            // When completed, SuccessSummaryCard is at size + 1.
-            listState.animateScrollToItem(uiState.logs.size + extraItem)
+            scrollState.scrollTo(scrollState.maxValue)
         }
     }
 
@@ -282,26 +276,23 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
                                 .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
                         ) {
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(12.dp),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(scrollState)
+                                    .padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                item {
-                                    StartBannerCard(uiState, mono)
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
+                                StartBannerCard(uiState, mono)
+                                Spacer(modifier = Modifier.height(12.dp))
 
-                                items(uiState.logs, key = { it.id }) { entry ->
+                                uiState.logs.forEach { entry ->
                                     LogEntryRow(entry, mono)
                                 }
 
                                 if (uiState.status == PatchingStatus.COMPLETED) {
-                                    item {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        SuccessSummaryCard(uiState, mono)
-                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    SuccessSummaryCard(uiState, mono)
                                 }
                             }
 
@@ -309,7 +300,7 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .fillMaxHeight(),
-                                adapter = rememberScrollbarAdapter(listState),
+                                adapter = rememberScrollbarAdapter(scrollState),
                                 style = morpheScrollbarStyle()
                             )
                         }
