@@ -269,7 +269,7 @@ class QuickPatchViewModel(
                     isLoadingPatches = false,
                     supportedApps = supportedApps,
                     patchesVersion = displayVersion,
-                    latestPatchesVersion = displayVersion,
+                    patchesChannel = firstResolved?.channel,
                     patchSourceName = sourceName,
                     patchLoadError = null,
                     isOffline = isOffline
@@ -722,7 +722,7 @@ class QuickPatchViewModel(
     /**
      * Reset to start over. Preserves the already-loaded patches metadata so
      * the patches version badge (and its LATEST chip) stays correct without
-     * a re-fetch — losing `latestPatchesVersion` or `patchSourceName` here
+     * a re-fetch — losing `patchesChannel` or `patchSourceName` here
      * would cause the LATEST chip to silently disappear after the user
      * removes the loaded APK.
      */
@@ -734,7 +734,7 @@ class QuickPatchViewModel(
             isLoadingPatches = false,
             supportedApps = cachedSupportedApps,
             patchesVersion = _uiState.value.patchesVersion,
-            latestPatchesVersion = _uiState.value.latestPatchesVersion,
+            patchesChannel = _uiState.value.patchesChannel,
             patchSourceName = _uiState.value.patchSourceName,
             isOffline = _uiState.value.isOffline,
             updateInfo = _uiState.value.updateInfo,
@@ -823,7 +823,7 @@ data class QuickPatchUiState(
     val isLoadingPatches: Boolean = true,
     val supportedApps: List<SupportedApp> = emptyList(),
     val patchesVersion: String? = null,
-    val latestPatchesVersion: String? = null,
+    val patchesChannel: EnabledSourcesLoader.Channel? = null,
     val patchSourceName: String? = null,
     val patchLoadError: String? = null,
     val isOffline: Boolean = false,

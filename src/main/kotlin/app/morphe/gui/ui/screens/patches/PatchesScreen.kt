@@ -351,8 +351,9 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                         uiState = uiState,
                         onDownloadClick = { viewModel.downloadPatches() },
                         onSelectClick = {
-                            viewModel.confirmSelection()
-                            navigator.pop()
+                            viewModel.confirmSelection {
+                                navigator.pop()
+                            }
                         },
                         onExportJsonClick = {
                             scope.launch {

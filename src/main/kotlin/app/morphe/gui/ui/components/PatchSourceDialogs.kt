@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontFamily
@@ -57,6 +58,7 @@ internal fun AddPatchSourceDialog(
     var url by remember { mutableStateOf("") }
     var filePath by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var usePreRelease by remember { mutableStateOf(false) }
     val configRepository: ConfigRepository = koinInject()
     val scope = rememberCoroutineScope()
     var developerOptions by remember { mutableStateOf(false) }
@@ -163,6 +165,34 @@ internal fun AddPatchSourceDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp),
                             )
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                    Text(
+                                        text = "Pre-release patches",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        fontFamily = font,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Receives early access to new experimental patch versions",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        fontFamily = font,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        lineHeight = 14.sp
+                                    )
+                                }
+                                MorpheSwitch(
+                                    checked = usePreRelease,
+                                    onCheckedChange = { usePreRelease = it },
+                                    accentColor = accents.primary
+                                )
+                            }
                         }
                     }
                     PatchSourceType.LOCAL -> {
@@ -214,7 +244,8 @@ internal fun AddPatchSourceDialog(
                                 name = name.trim(),
                                 type = resolved.provider,
                                 url = resolved.canonicalUrl,
-                                deletable = true
+                                deletable = true,
+                                usePreRelease = usePreRelease
                             ))
                             return@Button
                         }
@@ -231,7 +262,8 @@ internal fun AddPatchSourceDialog(
                         type = sourceType,
                         url = null,
                         filePath = if (sourceType == PatchSourceType.LOCAL) filePath.trim() else null,
-                        deletable = true
+                        deletable = true,
+                        usePreRelease = usePreRelease
                     ))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = accents.primary),
@@ -279,6 +311,7 @@ internal fun EditPatchSourceDialog(
     var url by remember { mutableStateOf(source.url ?: "") }
     var filePath by remember { mutableStateOf(source.filePath ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
+    var usePreRelease by remember { mutableStateOf(source.usePreRelease) }
     val configRepository: ConfigRepository = koinInject()
     val scope = rememberCoroutineScope()
     var developerOptions by remember { mutableStateOf(false) }
@@ -306,61 +339,94 @@ internal fun EditPatchSourceDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.widthIn(min = 300.dp)
             ) {
-                Text(
-                    text = when (source.type) {
-                        PatchSourceType.GITHUB -> "GitHub Repository"
-                        PatchSourceType.GITLAB -> "GitLab Repository"
-                        PatchSourceType.LOCAL -> "Local file"
-                        else -> ""
-                    },
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    fontFamily = font,
-                    color = accents.primary
-                )
-
-                LabeledField(label = "Name", font = font) {
-                    SlimTextField(
-                        value = name,
-                        onValueChange = { name = it; error = null },
-                        placeholder = "",
-                        font = font,
-                        accents = accents,
-                        corners = corners,
-                        modifier = Modifier.fillMaxWidth(),
+                if (source.deletable) {
+                    Text(
+                        text = when (source.type) {
+                            PatchSourceType.GITHUB -> "GitHub Repository"
+                            PatchSourceType.GITLAB -> "GitLab Repository"
+                            PatchSourceType.LOCAL -> "Local file"
+                            else -> ""
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = accents.primary
                     )
-                }
 
-                when (source.type) {
-                    PatchSourceType.GITHUB, PatchSourceType.GITLAB -> {
-                        LabeledField(label = "Repository URL", font = font) {
-                            SlimTextField(
-                                value = url,
-                                onValueChange = { url = it; error = null },
-                                placeholder = "github.com/owner/repo or gitlab.com/owner/repo",
-                                font = font,
-                                accents = accents,
-                                corners = corners,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                    PatchSourceType.LOCAL -> {
-                        LocalSourceRow(
-                            filePath = filePath,
-                            developerOptions = developerOptions,
-                            lastLocalPatchDir = lastLocalPatchDir,
-                            onPicked = { path, _ ->
-                                filePath = path
-                                error = null
-                                scope.launch { configRepository.setLastLocalPatchDir(dirToRemember(path)) }
-                            },
+                    LabeledField(label = "Name", font = font) {
+                        SlimTextField(
+                            value = name,
+                            onValueChange = { name = it; error = null },
+                            placeholder = "",
                             font = font,
                             accents = accents,
                             corners = corners,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                    else -> {}
+
+                    when (source.type) {
+                        PatchSourceType.GITHUB, PatchSourceType.GITLAB -> {
+                            LabeledField(label = "Repository URL", font = font) {
+                                SlimTextField(
+                                    value = url,
+                                    onValueChange = { url = it; error = null },
+                                    placeholder = "github.com/owner/repo or gitlab.com/owner/repo",
+                                    font = font,
+                                    accents = accents,
+                                    corners = corners,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                        PatchSourceType.LOCAL -> {
+                            LocalSourceRow(
+                                filePath = filePath,
+                                developerOptions = developerOptions,
+                                lastLocalPatchDir = lastLocalPatchDir,
+                                onPicked = { path, _ ->
+                                    filePath = path
+                                    error = null
+                                    scope.launch { configRepository.setLastLocalPatchDir(dirToRemember(path)) }
+                                },
+                                font = font,
+                                accents = accents,
+                                corners = corners,
+                            )
+                        }
+                        else -> {}
+                    }
+                }
+
+                if (source.type != PatchSourceType.LOCAL) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = if (source.deletable) 8.dp else 0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                            Text(
+                                text = "Pre-release patches",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                fontFamily = font,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Receives early access to new experimental patch versions",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal,
+                                fontFamily = font,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp
+                            )
+                        }
+                        MorpheSwitch(
+                            checked = usePreRelease,
+                            onCheckedChange = { usePreRelease = it },
+                            accentColor = accents.primary
+                        )
+                    }
                 }
 
                 error?.let {
@@ -386,6 +452,7 @@ internal fun EditPatchSourceDialog(
                                 name = name.trim(),
                                 type = resolved.provider,
                                 url = resolved.canonicalUrl,
+                                usePreRelease = usePreRelease
                             ))
                             return@Button
                         }
@@ -398,7 +465,8 @@ internal fun EditPatchSourceDialog(
                     }
                     onSave(source.copy(
                         name = name.trim(),
-                        filePath = if (source.type == PatchSourceType.LOCAL) filePath.trim() else source.filePath
+                        filePath = if (source.type == PatchSourceType.LOCAL) filePath.trim() else source.filePath,
+                        usePreRelease = usePreRelease
                     ))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = accents.primary),

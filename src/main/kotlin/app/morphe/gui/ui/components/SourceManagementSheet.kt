@@ -497,10 +497,10 @@ private fun SourceRow(
                         fontWeight = if (isEnabled) FontWeight.SemiBold else FontWeight.Normal,
                         fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurface,
-                        // Wrap to a second line instead of cramming/ellipsizing a long name
-                        // against the DEFAULT badge. weight(fill = false) bounds the width so
-                        // it wraps within the row rather than pushing the badge off.
-                        maxLines = 2,
+                        // Prevent the name from cramming against the badge by truncating it
+                        // with an ellipsis. weight(fill = false) bounds the width so it
+                        // truncates rather than pushing the badge off.
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
@@ -600,8 +600,8 @@ private fun SourceRow(
                 )
                 Spacer(Modifier.width(2.dp))
             }
-            // Edit + delete are hidden for default; toggle is always shown
-            if (!isDefault && enabled) {
+            // Edit is shown for all (including default), delete is hidden for default
+            if (enabled) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = MorpheIcons.Edit,
@@ -610,13 +610,15 @@ private fun SourceRow(
                         modifier = Modifier.size(14.dp)
                     )
                 }
-                IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        imageVector = MorpheIcons.Close,
-                        contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                        modifier = Modifier.size(14.dp)
-                    )
+                if (!isDefault) {
+                    IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = MorpheIcons.Close,
+                            contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
                 Spacer(Modifier.width(4.dp))
             }

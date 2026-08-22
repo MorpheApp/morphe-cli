@@ -87,13 +87,18 @@ class PatchesViewModel(
                     // Resolve this source's version preference to a concrete tag
                     // to pre-select: a pin → its tag; follow-stable → newest stable;
                     // follow-dev → newest overall.
-                    val activeSourceId = patchSourceManager?.getActiveSource()?.id
+                    val activeSource = patchSourceManager?.getActiveSource()
+                    val activeSourceId = activeSource?.id
                     val pref = activeSourceId?.let { configRepository.getSourceVersionPrefs()[it] }
+                    val usePreRelease = activeSource?.usePreRelease == true
+
                     val savedVersion = when (pref?.mode) {
                         FollowMode.PINNED -> pref.pinnedTag
-                        FollowMode.FOLLOW_STABLE -> stableReleases.firstOrNull()?.tagName
-                        FollowMode.FOLLOW_DEV -> releases.firstOrNull()?.tagName
-                        null -> null
+                        else -> if (usePreRelease) {
+                            (devReleases.firstOrNull() ?: stableReleases.firstOrNull())?.tagName
+                        } else {
+                            stableReleases.firstOrNull()?.tagName
+                        }
                     }
 
                     // Find the saved release, or fall back to latest stable
@@ -103,7 +108,11 @@ class PatchesViewModel(
                             ?: devReleases.find { it.tagName == savedVersion }
                             ?: stableReleases.firstOrNull()
                     } else {
-                        stableReleases.firstOrNull()
+                        if (usePreRelease) {
+                            devReleases.firstOrNull() ?: stableReleases.firstOrNull()
+                        } else {
+                            stableReleases.firstOrNull()
+                        }
                     }
 
                     // Determine initial channel based on selected release
@@ -145,20 +154,29 @@ class PatchesViewModel(
                                 parseVersionParts(version)
                                     .fold(0L) { acc, part -> acc * 10000 + part }
                             }
-                        val activeSourceId = patchSourceManager?.getActiveSource()?.id
+                        val activeSource = patchSourceManager?.getActiveSource()
+                        val activeSourceId = activeSource?.id
                         val pref = activeSourceId?.let { configRepository.getSourceVersionPrefs()[it] }
+                        val usePreRelease = activeSource?.usePreRelease == true
+
                         val savedVersion = when (pref?.mode) {
                             FollowMode.PINNED -> pref.pinnedTag
-                            FollowMode.FOLLOW_STABLE -> offlineReleases.firstOrNull { !it.isDevRelease() }?.tagName
-                            FollowMode.FOLLOW_DEV -> offlineReleases.firstOrNull()?.tagName
-                            null -> null
+                            else -> if (usePreRelease) {
+                                (offlineReleases.firstOrNull { it.isDevRelease() } ?: offlineReleases.firstOrNull { !it.isDevRelease() })?.tagName
+                            } else {
+                                offlineReleases.firstOrNull { !it.isDevRelease() }?.tagName
+                            }
                         }
 
                         // Pre-select the saved version, or fall back to the first (most recent)
                         val initialRelease = if (savedVersion != null) {
                             offlineReleases.find { it.tagName == savedVersion }
                         } else null
-                        val selected = initialRelease ?: offlineReleases.firstOrNull()
+                        val selected = initialRelease ?: if (usePreRelease) {
+                            offlineReleases.firstOrNull { it.isDevRelease() } ?: offlineReleases.firstOrNull { !it.isDevRelease() } ?: offlineReleases.firstOrNull()
+                        } else {
+                            offlineReleases.firstOrNull { !it.isDevRelease() } ?: offlineReleases.firstOrNull()
+                        }
 
                         // Find the cached file for the selected release
                         val cachedFile = selected?.let { rel ->
@@ -321,10 +339,21 @@ class PatchesViewModel(
 
                     // Save the version preference PER SOURCE so HomeScreen can pick
                     // it up without contaminating other enabled sources.
-                    val activeSourceId = patchSourceManager?.getActiveSource()?.id
+                    val activeSource = patchSourceManager?.getActiveSource()
+                    val activeSourceId = activeSource?.id
                     if (activeSourceId != null) {
                         val pref = versionPrefFor(release)
                         configRepository.setSourceVersionPref(activeSourceId, pref)
+                        
+                        val newestDevTag = _uiState.value.devReleases.firstOrNull()?.tagName
+                        val newestStableTag = _uiState.value.stableReleases.firstOrNull()?.tagName
+                        val isDevSelected = release.isDevRelease() && release.tagName == newestDevTag
+                        val isStableSelected = !release.isDevRelease() && release.tagName == newestStableTag
+                        
+                        if (activeSource.usePreRelease != isDevSelected) {
+                            patchSourceManager.updateSource(activeSource.copy(usePreRelease = isDevSelected))
+                        }
+                        
                         Logger.info("Saved version pref for source '$activeSourceId': $pref")
                     }
                 },
@@ -347,15 +376,31 @@ class PatchesViewModel(
      * Confirm the current selection and save it to config.
      * Called when user clicks "Select" button.
      */
-    fun confirmSelection() {
-        val release = _uiState.value.selectedRelease ?: return
+    fun confirmSelection(onComplete: () -> Unit = {}) {
+        val release = _uiState.value.selectedRelease
+        if (release == null) {
+            onComplete()
+            return
+        }
         screenModelScope.launch {
-            val activeSourceId = patchSourceManager?.getActiveSource()?.id
+            val activeSource = patchSourceManager?.getActiveSource()
+            val activeSourceId = activeSource?.id
             if (activeSourceId != null) {
                 val pref = versionPrefFor(release)
                 configRepository.setSourceVersionPref(activeSourceId, pref)
+                
+                val newestDevTag = _uiState.value.devReleases.firstOrNull()?.tagName
+                val newestStableTag = _uiState.value.stableReleases.firstOrNull()?.tagName
+                val isDevSelected = release.isDevRelease() && release.tagName == newestDevTag
+                val isStableSelected = !release.isDevRelease() && release.tagName == newestStableTag
+                
+                if (activeSource.usePreRelease != isDevSelected) {
+                    patchSourceManager.updateSource(activeSource.copy(usePreRelease = isDevSelected))
+                }
+                
                 Logger.info("Confirmed version pref for source '$activeSourceId': $pref")
             }
+            onComplete()
         }
     }
 

@@ -503,8 +503,7 @@ class HomeViewModel(
                     patchedRecords = sortedPatchedRecords(),
                     updateInfoByPackage = buildUpdateInfoMap(supportedApps),
                     patchesVersion = displayVersion,
-                    latestPatchesVersion = displayVersion,
-                    latestDevPatchesVersion = null,
+                    patchesChannel = firstResolved?.channel,
                     patchSourceName = sourceName,
                     patchLoadError = null,
                     showSourcesFailedBanner = failedSourceIds.isNotEmpty() && !sourcesFailedBannerDismissed,
@@ -1319,8 +1318,7 @@ data class HomeUiState(
     /** Per-package device install info (optional layer; empty when no device connected). */
     val deviceAppInfo: Map<String, DeviceAppInfo> = emptyMap(),
     val patchesVersion: String? = null,
-    val latestPatchesVersion: String? = null,
-    val latestDevPatchesVersion: String? = null,
+    val patchesChannel: EnabledSourcesLoader.Channel? = null,
     val patchSourceName: String? = null,
     val patchLoadError: String? = null,
     val updateInfo: UpdateInfo? = null,
@@ -1349,8 +1347,8 @@ data class HomeUiState(
                 !updateBannerSessionDismissed
 
     val isUsingLatestPatches: Boolean
-        get() = patchesVersion != null &&
-                (patchesVersion == latestPatchesVersion || patchesVersion == latestDevPatchesVersion)
+        get() = patchesChannel == EnabledSourcesLoader.Channel.STABLE_LATEST ||
+                patchesChannel == EnabledSourcesLoader.Channel.DEV_LATEST
 
     /**
      * Label for the LATEST badge — distinguishes stable vs dev so users can tell
@@ -1358,10 +1356,9 @@ data class HomeUiState(
      * the newest of either channel.
      */
     val latestPatchesLabel: String?
-        get() = when (patchesVersion) {
-            null -> null
-            latestPatchesVersion -> "Latest Stable"
-            latestDevPatchesVersion -> "Latest Dev"
+        get() = when (patchesChannel) {
+            EnabledSourcesLoader.Channel.STABLE_LATEST -> "Latest Stable"
+            EnabledSourcesLoader.Channel.DEV_LATEST -> "Latest Dev"
             else -> null
         }
 }

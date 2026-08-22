@@ -335,14 +335,20 @@ class ConfigRepository {
     }
 
     /**
-     * Update an existing patch source. Cannot update non-deletable sources.
+     * Update an existing patch source. For non-deletable sources, only the pre-release flag can be updated.
      */
     suspend fun updatePatchSource(updated: PatchSource) {
         val current = loadConfig()
         val existing = current.patchSource.find { it.id == updated.id }
-        if (existing == null || !existing.deletable) return
+        if (existing == null) return
 
-        val updatedSources = current.patchSource.map { if (it.id == updated.id) updated else it }
+        val newSource = if (!existing.deletable) {
+            existing.copy(usePreRelease = updated.usePreRelease)
+        } else {
+            updated
+        }
+
+        val updatedSources = current.patchSource.map { if (it.id == updated.id) newSource else it }
         saveConfig(current.copy(patchSource = updatedSources))
     }
 

@@ -40,6 +40,7 @@ import app.morphe.gui.ui.screens.quick.components.PatchingContent
 import app.morphe.gui.ui.screens.quick.components.ReadyContent
 import app.morphe.gui.ui.screens.quick.components.SupportedAppsRow
 import app.morphe.gui.ui.theme.*
+import app.morphe.gui.util.EnabledSourcesLoader
 import app.morphe.gui.util.MorpheFilePicker
 import app.morphe.gui.util.sourceChannelMap
 import app.morphe.gui.util.sourceErrorMap
@@ -174,10 +175,11 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                             patchesVersion = uiState.patchesVersion,
                             isLoading = uiState.isLoadingPatches,
                             patchSourceName = uiState.patchSourceName,
-                            latestLabel = if (uiState.patchesVersion != null &&
-                                              uiState.patchesVersion == uiState.latestPatchesVersion) {
-                                "Latest Stable"
-                            } else null,
+                            latestLabel = when (uiState.patchesChannel) {
+                                EnabledSourcesLoader.Channel.STABLE_LATEST -> "Latest Stable"
+                                EnabledSourcesLoader.Channel.DEV_LATEST -> "Latest Dev"
+                                else -> null
+                            },
                             onClick = { showSourcePicker = true },
                         )
                     }

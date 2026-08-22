@@ -277,7 +277,7 @@ class PatchSourceManager(
     }
 
     /**
-     * Update an existing source (e.g. rename). Refuses non-deletable sources.
+     * Update an existing source (e.g. rename). For non-deletable sources, only updates the pre-release flag.
      */
     suspend fun updateSource(updated: PatchSource) {
         configRepository.updatePatchSource(updated)

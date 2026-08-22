@@ -193,6 +193,7 @@ data class PatchSource (
     // Multi-source enablement. Default true so old configs migrate to "all enabled"
     // on first load (per user choice — see project memory).
     val enabled: Boolean = true,
+    val usePreRelease: Boolean = false,
 )
 
 @Serializable

@@ -264,7 +264,8 @@ object EnabledSourcesLoader {
         } else {
             val stable = repo.getLatestStableRelease().getOrNull()
             val dev = repo.getLatestDevRelease().getOrNull()
-            release = if (pref?.mode == FollowMode.FOLLOW_DEV) (dev ?: stable) else (stable ?: dev)
+            val wantsDev = source.usePreRelease
+            release = if (wantsDev) (dev ?: stable) else (stable ?: dev)
             latestStableTag = stable?.tagName
             latestDevTag = dev?.tagName
         }
