@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,10 +55,12 @@ import app.morphe.engine.util.KeystoreImporter
 import app.morphe.engine.util.PortablePaths
 import app.morphe.gui.LocalBackgroundType
 import app.morphe.gui.LocalEnableParallax
+import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.model.UpdateChannelPreference
 import app.morphe.gui.data.repository.ConfigRepository
+import app.morphe.gui.ui.components.ChangelogDialog
 import app.morphe.gui.ui.components.MorpheColorPickerCard
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.THEME_PRESET_COLORS
@@ -73,6 +76,9 @@ import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.MorpheFilePicker
+import app.morphe.gui.util.openUrlInBrowser
+import app.morphe.morphe_desktop.generated.resources.Res
+import app.morphe.morphe_desktop.generated.resources.morphe_logo
 import app.morphe.patcher.apk.ApkSigner
 import java.awt.Desktop
 import java.io.File
@@ -86,6 +92,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 
 @Composable
@@ -129,6 +136,20 @@ fun SettingsDialog(
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     var selectedCategory by remember { mutableStateOf("Appearance") }
     var showCustomColorDialog by remember { mutableStateOf(false) }
+    var showChangelogDialog by remember { mutableStateOf(false) }
+    var showAppInfoDialog by remember { mutableStateOf(false) }
+
+    if (showChangelogDialog) {
+        ChangelogDialog(
+            onDismiss = { showChangelogDialog = false }
+        )
+    }
+
+    if (showAppInfoDialog) {
+        AppInfoDialog(
+            onDismiss = { showAppInfoDialog = false }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -565,6 +586,153 @@ fun SettingsDialog(
                                 enabled = !isPatching,
                                 icon = MorpheIcons.ADB
                             )
+
+                            SettingsDivider(borderColor)
+
+                            SectionLabel("About", font, icon = MorpheIcons.Info)
+                            Spacer(Modifier.height(16.dp))
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = painterResource(Res.drawable.morphe_logo),
+                                        contentDescription = "Morphe Logo",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Morphe",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontFamily = font,
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = "Version ${AppConstants.APP_VERSION}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontFamily = font,
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            showAppInfoDialog = true
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = MorpheIcons.KeyboardArrowLeft,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .graphicsLayer { rotationZ = 180f }
+                                        )
+                                    }
+                                }
+                                
+                                SettingsDivider(borderColor)
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = MorpheIcons.Article,
+                                        contentDescription = null,
+                                        tint = accents.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "View changelogs",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontFamily = font,
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = "Check out the latest changes in this update",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontFamily = font,
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            showChangelogDialog = true
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = MorpheIcons.KeyboardArrowLeft,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .graphicsLayer { rotationZ = 180f }
+                                        )
+                                    }
+                                }
+
+                                SettingsDivider(borderColor)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = MorpheIcons.Public,
+                                        contentDescription = null,
+                                        tint = accents.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Visit website",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontFamily = font,
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = "Visit the official Morphe website",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontFamily = font,
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            openUrlInBrowser("https://morphe.software")
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = MorpheIcons.KeyboardArrowLeft,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .graphicsLayer { rotationZ = 180f }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

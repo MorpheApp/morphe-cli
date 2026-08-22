@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import app.morphe.engine.model.Release
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.ErrorDialog
+import app.morphe.gui.ui.components.FormattedReleaseNotes
 import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.ToolsButton
@@ -713,108 +714,6 @@ private fun ReleaseCard(
             }
         }
     }
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  RELEASE NOTES
-// ════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun FormattedReleaseNotes(markdown: String, modifier: Modifier = Modifier) {
-    val font = LocalMorpheFont.current
-    val lines = parseMarkdown(markdown)
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        lines.forEach { line ->
-            when (line) {
-                is MdLine.Header -> Text(
-                    text = line.text,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = font,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                is MdLine.SubHeader -> Text(
-                    text = line.text,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = font,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                is MdLine.Bullet -> {
-                    Row {
-                        Text(
-                            text = "·  ",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            fontFamily = font,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = line.text,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            fontFamily = font,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 17.sp
-                        )
-                    }
-                }
-                is MdLine.Plain -> Text(
-                    text = line.text,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    fontFamily = font,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 17.sp
-                )
-            }
-        }
-    }
-}
-
-private sealed class MdLine {
-    data class Header(val text: String) : MdLine()
-    data class SubHeader(val text: String) : MdLine()
-    data class Bullet(val text: String) : MdLine()
-    data class Plain(val text: String) : MdLine()
-}
-
-private fun parseMarkdown(markdown: String): List<MdLine> {
-    return markdown.lines()
-        .filter { it.isNotBlank() }
-        .map { line ->
-            val trimmed = line.trim()
-            when {
-                trimmed.startsWith("# ") -> MdLine.Header(cleanMarkdown(trimmed.removePrefix("# ")))
-                trimmed.startsWith("## ") -> MdLine.Header(cleanMarkdown(trimmed.removePrefix("## ")))
-                trimmed.startsWith("### ") -> MdLine.SubHeader(cleanMarkdown(trimmed.removePrefix("### ")))
-                trimmed.startsWith("* ") -> MdLine.Bullet(cleanMarkdown(trimmed.removePrefix("* ")))
-                trimmed.startsWith("- ") -> MdLine.Bullet(cleanMarkdown(trimmed.removePrefix("- ")))
-                else -> MdLine.Plain(cleanMarkdown(trimmed))
-            }
-        }
-}
-
-/**
- * Strip markdown syntax to plain readable text:
- * - **bold** → bold
- * - [text](url) → text
- * - ([hash](url)) → remove entirely (commit refs)
- */
-private fun cleanMarkdown(text: String): String {
-    var result = text
-    // Remove commit refs like ([abc1234](https://...))
-    result = result.replace(Regex("""\(\[[\da-f]{7,}]\([^)]*\)\)"""), "")
-    // [text](url) → text
-    result = result.replace(Regex("""\[([^\]]*?)]\([^)]*\)"""), "$1")
-    // **bold** → bold
-    result = result.replace(Regex("""\*\*(.+?)\*\*"""), "$1")
-    // Clean up extra whitespace
-    result = result.replace(Regex("""\s+"""), " ").trim()
-    return result
 }
 
 // ════════════════════════════════════════════════════════════════════

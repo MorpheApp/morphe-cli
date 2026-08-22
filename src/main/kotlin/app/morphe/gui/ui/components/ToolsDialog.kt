@@ -153,31 +153,6 @@ fun ToolsDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(Modifier.height(14.dp))
-
-                // ── About (Morphe ecosystem versions) ──
-                val aboutColor = MaterialTheme.colorScheme.onSurfaceVariant
-                Text(
-                    text = "${AppConstants.APP_NAME} ${AppConstants.APP_VERSION}",
-                    fontSize = 11.sp,
-                    fontFamily = font,
-                    fontWeight = FontWeight.Normal,
-                    color = aboutColor,
-                )
-                Text(
-                    text = "Morphe Patcher ${MorpheComponents.patcherVersion ?: "unknown"}",
-                    fontSize = 11.sp,
-                    fontFamily = font,
-                    fontWeight = FontWeight.Normal,
-                    color = aboutColor,
-                )
-                Text(
-                    text = "Morphe Library ${MorpheComponents.libraryVersion ?: "unknown"}",
-                    fontSize = 11.sp,
-                    fontFamily = font,
-                    fontWeight = FontWeight.Normal,
-                    color = aboutColor,
-                )
             }
         },
         confirmButton = {
