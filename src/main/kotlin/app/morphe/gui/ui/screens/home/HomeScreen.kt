@@ -320,7 +320,7 @@ fun HomeScreenContent(
                     patchSourceManager.switchSource(sourceId)
                     navigator.push(PatchesScreen(
                         apkPath = uiState.apkInfo?.filePath ?: "",
-                        apkName = uiState.apkInfo?.appName ?: "Select APK first"
+                        apkName = uiState.apkInfo?.appName ?: ""
                     ))
                 }
             },

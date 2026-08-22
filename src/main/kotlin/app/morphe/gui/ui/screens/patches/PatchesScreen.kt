@@ -163,7 +163,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
             // Title block
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Select patches",
+                    text = "Select bundle version",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = font,
