@@ -91,7 +91,7 @@ fun launchGui(args: Array<String>) {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "",
+        title = "Morphe",
         state = windowState,
         icon = appIcon
     ) {

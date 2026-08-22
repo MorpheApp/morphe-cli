@@ -15,6 +15,9 @@ import kotlin.system.exitProcess
 import picocli.CommandLine
 
 fun main(args: Array<String>) {
+    System.setProperty("awt.app.className", "Morphe")
+    System.setProperty("APP_NAME", "Morphe")
+
     val isInternalGuiSubprocess = args.contains("--internal-gui-subprocess")
     val isGuiIntent = (args.isEmpty() || isInternalGuiSubprocess) && !GraphicsEnvironment.isHeadless()
 
