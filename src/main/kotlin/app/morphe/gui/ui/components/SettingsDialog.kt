@@ -937,95 +937,19 @@ private fun UpdateChannelRow(
             }
         }
         Spacer(Modifier.width(12.dp))
-        UpdateChannelSegmentedToggle(
-            selected = selected,
-            onChange = onChange,
-            accentColor = accentColor,
-            font = font,
+        MorpheDropdown(
+            label = selected.name.lowercase().replaceFirstChar { it.uppercase() },
+            items = UpdateChannelPreference.entries.map { option ->
+                MorpheDropdownItem(
+                    label = option.name.lowercase().replaceFirstChar { it.uppercase() },
+                    onClick = { onChange(option) }
+                )
+            },
             enabled = enabled,
+            modifier = Modifier.width(120.dp)
         )
     }
 }
-
-/**
- * Three-segment switch styled to match [MorpheSwitch]'s sharp variant — single
- * rectangular border, a sliding accent block beneath the active label, labels
- * that flip between muted and on-accent. Soft themes get the same shape
- * with rounded corners (matching how [MorpheSwitch] rounds in soft themes).
- */
-@Composable
-private fun UpdateChannelSegmentedToggle(
-    selected: UpdateChannelPreference,
-    onChange: (UpdateChannelPreference) -> Unit,
-    accentColor: Color,
-    font: FontFamily,
-    enabled: Boolean,
-) {
-    val isSoft = LocalMorpheCorners.current.medium >= 10.dp
-    val height = if (isSoft) 26.dp else 24.dp
-    // Segments sized so the longest label (STABLE) gets ~10dp horizontal
-    // breathing room on each side, matching the visual padding the OFF/ON
-    // labels have inside MorpheSwitch's 28dp halves.
-    val segWidth = 48.dp
-    val totalWidth = segWidth * 3
-    val pillShape = if (isSoft) RoundedCornerShape(height / 2) else RoundedCornerShape(0.dp)
-
-    val entries = UpdateChannelPreference.entries
-    val activeIndex = entries.indexOf(selected)
-
-    val blockOffset by animateDpAsState(
-        targetValue = segWidth * activeIndex,
-        animationSpec = tween(180),
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (enabled) accentColor.copy(alpha = 0.45f)
-                      else MaterialTheme.colorScheme.outline.copy(alpha = 0.18f),
-        animationSpec = tween(180),
-    )
-
-    val onBlockLabel = MaterialTheme.colorScheme.surface
-    val mutedLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-    val disabledAlpha = if (enabled) 1f else 0.4f
-
-    Box(
-        modifier = Modifier
-            .size(totalWidth, height)
-            .clip(pillShape)
-            .border(1.dp, borderColor, pillShape)
-            .graphicsLayer { this.alpha = disabledAlpha },
-    ) {
-        // Sliding accent block — sits behind the labels and animates between
-        // segments when the user changes selection.
-        Box(
-            modifier = Modifier
-                .offset(x = blockOffset)
-                .size(segWidth, height)
-                .background(accentColor),
-        )
-        // Labels — each tappable, color flips depending on whether it sits
-        // over the accent block.
-        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            entries.forEachIndexed { index, pref ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(enabled = enabled) { onChange(pref) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = pref.name,
-                        fontFamily = font,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 8.sp,
-                        color = if (index == activeIndex) onBlockLabel else mutedLabel,
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @Composable
 private fun SettingToggleRow(
