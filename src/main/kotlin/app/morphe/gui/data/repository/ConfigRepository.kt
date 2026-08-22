@@ -343,7 +343,10 @@ class ConfigRepository {
         if (existing == null) return
 
         val newSource = if (!existing.deletable) {
-            existing.copy(usePreRelease = updated.usePreRelease)
+            existing.copy(
+                usePreRelease = updated.usePreRelease,
+                useExperimentalVersions = updated.useExperimentalVersions
+            )
         } else {
             updated
         }

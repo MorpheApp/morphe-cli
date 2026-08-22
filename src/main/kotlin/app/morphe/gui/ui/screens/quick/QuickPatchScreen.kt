@@ -175,11 +175,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                             patchesVersion = uiState.patchesVersion,
                             isLoading = uiState.isLoadingPatches,
                             patchSourceName = uiState.patchSourceName,
-                            latestLabel = when (uiState.patchesChannel) {
-                                EnabledSourcesLoader.Channel.STABLE_LATEST -> "Latest Stable"
-                                EnabledSourcesLoader.Channel.DEV_LATEST -> "Latest Dev"
-                                else -> null
-                            },
+                            patchesChannel = uiState.patchesChannel,
                             onClick = { showSourcePicker = true },
                         )
                     }
@@ -297,6 +293,7 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                             isLoading = uiState.isLoadingPatches,
                             loadError = uiState.patchLoadError,
                             isDefaultSource = uiState.isDefaultSource,
+                            useExperimentalVersions = uiState.useExperimentalVersions,
                             onRetry = { viewModel.retryLoadPatches() },
                             onManageSources = { showSourcePicker = true }
                         )

@@ -47,6 +47,7 @@ import org.koin.compose.koinInject
 
 @Composable
 internal fun AddPatchSourceDialog(
+    isQuickMode: Boolean,
     onDismiss: () -> Unit,
     onAdd: (PatchSource) -> Unit
 ) {
@@ -59,6 +60,7 @@ internal fun AddPatchSourceDialog(
     var filePath by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var usePreRelease by remember { mutableStateOf(false) }
+    var useExperimentalVersions by remember { mutableStateOf(false) }
     val configRepository: ConfigRepository = koinInject()
     val scope = rememberCoroutineScope()
     var developerOptions by remember { mutableStateOf(false) }
@@ -193,6 +195,36 @@ internal fun AddPatchSourceDialog(
                                     accentColor = accents.primary
                                 )
                             }
+                            if (isQuickMode) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                        Text(
+                                            text = "Experimental app versions",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            fontFamily = font,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Prioritizes experimental app versions if available",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            fontFamily = font,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            lineHeight = 14.sp
+                                        )
+                                    }
+                                    MorpheSwitch(
+                                        checked = useExperimentalVersions,
+                                        onCheckedChange = { useExperimentalVersions = it },
+                                        accentColor = accents.primary
+                                    )
+                                }
+                            }
                         }
                     }
                     PatchSourceType.LOCAL -> {
@@ -245,7 +277,8 @@ internal fun AddPatchSourceDialog(
                                 type = resolved.provider,
                                 url = resolved.canonicalUrl,
                                 deletable = true,
-                                usePreRelease = usePreRelease
+                                usePreRelease = usePreRelease,
+                                useExperimentalVersions = useExperimentalVersions
                             ))
                             return@Button
                         }
@@ -301,6 +334,7 @@ internal fun AddPatchSourceDialog(
 @Composable
 internal fun EditPatchSourceDialog(
     source: PatchSource,
+    isQuickMode: Boolean,
     onDismiss: () -> Unit,
     onSave: (PatchSource) -> Unit
 ) {
@@ -312,6 +346,7 @@ internal fun EditPatchSourceDialog(
     var filePath by remember { mutableStateOf(source.filePath ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
     var usePreRelease by remember { mutableStateOf(source.usePreRelease) }
+    var useExperimentalVersions by remember { mutableStateOf(source.useExperimentalVersions) }
     val configRepository: ConfigRepository = koinInject()
     val scope = rememberCoroutineScope()
     var developerOptions by remember { mutableStateOf(false) }
@@ -427,6 +462,36 @@ internal fun EditPatchSourceDialog(
                             accentColor = accents.primary
                         )
                     }
+                    if (isQuickMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    text = "Experimental app versions",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = font,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Prioritizes experimental app versions if available",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    fontFamily = font,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                            MorpheSwitch(
+                                checked = useExperimentalVersions,
+                                onCheckedChange = { useExperimentalVersions = it },
+                                accentColor = accents.primary
+                            )
+                        }
+                    }
                 }
 
                 error?.let {
@@ -452,7 +517,8 @@ internal fun EditPatchSourceDialog(
                                 name = name.trim(),
                                 type = resolved.provider,
                                 url = resolved.canonicalUrl,
-                                usePreRelease = usePreRelease
+                                usePreRelease = usePreRelease,
+                                useExperimentalVersions = useExperimentalVersions
                             ))
                             return@Button
                         }
@@ -466,7 +532,8 @@ internal fun EditPatchSourceDialog(
                     onSave(source.copy(
                         name = name.trim(),
                         filePath = if (source.type == PatchSourceType.LOCAL) filePath.trim() else source.filePath,
-                        usePreRelease = usePreRelease
+                        usePreRelease = usePreRelease,
+                        useExperimentalVersions = useExperimentalVersions
                     ))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = accents.primary),

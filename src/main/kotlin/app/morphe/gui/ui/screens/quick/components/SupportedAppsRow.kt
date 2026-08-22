@@ -49,6 +49,7 @@ internal fun SupportedAppsRow(
     isLoading: Boolean,
     loadError: String? = null,
     isDefaultSource: Boolean = true,
+    useExperimentalVersions: Boolean = false,
     onRetry: () -> Unit = {},
     onManageSources: () -> Unit = {},
 ) {
@@ -291,8 +292,16 @@ internal fun SupportedAppsRow(
                                     Spacer(modifier = Modifier.weight(1f))
                                 }
 
+                                val hasExperimental = app.experimentalVersions.isNotEmpty()
+                                val isExperimental = useExperimentalVersions && hasExperimental
+                                val recommendedVersionText = if (app.recommendedVersion != null) {
+                                    if (isExperimental) "Experimental" else "Stable"
+                                } else {
+                                    "Any version"
+                                }
+                                
                                 Text(
-                                    text = if (app.recommendedVersion != null) "Stable" else "Any version",
+                                    text = recommendedVersionText,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Normal,
                                     fontFamily = font,
@@ -323,8 +332,14 @@ internal fun SupportedAppsRow(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
+                                        val versionToDisplay = if (isExperimental) {
+                                            app.experimentalVersions.firstOrNull()
+                                        } else {
+                                            app.recommendedVersion
+                                        }
+                                        
                                         Text(
-                                            text = app.recommendedVersion?.let { "v$it" } ?: "Download",
+                                            text = versionToDisplay?.let { "v$it" } ?: "Download",
                                             fontSize = 11.sp,
                                             fontFamily = font,
                                             color = Color.White,

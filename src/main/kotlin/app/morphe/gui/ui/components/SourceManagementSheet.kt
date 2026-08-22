@@ -345,6 +345,7 @@ fun SourceManagementSheet(
 
     if (showAddDialog) {
         AddPatchSourceDialog(
+            isQuickMode = mode == SourceSheetMode.SINGLE_SELECT,
             onDismiss = { showAddDialog = false },
             onAdd = {
                 onAdd(it)
@@ -356,6 +357,7 @@ fun SourceManagementSheet(
     editingSource?.let { src ->
         EditPatchSourceDialog(
             source = src,
+            isQuickMode = mode == SourceSheetMode.SINGLE_SELECT,
             onDismiss = { editingSource = null },
             onSave = {
                 onEdit(it)

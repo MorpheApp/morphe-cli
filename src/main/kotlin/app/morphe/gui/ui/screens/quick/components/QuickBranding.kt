@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.ui.theme.*
+import app.morphe.gui.util.EnabledSourcesLoader
 import app.morphe.morphe_desktop.generated.resources.Res
 import app.morphe.morphe_desktop.generated.resources.morphe_dark
 import app.morphe.morphe_desktop.generated.resources.morphe_light
@@ -50,7 +51,7 @@ internal fun PatchesVersionBadge(
     patchesVersion: String?,
     isLoading: Boolean,
     patchSourceName: String? = null,
-    latestLabel: String? = null,
+    patchesChannel: EnabledSourcesLoader.Channel? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val font = LocalMorpheFont.current
@@ -124,12 +125,19 @@ internal fun PatchesVersionBadge(
                 fontFamily = font,
                 color = accents.primary
             )
+            val latestLabel = when (patchesChannel) {
+                EnabledSourcesLoader.Channel.STABLE_LATEST -> "Latest Stable"
+                EnabledSourcesLoader.Channel.DEV_LATEST -> "Latest Dev"
+                else -> null
+            }
+            
             if (latestLabel != null) {
+                val badgeColor = channelColor(patchesChannel)
                 Spacer(modifier = Modifier.width(6.dp))
                 Box(
                     modifier = Modifier
-                        .background(accents.secondary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                        .border(1.dp, accents.secondary.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
+                        .background(badgeColor.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
+                        .border(1.dp, badgeColor.copy(alpha = 0.2f), RoundedCornerShape(corners.small))
                         .padding(horizontal = 5.dp, vertical = 1.dp)
                 ) {
                     Text(
@@ -137,7 +145,7 @@ internal fun PatchesVersionBadge(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = font,
-                        color = accents.secondary,
+                        color = badgeColor,
                     )
                 }
             }

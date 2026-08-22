@@ -272,7 +272,8 @@ class QuickPatchViewModel(
                     patchesChannel = firstResolved?.channel,
                     patchSourceName = sourceName,
                     patchLoadError = null,
-                    isOffline = isOffline
+                    isOffline = isOffline,
+                    useExperimentalVersions = activeSource.useExperimentalVersions
                 ) }
             } catch (e: CancellationException) {
                 // See HomeViewModel for the rationale: never overwrite UI
@@ -402,7 +403,14 @@ class QuickPatchViewModel(
             val displayName = dynamicAppInfo?.displayName
                 ?: SupportedApp.resolveDisplayName(packageName, manifest.applicationLabel)
 
-            val recommendedVersion = dynamicAppInfo?.recommendedVersion
+            val useExperimental = patchSourceManager.getActiveSource().useExperimentalVersions
+            val hasExperimental = dynamicAppInfo?.experimentalVersions?.isNotEmpty() == true
+
+            val recommendedVersion = if (useExperimental && hasExperimental) {
+                dynamicAppInfo.experimentalVersions.firstOrNull()
+            } else {
+                dynamicAppInfo?.recommendedVersion
+            }
 
             // Resolve version status against the supported app's stable +
             // experimental version lists.
@@ -412,7 +420,11 @@ class QuickPatchViewModel(
                 VersionResolution(VersionStatus.UNKNOWN, null)
             }
             val versionStatus = versionResolution.status
-            val isRecommendedVersion = versionStatus == VersionStatus.LATEST_STABLE
+            val isRecommendedVersion = if (useExperimental && hasExperimental) {
+                versionStatus == VersionStatus.LATEST_EXPERIMENTAL
+            } else {
+                versionStatus == VersionStatus.LATEST_STABLE
+            }
             val versionWarning = when (versionStatus) {
                 VersionStatus.OLDER_STABLE ->
                     "Older stable build - newer stable v${versionResolution.suggestedVersion} available"
@@ -833,6 +845,7 @@ data class QuickPatchUiState(
     val dismissedUpdateVersion: String? = null,
     /** Session-only dismiss; cleared on next app start. Not persisted. */
     val updateBannerSessionDismissed: Boolean = false,
+    val useExperimentalVersions: Boolean = false,
 ) {
     val showUpdateBanner: Boolean
         get() = updateInfo != null &&

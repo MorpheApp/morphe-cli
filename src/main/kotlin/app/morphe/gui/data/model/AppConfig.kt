@@ -194,6 +194,7 @@ data class PatchSource (
     // on first load (per user choice — see project memory).
     val enabled: Boolean = true,
     val usePreRelease: Boolean = false,
+    val useExperimentalVersions: Boolean = false,
 )
 
 @Serializable
