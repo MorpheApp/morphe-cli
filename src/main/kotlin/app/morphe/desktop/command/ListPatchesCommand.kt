@@ -133,6 +133,17 @@ internal object ListPatchesCommand : Runnable {
                 append("\nType: $type")
             }
 
+        fun getVersionCodesString(patch: Patch<*>, pkgName: String, versionName: String): String {
+            val target = patch.compatibility.orEmpty()
+                .filter { it.packageName == pkgName }
+                .flatMap { it.targets }
+                .find { it.version == versionName && !it.versionCodes.isNullOrEmpty() }
+
+            return target?.versionCodes?.let { codes ->
+                codes.entries.joinToString(", ") { "${it.key.name}=${it.value}" }
+            } ?: ""
+        }
+
         fun IndexedValue<Patch<*>>.buildString() =
             let { (index, patch) ->
                 buildString {
@@ -162,14 +173,24 @@ internal object ListPatchesCommand : Runnable {
                                     buildString {
                                         val displayName = name ?: "(universal)"
                                         if (withVersions && versions.isNotEmpty()) {
-                                            appendLine("Package name: $displayName")
-                                            appendLine("Compatible versions:")
-                                            append(versions.joinToString("\n").prependIndent("\t"))
+                                            appendLine("\tPackage name: $displayName")
+                                            appendLine("\tCompatible versions:")
+                                            append(versions.joinToString("\n").prependIndent("\t\t"))
+
+                                            val codesList = versions.mapNotNull { v ->
+                                                val codes = getVersionCodesString(patch, displayName, v)
+                                                if (codes.isNotEmpty()) "$v: $codes" else null
+                                            }
+
+                                            if (codesList.isNotEmpty()) {
+                                                append("\n\tVersion codes:\n")
+                                                append(codesList.joinToString("\n").prependIndent("\t\t"))
+                                            }
                                         } else {
-                                            append("Package name: $displayName")
+                                            append("\tPackage name: $displayName")
                                         }
                                     }
-                                }.prependIndent("\t"),
+                                },
                             )
                         }
                     }
