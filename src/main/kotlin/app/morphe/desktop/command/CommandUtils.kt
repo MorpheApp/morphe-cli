@@ -11,8 +11,8 @@ import java.io.File
 
 internal fun checkFileExistsOrIsUrl(files: Set<File>, spec: CommandSpec) : Set<File> {
     files.firstOrNull {
-        !it.exists() && !it.toString().let {
-            it.startsWith("http:/") || it.startsWith("https:/")
+        !it.exists() && !it.toString().let { url ->
+            url.startsWith("http:/") || url.startsWith("https:/")
         }
     }?.let {
         throw CommandLine.ParameterException(spec.commandLine(), "${it.name} can not be found")

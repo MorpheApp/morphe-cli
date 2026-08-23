@@ -42,7 +42,7 @@ object PatchFileResolver {
                 // morphe.software/add-source links, bare owner/repo.
 
                 val parsed = RemotePatchSourceFactory.parse(url)
-                    ?: throw IllegalArgumentException("Unrecognized patch URL: \$url")
+                    ?: throw IllegalArgumentException("Unrecognized patch URL: $url")
 
                 val source = parsed.instantiate(httpClient)
 

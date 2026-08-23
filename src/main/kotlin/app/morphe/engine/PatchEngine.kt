@@ -275,7 +275,7 @@ object PatchEngine {
                 // `failedPatches` for the UI to display. Only strict mode (failOnError=true)
                 // treats any failure as an overall failure.
                 return Result(
-                    success = if (config.failOnError) failedPatches.isEmpty() else true,
+                    success = !config.failOnError || failedPatches.isEmpty(),
                     outputPath = config.outputApk.absolutePath,
                     packageName = packageName,
                     packageVersion = packageVersion,

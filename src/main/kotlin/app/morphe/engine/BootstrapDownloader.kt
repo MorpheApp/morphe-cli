@@ -79,39 +79,39 @@ object BootstrapDownloader {
         if (toDownload > 0) listener?.onStart(toDownload)
 
         var index = 0
-        for (plan in plans) {
-            if (!plan.needsDownload) {
-                downloadedFiles.add(plan.target)
+        for ((dep, target, needsDownload) in plans) {
+            if (!needsDownload) {
+                downloadedFiles.add(target)
                 continue
             }
-            if (plan.target.exists()) {
-                logger.warning("Cache invalid for ${plan.dep.fileName}, redownloading.")
-                plan.target.delete()
+            if (target.exists()) {
+                logger.warning("Cache invalid for ${dep.fileName}, redownloading.")
+                target.delete()
             }
 
-            logger.info("Downloading ${plan.dep.fileName}...")
+            logger.info("Downloading ${dep.fileName}...")
             val current = index
             try {
-                downloadWithProgress(plan.dep, plan.target) { done, total ->
-                    listener?.onProgress(current, toDownload, plan.dep.fileName, done, total)
+                downloadWithProgress(dep, target) { done, total ->
+                    listener?.onProgress(current, toDownload, dep.fileName, done, total)
                 }
             } catch (e: Exception) {
-                plan.target.delete()
-                val message = "Failed to download ${plan.dep.fileName}: ${e.message}"
+                target.delete()
+                val message = "Failed to download ${dep.fileName}: ${e.message}"
                 logger.severe(message)
                 listener?.onError(message)
                 throw BootstrapException(message, e)
             }
 
-            if (!verifyHash(plan.target, plan.dep.expectedHash)) {
-                plan.target.delete()
-                val message = "Checksum mismatch for ${plan.dep.fileName}."
+            if (!verifyHash(target, dep.expectedHash)) {
+                target.delete()
+                val message = "Checksum mismatch for ${dep.fileName}."
                 logger.severe(message)
                 listener?.onError(message)
                 throw BootstrapException(message)
             }
 
-            downloadedFiles.add(plan.target)
+            downloadedFiles.add(target)
             index++
         }
 
