@@ -8,6 +8,7 @@ package app.morphe.desktop.command
 import app.morphe.desktop.command.CliHttpClient
 import app.morphe.engine.VersionMap
 import app.morphe.engine.mostCommonCompatibleVersions
+import app.morphe.engine.versionCodesFor
 import app.morphe.patcher.patch.loadPatchesFromJar
 import picocli.CommandLine
 import picocli.CommandLine.Command
@@ -87,13 +88,7 @@ internal class ListCompatibleVersions : Runnable {
         val patches = loadPatchesFromJar(patchesFiles)
 
         fun getVersionCodesString(pkgName: String, versionName: String): String {
-            val target = patches
-                .flatMap { it.compatibility.orEmpty() }
-                .filter { it.packageName == pkgName }
-                .flatMap { it.targets }
-                .find { it.version == versionName && !it.versionCodes.isNullOrEmpty() }
-
-            return target?.versionCodes?.let { codes ->
+            return patches.versionCodesFor(pkgName, versionName)?.let { codes ->
                 " [versionCodes: " + codes.entries.joinToString(", ") { "${it.key.name}=${it.value}" } + "]"
             } ?: ""
         }

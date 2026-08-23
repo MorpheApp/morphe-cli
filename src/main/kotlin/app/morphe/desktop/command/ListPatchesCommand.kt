@@ -11,6 +11,7 @@ package app.morphe.desktop.command
 import app.morphe.desktop.command.CliHttpClient
 import app.morphe.engine.compatibleVersionsForDisplay
 import app.morphe.engine.isCompatibleWith
+import app.morphe.engine.versionCodesFor
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
 import picocli.CommandLine
@@ -134,12 +135,7 @@ internal object ListPatchesCommand : Runnable {
             }
 
         fun getVersionCodesString(patch: Patch<*>, pkgName: String, versionName: String): String {
-            val target = patch.compatibility.orEmpty()
-                .filter { it.packageName == pkgName }
-                .flatMap { it.targets }
-                .find { it.version == versionName && !it.versionCodes.isNullOrEmpty() }
-
-            return target?.versionCodes?.let { codes ->
+            return patch.versionCodesFor(pkgName, versionName)?.let { codes ->
                 codes.entries.joinToString(", ") { "${it.key.name}=${it.value}" }
             } ?: ""
         }
