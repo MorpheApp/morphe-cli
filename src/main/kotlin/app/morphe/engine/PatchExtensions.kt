@@ -137,8 +137,8 @@ fun Iterable<Patch<*>>.mostCommonCompatibleVersions(
         for (patch in this@mostCommonCompatibleVersions) {
             val compat = patch.compatibility
             if (!compat.isNullOrEmpty()) {
-                for (entry in compat) {
-                    entry.packageName?.let { add(it) }
+                for ((packageName) in compat) {
+                    packageName?.let { add(it) }
                 }
             } else {
                 @Suppress("DEPRECATION")
