@@ -1,3 +1,10 @@
+# [1.14.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.3-dev.1...v1.14.0-dev.1) (2026-08-24)
+
+
+### Features
+
+* Show version codes in `list-versions` and `list-patches` ([#262](https://github.com/MorpheApp/morphe-desktop/issues/262)) ([f19352a](https://github.com/MorpheApp/morphe-desktop/commit/f19352a982ae6287b99085835cc1772e36cee164))
+
 ## [1.13.3-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.2...v1.13.3-dev.1) (2026-08-23)
 
 
