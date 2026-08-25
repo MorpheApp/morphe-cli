@@ -1,3 +1,10 @@
+# [1.14.0-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.14.0-dev.2...v1.14.0-dev.3) (2026-08-25)
+
+
+### Features
+
+* Add patch context `fileWorkspace` ([#264](https://github.com/MorpheApp/morphe-desktop/issues/264)) ([1766a64](https://github.com/MorpheApp/morphe-desktop/commit/1766a640620304f85474798f8db32693115b617a))
+
 # [1.14.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.14.0-dev.1...v1.14.0-dev.2) (2026-08-24)
 
 
