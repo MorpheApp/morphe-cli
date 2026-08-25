@@ -130,7 +130,8 @@ object PatchEngine {
                 patcherTempDir.absolutePath,
                 useArsclib = true,
                 keepArchitectures = config.architecturesToKeep,
-                useBytecodeMode = config.bytecodeMode
+                useBytecodeMode = config.bytecodeMode,
+                fileWorkspacePath = File(tempDir, "workspace").also { it.mkdirs() }
             )
 
             Patcher(patcherConfig).use { patcher ->
