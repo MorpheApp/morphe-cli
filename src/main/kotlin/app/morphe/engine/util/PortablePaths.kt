@@ -48,7 +48,7 @@ object PortablePaths {
             // target == anchor — fall back to absolute in that edge case to
             // avoid storing an empty string that would round-trip to anchor.
             val rel = target.relativeTo(anchor).path
-            if (rel.isEmpty()) absolutePath else rel
+            rel.ifEmpty { absolutePath }
         } else {
             absolutePath
         }

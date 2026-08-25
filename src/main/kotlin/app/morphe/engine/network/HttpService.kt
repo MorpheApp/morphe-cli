@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.milliseconds
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -193,17 +194,17 @@ class HttpService(
                 }
                 val wait = (t.retryAfterMillis ?: delayMs).coerceAtMost(MAX_RETRY_DELAY_MS)
                 logger.warning("$operation hit 429 (attempt $attempt/$MAX_RETRY_ATTEMPTS), waiting ${wait}ms")
-                delay(wait)
+                delay(wait.milliseconds)
                 delayMs = (delayMs * 2).coerceAtMost(MAX_RETRY_DELAY_MS)
             } catch (t: HttpException) {
                 if (!t.isRetryable || attempt >= MAX_RETRY_ATTEMPTS) throw t
                 logger.warning("$operation attempt $attempt: retryable HTTP error: ${t.message}")
-                delay(delayMs)
+                delay(delayMs.milliseconds)
                 delayMs = (delayMs * 2).coerceAtMost(MAX_RETRY_DELAY_MS)
             } catch (t: Exception) {
                 if (attempt >= MAX_RETRY_ATTEMPTS) throw t
                 logger.warning("$operation attempt $attempt failed: ${t::class.simpleName}: ${t.message}")
-                delay(delayMs)
+                delay(delayMs.milliseconds)
                 delayMs = (delayMs * 2).coerceAtMost(MAX_RETRY_DELAY_MS)
             }
         }

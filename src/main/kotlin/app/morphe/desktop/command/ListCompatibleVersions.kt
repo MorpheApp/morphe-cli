@@ -8,6 +8,7 @@ package app.morphe.desktop.command
 import app.morphe.desktop.command.CliHttpClient
 import app.morphe.engine.VersionMap
 import app.morphe.engine.mostCommonCompatibleVersions
+import app.morphe.engine.versionCodesFor
 import app.morphe.patcher.patch.loadPatchesFromJar
 import picocli.CommandLine
 import picocli.CommandLine.Command
@@ -71,24 +72,6 @@ internal class ListCompatibleVersions : Runnable {
     private lateinit var spec: CommandSpec
 
     override fun run() {
-        fun VersionMap.buildVersionsString(): String {
-            if (isEmpty()) return "Any"
-
-            fun buildPatchesCountString(count: Int) = if (count == 1) "1 patch" else "$count patches"
-
-            return entries.joinToString("\n") { (version, count) ->
-                "$version (${buildPatchesCountString(count)})"
-            }
-        }
-
-        fun buildString(entry: Map.Entry<String, VersionMap>) =
-            buildString {
-                val (name, versions) = entry
-                appendLine("Package name: $name")
-                appendLine("Most common compatible versions:")
-                appendLine(versions.buildVersionsString().prependIndent("\t"))
-            }
-
         try {
             patchesFiles = PatchFileResolver.resolve(
                 patchesFiles,
@@ -103,6 +86,31 @@ internal class ListCompatibleVersions : Runnable {
         }
 
         val patches = loadPatchesFromJar(patchesFiles)
+
+        fun getVersionCodesString(pkgName: String, versionName: String): String {
+            return patches.versionCodesFor(pkgName, versionName)?.let { codes ->
+                " [versionCodes: " + codes.entries.joinToString(", ") { "${it.key.name}=${it.value}" } + "]"
+            } ?: ""
+        }
+
+        fun VersionMap.buildVersionsString(packageName: String): String {
+            if (isEmpty()) return "Any"
+
+            fun buildPatchesCountString(count: Int) = if (count == 1) "1 patch" else "$count patches"
+
+            return entries.joinToString("\n") { (version, count) ->
+                val versionCodesStr = getVersionCodesString(packageName, version)
+                "$version$versionCodesStr (${buildPatchesCountString(count)})"
+            }
+        }
+
+        fun buildString(entry: Map.Entry<String, VersionMap>) =
+            buildString {
+                val (name, versions) = entry
+                appendLine("Package name: $name")
+                appendLine("Most common compatible versions:")
+                appendLine(versions.buildVersionsString(name).prependIndent("\t"))
+            }
 
         patches.mostCommonCompatibleVersions(
             packageNames,
