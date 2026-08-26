@@ -1,0 +1,9 @@
+*.apk
+*.jar
+*.keystore
+*.jks
+build-tools/
+test-*/
+output/
+__pycache__/
+*.pycore
