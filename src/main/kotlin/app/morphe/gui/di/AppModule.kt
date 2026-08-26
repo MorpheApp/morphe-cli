@@ -5,6 +5,7 @@
 
 package app.morphe.gui.di
 
+import app.morphe.gui.data.repository.ChangelogRepository
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchPreferencesRepository
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -89,12 +90,13 @@ val appModule = module {
     single { PatchSourceManager(get(), get()) }
     single { PatchService() }
     single { UpdateCheckRepository(get()) }
+    single { ChangelogRepository(get()) }
     single { PatchedAppStore.shared }
 
     // ViewModels (ScreenModels)
     // ViewModels observe PatchSourceManager.sourceVersion and reload on source changes.
     factory {
-        HomeViewModel(get(), get(), get(), get(), get())
+        HomeViewModel(get(), get(), get(), get(), get(), get())
     }
     factory { params ->
         val psm = get<PatchSourceManager>()

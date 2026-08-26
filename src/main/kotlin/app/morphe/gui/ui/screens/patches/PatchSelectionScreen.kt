@@ -35,7 +35,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import app.morphe.gui.ui.components.MorpheDialogButton
+import androidx.compose.ui.window.Dialog
 import app.morphe.gui.ui.components.MorpheDialogCard
+import app.morphe.gui.ui.components.MorpheDialogSurface
 import app.morphe.gui.ui.components.MorpheDialogText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -86,7 +88,7 @@ data class PatchSelectionScreen(
     /** All enabled-source .mpp file paths. Single-element in single-source mode.
      *  Used by the patching pipeline to feed the engine the union of patches. */
     val patchesFilePaths: List<String> = emptyList(),
-    /** Parallel to [patchesFilePaths] — display name per source. Drives badging
+    /** Parallel to [patchesFilePaths]. Display name per source. Drives badging
      *  in the patch list. Empty disables badging (legacy single-source). */
     val patchSourceNames: List<String> = emptyList(),
     /** One-click repatch seed (source/bundle name → patch uniqueIds). Empty =
@@ -167,6 +169,13 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     var cleanMode by remember { mutableStateOf(false) }
     var showCommandPreview by remember { mutableStateOf(false) }
     var continueOnError by remember { mutableStateOf(false) }
+    var showRunInfo by remember { mutableStateOf(false) }
+
+    if (showRunInfo) {
+        // Read once per open. The inputs cannot change while this screen is up.
+        val info = remember(uiState.bundles) { viewModel.runInfo() }
+        RunInfoDialog(info = info, onDismiss = { showRunInfo = false })
+    }
 
     val dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
 
@@ -331,6 +340,51 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 Spacer(modifier = Modifier.width(6.dp))
             }
 
+            val infoHover = remember { MutableInteractionSource() }
+            val isInfoHovered by infoHover.collectIsHoveredAsState()
+            val infoBorder by animateColorAsState(
+                when {
+                    showRunInfo -> accents.primary.copy(alpha = 0.5f)
+                    isInfoHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                },
+                animationSpec = tween(150)
+            )
+            TooltipBox(
+                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                tooltip = {
+                    PlainTooltip {
+                        Text("APK and patch bundle used for this run", fontFamily = mono, fontSize = 11.sp)
+                    }
+                },
+                state = rememberTooltipState()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .hoverable(infoHover)
+                        .clip(RoundedCornerShape(corners.small))
+                        .border(1.dp, infoBorder, RoundedCornerShape(corners.small))
+                        .then(
+                            if (showRunInfo) Modifier.background(
+                                accents.primary.copy(alpha = 0.08f),
+                                RoundedCornerShape(corners.small)
+                            ) else Modifier
+                        )
+                        .clickable { showRunInfo = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = MorpheIcons.Info,
+                        contentDescription = "Run info",
+                        tint = if (showRunInfo) accents.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+
             DeviceIndicator()
             Spacer(modifier = Modifier.width(6.dp))
             ToolsButton(allowCacheClear = false)
@@ -340,7 +394,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             )
         }
 
-        // Command preview — collapsible
+        // Command preview. Collapsible
         if (!uiState.isLoading && uiState.bundles.isNotEmpty()) {
             val commandPreview = remember(uiState.selectedByBundle, uiState.stripLibsStatus, cleanMode, continueOnError, keystorePath) {
                 viewModel.getCommandPreview(cleanMode, continueOnError, keystorePath, keystorePassword, keystoreAlias, keystoreEntryPassword)
@@ -376,7 +430,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
         // ONE bundle. Multi-bundle moves these chips INTO each bundle box
         // so each source can be managed independently. The deprecated
         // applySaved/applyDefaults/selectAll/deselectAll methods loop over
-        // bundles — for a single bundle, they're equivalent to the per-
+        // bundles. For a single bundle, they're equivalent to the per-
         // bundle methods.
         val isSingleBundle = uiState.bundles.size == 1
         AnimatedVisibility(
@@ -431,9 +485,9 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 }
             }
 
-            // Global empty state — when EVERY loaded bundle has zero patches
+            // Global empty state. When EVERY loaded bundle has zero patches
             // compatible with this APK. None of the enabled sources contribute
-            // anything for this app's package; rendering empty bundle boxes
+            // anything for this app's package. Rendering empty bundle boxes
             // would be pure noise.
             !uiState.isLoading && uiState.bundles.all { it.patches.isEmpty() } -> {
                 Box(
@@ -451,7 +505,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                 }
             }
 
-            // Global "no matches for search" empty state — only fires when
+            // Global "no matches for search" empty state. Only fires when
             // EVERY bundle that HAS patches has been filtered to empty by
             // the active search. Bundles with 0 patches for this app are
             // hidden separately above, so we only consider non-empty sources.
@@ -477,12 +531,12 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             }
 
             else -> {
-                // Patch list — single-bundle renders flat (no box chrome),
+                // Patch list. Single-bundle renders flat (no box chrome),
                 // multi-bundle renders per-bundle collapsible boxes.
                 val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
 
                 // Expand/collapse state for multi-bundle, keyed by bundleId.
-                // Default: all bundles expanded. Uses plain `remember` — state
+                // Default: all bundles expanded. Uses plain `remember`. State
                 // resets if the user backs out and re-enters the screen, which
                 // is acceptable since "show me everything" is the right default.
                 val collapsedBundles = remember { mutableStateListOf<String>() }
@@ -530,7 +584,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                             // (i.e. the bundle has NO patches compatible with this
                             // APK at all). Bundles that loaded patches but are
                             // currently empty due to an active search still
-                            // render — their box shows "no matches in this bundle".
+                            // render. Their box shows "no matches in this bundle".
                             val bundlesById = uiState.bundles.associateBy { it.bundleId }
                             val visibleBundles = uiState.filteredBundles.filter { fb ->
                                 bundlesById[fb.bundleId]?.patches?.isNotEmpty() == true
@@ -817,7 +871,7 @@ private fun PatchListItem(
             )
             .hoverable(interactionSource)
     ) {
-        // Header — clicking toggles patch
+        // Header. Clicking toggles patch
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -956,7 +1010,7 @@ private fun PatchListItem(
                     animationSpec = tween(150)
                 )
 
-                // Wrapper box — no clip, allows badge to overflow
+                // Wrapper box. No clip, allows badge to overflow
                 Box(
                     modifier = Modifier.size(48.dp),
                     contentAlignment = Alignment.Center
@@ -983,7 +1037,7 @@ private fun PatchListItem(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                    // Options count badge — outside clip
+                    // Options count badge. Outside clip
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -1065,7 +1119,7 @@ private fun IconStudioOption(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Edit/design first (accent-filled), then import, then delete — all on the left.
+        // Edit/design first (accent-filled), then import, then delete. All on the left.
         IconActionPill(MorpheIcons.Edit, if (hasIcon) "EDIT ICON" else "DESIGN ICON", accents.secondary, filled = true, shape = shape, mono = mono) { showStudio = true }
         // Import an already-prepared folder (e.g. one made in the Manager).
         IconActionPill(MorpheIcons.FolderOpen, "IMPORT FOLDER", accents.secondary.copy(alpha = 0.8f), filled = false, shape = shape, mono = mono) {
@@ -1173,7 +1227,7 @@ private fun PatchOptionEditor(
         }
         if (option.description.isNotBlank()) {
             // customIcon's description is a long multi-line folder spec with a blank
-            // line after the first sentence — that blank line rendered as a gap. Show
+            // line after the first sentence. That blank line rendered as a gap. Show
             // just its summary line (the full spec is handled by the studio / import).
             val descText = if (option.key.equals("customIcon", ignoreCase = true))
                 option.description.lineSequence().firstOrNull { it.isNotBlank() }?.trim() ?: option.description
@@ -1313,7 +1367,7 @@ private fun PatchOptionEditor(
                             .clickable {
                                 val dialog = FileDialog(null as java.awt.Frame?, fileFilterDesc, FileDialog.LOAD)
                                 if (isImage) {
-                                    // setFile pattern works on macOS; setFilenameFilter works on Linux/Windows
+                                    // setFile pattern works on macOS. SetFilenameFilter works on Linux/Windows
                                     dialog.file = "*.png;*.jpg;*.jpeg;*.webp"
                                     dialog.setFilenameFilter { _, name ->
                                         val lower = name.lowercase()
@@ -1423,12 +1477,12 @@ private fun SelectionModeChips(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // SAVED is computed by overlaying the saved-selection check on top of CUSTOM —
+        // SAVED is computed by overlaying the saved-selection check on top of CUSTOM
         // when hasSavedSelection is true AND the current selection matches the saved
         // bundle, we treat it as SAVED. The VM only knows ALL/DEFAULTS/NONE/CUSTOM, so
         // we approximate: if hasSavedSelection is true and activeMode is CUSTOM, the
         // user could still be on their saved set. We can't tell here without the
-        // bundle; for now SAVED highlights only when activeMode == SelectionMode.SAVED
+        // bundle. For now SAVED highlights only when activeMode == SelectionMode.SAVED
         // (which is set after applySavedDefaults by virtue of the chip being clicked).
         SelectionModeChip(
             label = "YOUR DEFAULTS",
@@ -1699,7 +1753,7 @@ private fun StripLibsStatusBanner(
 
     // Each status variant maps to a BannerDisplay that tells the banner what color,
     // headline, description, and arch chips to render.
-    // accents.secondary is the app's "informational" accent; MaterialTheme tertiary is
+    // accents.secondary is the app's "informational" accent. MaterialTheme tertiary is
     // used for warning/fallback states.
     val display: BannerDisplay = when (status) {
         is StripLibsStatus.NoNativeLibs -> BannerDisplay(
@@ -1799,7 +1853,7 @@ private fun ArchChip(
     // Chip visual treatment per role:
     //  - KEEP       : filled accent background, strong border, full-opacity text
     //  - STRIP      : outlined only, dim border, dimmed text
-    //  - NOT_IN_APK : outlined only, very dim border, dimmed italicized text —
+    //  - NOT_IN_APK : outlined only, very dim border, dimmed italicized text
     //                 signals "this preference has no effect on this APK"
     val borderAlpha = when (role) {
         ArchChipRole.KEEP -> 0.4f
@@ -1885,7 +1939,7 @@ private data class BannerDisplay(
  * and the patches list itself.
  *
  * In search-active state, the box stays visible even if [BundlePatches.patches]
- * is empty — it renders a "no matches in this bundle" inline empty state so
+ * is empty. It renders a "no matches in this bundle" inline empty state so
  * the structural grouping stays stable while the user iterates on the query.
  */
 @Composable
@@ -1949,7 +2003,7 @@ private fun BundleBox(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            // Count chip — "Your Defaults" badge lives in SelectionModeChips
+            // Count chip. "Your Defaults" badge lives in SelectionModeChips
             // below so we don't duplicate the signal here.
             Text(
                 text = "$enabledCount / $totalCount",
@@ -1968,7 +2022,7 @@ private fun BundleBox(
             exit = shrinkVertically(),
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Per-bundle control row — REUSES the same SelectionModeChips
+                // Per-bundle control row. REUSES the same SelectionModeChips
                 // composable the single-bundle path uses, so icons, hover
                 // states, "Your Defaults" badge, and full-width layout match
                 // exactly. Callbacks scope each action to THIS bundle.
@@ -1983,7 +2037,7 @@ private fun BundleBox(
                 )
 
                 // Patches inside this bundle. Note: this is a regular Column,
-                // NOT a LazyColumn — bundles aren't typically huge enough
+                // NOT a LazyColumn. Bundles aren't typically huge enough
                 // (tens of patches) to justify lazy rendering, and nesting
                 // LazyColumns inside a LazyColumn is unsupported.
                 if (bundle.patches.isEmpty() && searchActive) {
@@ -2024,3 +2078,124 @@ private fun BundleBox(
     }
 }
 
+
+// ============================================================================
+// RUN INFO
+// ============================================================================
+
+/** The run's inputs. Left aligned, so it takes the surface not the card. */
+@Composable
+private fun RunInfoDialog(info: RunInfo, onDismiss: () -> Unit) {
+    val mono = LocalMorpheFont.current
+    val accents = LocalMorpheAccents.current
+    Dialog(onDismissRequest = onDismiss) {
+        MorpheDialogSurface(
+            modifier = Modifier.widthIn(max = 520.dp),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                text = "THIS RUN",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = 0.5.sp,
+            )
+
+            RunInfoGroup(label = "APP", color = accents.secondary, mono = mono) {
+                RunInfoHeadline(
+                    name = info.appName,
+                    version = info.appVersion.takeIf { it.isNotBlank() }
+                        ?.let { "v${it.removePrefix("v")}" },
+                    accent = accents.secondary,
+                    mono = mono,
+                )
+                RunInfoDetail(info.packageName, mono)
+                RunInfoDetail(info.apkFileName, mono)
+                RunInfoDetail(info.apkPath, mono)
+            }
+
+            RunInfoGroup(
+                label = if (info.bundles.size == 1) "PATCH BUNDLE" else "PATCH BUNDLES",
+                color = accents.primary,
+                mono = mono,
+            ) {
+                info.bundles.forEach { bundle ->
+                    RunInfoHeadline(
+                        name = bundle.name,
+                        version = bundle.version?.let { "v${it.removePrefix("v")}" },
+                        accent = accents.primary,
+                        mono = mono,
+                    )
+                    RunInfoDetail(bundle.fileName, mono)
+                }
+                if (info.bundles.isEmpty()) RunInfoDetail("No bundles resolved", mono)
+            }
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                MorpheDialogButton("CLOSE", accents.primary, filled = false, onClick = onDismiss)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RunInfoGroup(
+    label: String,
+    color: Color,
+    mono: FontFamily,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(
+            text = label,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            letterSpacing = 1.2.sp,
+            color = color.copy(alpha = 0.85f),
+        )
+        content()
+    }
+}
+
+/** Name left, version right. Matches the recall sheet. */
+@Composable
+private fun RunInfoHeadline(name: String, version: String?, accent: Color, mono: FontFamily) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = name,
+            fontSize = 13.sp,
+            fontFamily = mono,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = version ?: "unknown",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = mono,
+            color = if (version != null) accent
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+        )
+    }
+}
+
+@Composable
+private fun RunInfoDetail(text: String, mono: FontFamily) {
+    Text(
+        text = text,
+        fontSize = 9.sp,
+        fontFamily = mono,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+        lineHeight = 13.sp,
+    )
+}

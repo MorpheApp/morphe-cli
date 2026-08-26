@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -33,6 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -41,39 +44,65 @@ import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 
 /**
- * Morphe-styled modal card (Dialog + Surface) — the house replacement for stock
+ * Dialog chrome alone: shape, surface colour, accent border, padding, spacing.
+ * Use [MorpheDialogCard] for a plain confirm or message dialog. Sheets needing
+ * their own header, scrolling or left-aligned content SHOULD build on this.
+ *
+ * @param modifier applied to the surface, for sizing.
+ * @param contentModifier applied to the inner column, for scroll or height caps.
+ * @param contentPadding inset around the content. Zero it for full-bleed bands.
+ * @param verticalArrangement gap between top-level children.
+ */
+@Composable
+fun MorpheDialogSurface(
+    modifier: Modifier = Modifier,
+    contentModifier: Modifier = Modifier,
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
+    contentPadding: PaddingValues = PaddingValues(20.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val accents = LocalMorpheAccents.current
+    val corners = LocalMorpheCorners.current
+    Surface(
+        shape = RoundedCornerShape(corners.large),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, accents.primary.copy(alpha = 0.25f)),
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = contentModifier.padding(contentPadding),
+            verticalArrangement = verticalArrangement,
+            horizontalAlignment = horizontalAlignment,
+            content = content,
+        )
+    }
+}
+
+/**
+ * Morphe-styled modal card (Dialog + Surface), the house replacement for stock
  * Material `AlertDialog`s. Sharp corners, accent border, mono title.
  */
 @Composable
 fun MorpheDialogCard(
     onDismiss: () -> Unit,
     title: String,
+    /** Ceiling on the card's width. */
+    maxWidth: Dp = 440.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val accents = LocalMorpheAccents.current
-    val corners = LocalMorpheCorners.current
     val mono = LocalMorpheFont.current
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(corners.large),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, accents.primary.copy(alpha = 0.25f)),
-            modifier = Modifier.widthIn(max = 440.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    letterSpacing = 0.5.sp,
-                )
-                content()
-            }
+        MorpheDialogSurface(modifier = Modifier.widthIn(max = maxWidth)) {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = mono,
+                color = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = 0.5.sp,
+            )
+            content()
         }
     }
 }
@@ -87,6 +116,7 @@ fun MorpheDialogText(text: String) {
         fontFamily = LocalMorpheFont.current,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         lineHeight = 17.sp,
+        textAlign = TextAlign.Center,
     )
 }
 

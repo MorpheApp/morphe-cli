@@ -31,8 +31,11 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import app.morphe.gui.data.repository.PatchSourceManager
+import app.morphe.gui.data.model.PatchSource
+import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.ui.components.SourceLedState
 import app.morphe.gui.ui.components.SourceManagementSheet
+import app.morphe.gui.ui.components.AddPatchSourceDialog
 import app.morphe.gui.ui.components.sourceLedState
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -70,6 +73,16 @@ fun HomeScreenContent(
 
     // Device install-state is polled (adb), not streamed.
     LaunchedEffect(Unit) { viewModel.refreshDeviceInfo() }
+
+    val coroutineScope = rememberCoroutineScope()
+    val patchSourceManager: PatchSourceManager = koinInject()
+    val allSources by patchSourceManager.allSources.collectAsState()
+
+    // pendingReopenSheet reopens the sheet after a row click navigates away and
+    // the user pops back. Both MUST be rememberSaveable to survive Voyager's
+    // push/pop teardown. Declared here because the detail sheet also opens it.
+    var showSourceManagementSheet by rememberSaveable { mutableStateOf(false) }
+    var pendingReopenSheet by rememberSaveable { mutableStateOf(false) }
 
     // One-click repatch: a patched-app row's "Re-patch" action. Jump straight to
     // patch selection with the input APK + the record's saved selection, using
@@ -160,8 +173,36 @@ fun HomeScreenContent(
     // Phase 7. Tap a "Your apps" row to see the full recall breakdown.
     var detailRecord by remember { mutableStateOf<PatchedAppRecord?>(null) }
     val onShowDetail: (PatchedAppRecord) -> Unit = { detailRecord = it }
+    // UPDATE and RE-PATCH open the sheet rather than acting. Both need the user
+    // to settle an APK and a bundle, and the sheet is the only surface that shows
+    // what those currently are. It also leaves one update path instead of two.
     val onUpdate: (String) -> Unit = { pkg ->
-        viewModel.getPatchedRecord(pkg)?.let { viewModel.prepareUpdate(it) }
+        viewModel.getPatchedRecord(pkg)?.let { detailRecord = it }
+    }
+    // Loaded on sheet open, not up front.
+    var bundleVersionsBySource by remember { mutableStateOf(emptyMap<String, List<BundleRelease>>()) }
+    var showAddSourceDialog by remember { mutableStateOf(false) }
+    var preparingPatch by remember { mutableStateOf(false) }
+    var patchPrepProgress by remember { mutableStateOf<Pair<String, Float>?>(null) }
+    // Keyed off the enabled set too, so enabling a source pulls its releases.
+    val activeSources = viewModel.activePatchSources()
+    LaunchedEffect(detailRecord?.packageName, activeSources.map { it.name }) {
+        if (detailRecord == null) return@LaunchedEffect
+        bundleVersionsBySource = activeSources.associate { src ->
+            src.name to viewModel.availableBundleVersions(src.name)
+        }
+    }
+    if (showAddSourceDialog) {
+        AddPatchSourceDialog(
+            onDismiss = { showAddSourceDialog = false },
+            onAdd = { source ->
+                showAddSourceDialog = false
+                coroutineScope.launch {
+                    patchSourceManager.addSource(source)
+                    viewModel.retryLoadPatches()
+                }
+            },
+        )
     }
     detailRecord?.let { record ->
         val updateInfo = remember(record) { viewModel.recallUpdateInfo(record) }
@@ -170,9 +211,59 @@ fun HomeScreenContent(
             state = uiState.patchedStates[record.packageName] ?: PatchedAppState.PATCHED,
             deviceInfo = uiState.deviceAppInfo[record.packageName],
             updateInfo = updateInfo,
+            supportedApp = uiState.supportedApps.find { it.packageName == record.packageName },
+            activeSources = activeSources,
+            allSources = allSources,
+            bundleVersionsBySource = bundleVersionsBySource,
+            onSetSourceEnabled = { id, enabled ->
+                coroutineScope.launch {
+                    patchSourceManager.setSourceEnabled(id, enabled)
+                    viewModel.retryLoadPatches()
+                }
+            },
+            onAddSource = { showAddSourceDialog = true },
+            onAddLocalBundle = { path ->
+                coroutineScope.launch {
+                    patchSourceManager.addSource(
+                        PatchSource(
+                            id = java.util.UUID.randomUUID().toString(),
+                            name = java.io.File(path).nameWithoutExtension,
+                            type = PatchSourceType.LOCAL,
+                            filePath = path,
+                        )
+                    )
+                    viewModel.retryLoadPatches()
+                }
+            },
+            onResolveApkVersion = { path -> viewModel.apkVersionOf(path) },
+            onIsBundleCached = { name, tag -> viewModel.isBundleCached(name, tag) },
+            onSupportedAppFor = { pkg, overrides -> viewModel.supportedAppFor(pkg, overrides) },
+            onDownloadBundle = { name, tag, onProgress -> viewModel.downloadBundle(name, tag, onProgress) },
             onDismiss = { detailRecord = null },
             onRepatch = { onRepatch(record.packageName) },
-            onUpdate = { viewModel.prepareUpdate(record) },
+            preparingPatch = preparingPatch,
+            patchPrepProgress = patchPrepProgress,
+            onPatchWith = { apkPath, overrides ->
+                coroutineScope.launch {
+                    preparingPatch = true
+                    patchPrepProgress = null
+                    try {
+                        viewModel.resolvePatchFiles(overrides) { name, pct ->
+                            patchPrepProgress = name to pct
+                        }
+                            .onSuccess { (files, names) ->
+                                detailRecord = null
+                                launchPatch(record, apkPath, files, names)
+                            }
+                            .onFailure {
+                                viewModel.showError(it.message ?: "Couldn't resolve patch files.")
+                            }
+                    } finally {
+                        preparingPatch = false
+                        patchPrepProgress = null
+                    }
+                }
+            },
             onForget = { onForget(record.packageName) },
             onOpenFolder = {
                 runCatching {
@@ -241,17 +332,6 @@ fun HomeScreenContent(
         }
         null -> {}
     }
-
-    val patchSourceManager: PatchSourceManager = koinInject()
-    val allSources by patchSourceManager.allSources.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
-    // Two-flag pattern for smooth navigation in/out of the sheet:
-    //  - showSourceManagementSheet: actually visible right now
-    //  - pendingReopenSheet: user navigated away from the sheet via a row click,
-    //    we should reopen it once they pop back AND the screen transition settles.
-    // rememberSaveable on both so they survive Voyager's push/pop teardown.
-    var showSourceManagementSheet by rememberSaveable { mutableStateOf(false) }
-    var pendingReopenSheet by rememberSaveable { mutableStateOf(false) }
 
     // Re-show the sheet after the pop animation finishes, NOT immediately on
     // re-entry. Without the delay the sheet flashes in mid-transition.
@@ -493,12 +573,9 @@ fun HomeScreenContent(
                                     deviceAppInfo = uiState.deviceAppInfo,
                                     updateInfoByPackage = uiState.updateInfoByPackage,
                                     onRepatch = onRepatch,
-                                    onForget = onForget,
                                     onUpdate = onUpdate,
                                     onInstall = { viewModel.installPatchedApp(it) },
                                     installingPackage = uiState.installingPackage,
-                                    onUninstall = onUninstall,
-                                    uninstallingPackage = uiState.uninstallingPackage,
                                     onShowDetail = onShowDetail,
                                     filter = uiState.appListFilter,
                                     onFilterChange = { viewModel.setAppListFilter(it) },

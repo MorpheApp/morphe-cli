@@ -53,10 +53,10 @@ import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 /**
  * Vertical-list-friendly supported-app row. Two-row collapsed layout:
  *   row 1: initial badge + app name + package name (muted)
- *   row 2: STABLE LATEST chip + EXPERIMENTAL LATEST chip (or "—")
+ *   row 2: STABLE LATEST chip + EXPERIMENTAL LATEST chip (or a dash placeholder)
  *
  * Whole row is clickable (Phase 3 hooks expansion to it). Version chips are
- * also tappable as quick-download shortcuts — their clicks are consumed so
+ * also tappable as quick-download shortcuts. Their clicks are consumed so
  * they don't bubble up and trigger the row click.
  */
 @Composable
@@ -67,7 +67,7 @@ fun SupportedAppListRow(
     /** Source display names whose patches target [app.packageName]. Rendered as
      *  the FROM chips inside the expanded body. Empty hides the FROM section. */
     patchSourceNames: List<String> = emptyList(),
-    /** Recall state — renders a badge in the header for PATCHED / APK_MISSING. */
+    /** Recall state. Renders a badge in the header for PATCHED / APK_MISSING. */
     patchedState: PatchedAppState = PatchedAppState.NEVER_PATCHED,
     /** Optional device-layer info (installed? + version). Null = no device / not patched.
      *  Recall ACTIONS (Re-patch/Forget) live on the "Your apps" card, not here. */
@@ -168,7 +168,7 @@ fun SupportedAppListRow(
                 channelLabel = "STABLE LATEST",
                 version = app.recommendedVersion,
                 color = accents.secondary,
-                // Pass the URL through unconditionally — when recommendedVersion
+                // Pass the URL through unconditionally. When recommendedVersion
                 // is null (patches work on Any version), the URL still points to
                 // the app's general APKMirror page and stays clickable.
                 downloadUrl = app.apkDownloadUrl,
@@ -239,6 +239,9 @@ internal fun PatchedStateBadge(state: PatchedAppState, mono: FontFamily) {
     val (label, color) = when (state) {
         PatchedAppState.PATCHED -> "PATCHED" to MorpheColors.Teal
         PatchedAppState.PATCHED_WITH_UPDATES -> "UPDATE AVAILABLE" to MorpheColors.Blue
+        // Cyan, not Blue. Informational, and MUST NOT read as urgently as
+        // PATCHED_WITH_UPDATES sitting next to it.
+        PatchedAppState.NEW_APP_VERSION -> "NEW APP VERSION" to MorpheColors.Cyan
         PatchedAppState.MODIFIED_EXTERNALLY -> "MODIFIED" to Color(0xFFE0504D) // red
         PatchedAppState.APK_MISSING -> "APK MISSING" to Color(0xFFE0A030) // amber
         PatchedAppState.NEVER_PATCHED -> return
@@ -265,10 +268,10 @@ internal fun PatchedStateBadge(state: PatchedAppState, mono: FontFamily) {
 /**
  * Channel label + version pair. When [downloadUrl] is non-null and [version] is
  * present, the chip becomes a clickable quick-download (with hand cursor + open-
- * in-new icon). When [version] is null, renders "—" in a muted style with no
+ * in-new icon). When [version] is null, renders a dash placeholder, muted and with no
  * click affordance.
  *
- * The chip's clickable consumes the press — clicking it does NOT bubble up to
+ * The chip's clickable consumes the press. Clicking it does NOT bubble up to
  * the row's clickable, so quick-downloading doesn't accidentally expand the row.
  */
 @Composable
@@ -403,7 +406,7 @@ private fun ExpandedBody(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 otherStable.take(maxPills).forEach { v ->
-                    // URL is a pure function of package + version — compute
+                    // URL is a pure function of package + version. Compute
                     // per pill rather than pre-storing all of them on the model.
                     val url = remember(v) { SupportedApp.getDownloadUrl(app.packageName, v) }
                     Pill(
@@ -457,7 +460,7 @@ private fun ExpandedBody(
 }
 
 @Composable
-private fun SectionLabel(
+internal fun SectionLabel(
     text: String,
     color: Color,
     mono: androidx.compose.ui.text.font.FontFamily,
@@ -473,7 +476,7 @@ private fun SectionLabel(
 }
 
 @Composable
-private fun Pill(
+internal fun Pill(
     text: String,
     color: Color,
     mono: androidx.compose.ui.text.font.FontFamily,
@@ -484,7 +487,7 @@ private fun Pill(
     // When non-null, the pill becomes a tappable download link: gets a hand
     // cursor, an OpenInNew icon, a subtle hover lift, and fires onClick on tap.
     // detectTapGestures (not .clickable) so scroll wheel / two-finger gestures
-    // pass through on Linux/Skiko — same reason as the apps-cards Row.
+    // pass through on Linux/Skiko. Same reason as the apps-cards Row.
     onClick: (() -> Unit)? = null,
 ) {
     val hoverSource = remember { MutableInteractionSource() }

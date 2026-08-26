@@ -28,14 +28,14 @@ import java.io.File
  *
  * The single-source case (one enabled source) produces output equivalent to the
  * pre-multi-source per-ViewModel flow. Per-source version pinning via
- * [preferredVersionsBySource] keeps each source independent — picking a tag in
+ * [preferredVersionsBySource] keeps each source independent. Picking a tag in
  * one source's PatchesScreen does NOT contaminate other sources.
  */
 object EnabledSourcesLoader {
 
     /**
      * Per-source resolution result before patch-loading. Successful sources have
-     * a [patchFile]; failed ones have an [error] message and the UI can render
+     * a [patchFile]. Failed ones have an [error] message and the UI can render
      * the failure inline.
      */
     /** What channel the resolved release is on. Used by the home pill LEDs and
@@ -48,7 +48,7 @@ object EnabledSourcesLoader {
         val resolvedVersion: String? = null,
         /**
          * Newest available release tag in the resolved channel (stable/dev),
-         * regardless of what's currently downloaded — lets the UI flag "a newer
+         * regardless of what's currently downloaded. Lets the UI flag "a newer
          * patch file is available" without the user having to select it first.
          * Null when unknown (offline / cache fallback).
          */
@@ -79,21 +79,26 @@ object EnabledSourcesLoader {
      *                [app.morphe.gui.data.repository.PatchSourceManager.getEnabledRepositories].
      *                Repository is null for LOCAL sources.
      */
+    /**
+     * @param onDownloadProgress (source name, 0f..1f) while a bundle is fetched.
+     *   A fully cached run reports nothing.
+     */
     suspend fun loadAll(
         enabled: List<Pair<PatchSource, PatchRepository?>>,
         patchService: PatchService,
         prefsBySource: Map<String, SourceVersionPref> = emptyMap(),
         excludedMppPatterns: List<String> = emptyList(),
+        onDownloadProgress: ((String, Float) -> Unit)? = null,
     ): Result = supervisorScope {
         // supervisorScope (not coroutineScope) so a single source's failure
         // doesn't cancel the other in-flight resolves. Each async catches its
-        // own exceptions and returns a failed ResolvedSource — failures
+        // own exceptions and returns a failed ResolvedSource. Failures
         // become data, not control flow. Cancellation still propagates from
         // the caller (e.g. ViewModel cancelling its loadJob).
         val resolved = enabled.map { (source, repo) ->
             async(Dispatchers.IO) {
                 try {
-                    resolve(source, repo, prefsBySource[source.id], excludedMppPatterns)
+                    resolve(source, repo, prefsBySource[source.id], excludedMppPatterns, onDownloadProgress)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -142,6 +147,7 @@ object EnabledSourcesLoader {
         repo: PatchRepository?,
         pref: SourceVersionPref?,
         excludedMppPatterns: List<String>,
+        onDownloadProgress: ((String, Float) -> Unit)? = null,
     ): ResolvedSource = withContext(Dispatchers.IO) {
         when (source.type) {
             PatchSourceType.LOCAL -> resolveLocal(source, excludedMppPatterns)
@@ -150,7 +156,7 @@ object EnabledSourcesLoader {
             // which API to talk to based on the source's provider type.
             PatchSourceType.DEFAULT,
             PatchSourceType.GITHUB,
-            PatchSourceType.GITLAB -> resolveRemote(source, repo, pref)
+            PatchSourceType.GITLAB -> resolveRemote(source, repo, pref, onDownloadProgress)
         }
     }
 
@@ -186,7 +192,7 @@ object EnabledSourcesLoader {
     /**
      * Build-output classifiers a patch build emits *alongside* the real bundle (same
      * convention as Maven's `-sources.jar` / `-javadoc.jar`). Never the patch file we
-     * want, yet often the newest files in the folder — so a naive "newest .mpp" would
+     * want, yet often the newest files in the folder. So a naive "newest .mpp" would
      * wrongly pick one. Always excluded, on top of any user-configured patterns.
      */
     private val DEFAULT_EXCLUDED_MPP_GLOBS = listOf("*-sources.mpp", "*-javadoc.mpp")
@@ -239,6 +245,7 @@ object EnabledSourcesLoader {
         source: PatchSource,
         repo: PatchRepository?,
         pref: SourceVersionPref?,
+        onDownloadProgress: ((String, Float) -> Unit)? = null,
     ): ResolvedSource {
         if (repo == null) {
             return ResolvedSource(source = source, error = "No repository configured for source")
@@ -280,7 +287,9 @@ object EnabledSourcesLoader {
             else -> Channel.STABLE_OLDER
         }
 
-        val downloadResult = repo.downloadPatches(release)
+        val downloadResult = repo.downloadPatches(release) { pct ->
+            onDownloadProgress?.invoke(source.name, pct)
+        }
         val patchFile = downloadResult.getOrNull()
             ?: return ResolvedSource(
                 source = source,
@@ -291,7 +300,7 @@ object EnabledSourcesLoader {
             source = source,
             patchFile = patchFile,
             resolvedVersion = release.tagName,
-            // Latest in the resolved channel — what an "update" would move to.
+            // Latest in the resolved channel. What an "update" would move to.
             latestAvailableVersion = if (release.isDevRelease()) latestDevTag else latestStableTag,
             isOffline = false,
             channel = channel,
