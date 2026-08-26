@@ -5,10 +5,6 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
-import app.morphe.gui.LocalAdbPreference
-import app.morphe.gui.LocalModeState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -18,45 +14,47 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
-import app.morphe.gui.data.model.PatchSource
+import app.morphe.engine.UpdateChecker
+import app.morphe.gui.LocalAdbPreference
+import app.morphe.gui.LocalCustomAccentColor
+import app.morphe.gui.LocalIsPatching
+import app.morphe.gui.LocalModeState
+import app.morphe.gui.LocalOnSettingsDismiss
+import app.morphe.gui.LocalOnUpdateChannelChanged
+import app.morphe.gui.LocalSettingsDialogVisible
 import app.morphe.gui.data.model.UpdateChannelPreference
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.UpdateCheckRepository
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.koin.compose.koinInject
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalThemeState
+import app.morphe.gui.util.Logger
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
-fun SettingsButton(
-    modifier: Modifier = Modifier,
-    isPatching: Boolean = false,
-    onDismiss: () -> Unit = {},
-    /**
-     * Notified after the user changes the update channel preference. Hosts that
-     * own a view model with `refreshUpdateCheck()` should wire this up so the
-     * banner state matches the new channel without waiting for a restart.
-     */
-    onUpdateChannelChanged: () -> Unit = {},
-) {
-    val corners = LocalMorpheCorners.current
+fun SettingsDialogHost() {
+    val showSettingsDialogState = LocalSettingsDialogVisible.current
+    var showSettingsDialog by showSettingsDialogState
+
+    val isPatching = LocalIsPatching.current.value
+    val onDismiss = LocalOnSettingsDismiss.current
+    val onUpdateChannelChanged = LocalOnUpdateChannelChanged.current
+
     val themeState = LocalThemeState.current
     val modeState = LocalModeState.current
     val adbPreference = LocalAdbPreference.current
@@ -64,7 +62,7 @@ fun SettingsButton(
     val updateCheckRepository: UpdateCheckRepository = koinInject()
     val scope = rememberCoroutineScope()
 
-    var showSettingsDialog by remember { mutableStateOf(false) }
+    var customAccentColorArgb by LocalCustomAccentColor.current
     var autoCleanupTempFiles by remember { mutableStateOf(true) }
     var defaultOutputDirectory by remember { mutableStateOf<String?>(null) }
     var keystorePath by remember { mutableStateOf<String?>(null) }
@@ -98,35 +96,9 @@ fun SettingsButton(
             // Resolve the smart-default if the user has never picked a channel
             // (returns DEV when the running build is dev, STABLE otherwise).
             updateChannelPreference = configRepository.getOrInitUpdateChannelPreference(
-                app.morphe.engine.UpdateChecker.currentVersion() ?: ""
+                UpdateChecker.currentVersion() ?: ""
             )
         }
-    }
-
-    val hoverInteraction = remember { MutableInteractionSource() }
-    val isHovered by hoverInteraction.collectIsHoveredAsState()
-    val borderColor by animateColorAsState(
-        if (isHovered) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-        animationSpec = tween(150)
-    )
-
-    Box(
-        modifier = modifier
-            .size(34.dp)
-            .hoverable(hoverInteraction)
-            .clip(RoundedCornerShape(corners.small))
-            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
-            .clickable { showSettingsDialog = true },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = MorpheIcons.Settings,
-            contentDescription = "Settings",
-            tint = if (isHovered) MaterialTheme.colorScheme.onSurface
-                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(16.dp)
-        )
     }
 
     if (showSettingsDialog) {
@@ -190,13 +162,13 @@ fun SettingsButton(
                 if (pref != updateChannelPreference) {
                     updateChannelPreference = pref
                     scope.launch {
-                        app.morphe.gui.util.Logger.info("Settings: update channel changed to $pref, persisting + notifying host")
+                        Logger.info("Settings: update channel changed to $pref, persisting + notifying host")
                         configRepository.setUpdateChannelPreference(pref)
                         updateCheckRepository.clearCache()
                         // Notify the host so its view model re-pulls update info
                         // and the banner state updates without a restart.
                         onUpdateChannelChanged()
-                        app.morphe.gui.util.Logger.info("Settings: onUpdateChannelChanged() invoked")
+                        Logger.info("Settings: onUpdateChannelChanged() invoked")
                     }
                 }
             },
@@ -216,7 +188,47 @@ fun SettingsButton(
             onCollapsibleSectionToggle = { id, expanded ->
                 collapsibleSectionStates = collapsibleSectionStates + (id to expanded)
                 scope.launch { configRepository.setCollapsibleSectionExpanded(id, expanded) }
+            },
+            customAccentColorArgb = customAccentColorArgb,
+            onCustomAccentColorChange = {
+                customAccentColorArgb = it
+                scope.launch { configRepository.setCustomAccentColorArgb(it) }
             }
+        )
+    }
+}
+
+@Composable
+fun SettingsButton(
+    modifier: Modifier = Modifier,
+) {
+    val corners = LocalMorpheCorners.current
+    val settingsDialogVisible = LocalSettingsDialogVisible.current
+
+    val hoverInteraction = remember { MutableInteractionSource() }
+
+    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f)
+
+    val borderColor by animateColorAsState(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+        animationSpec = tween(150)
+    )
+
+    Box(
+        modifier = modifier
+            .size(34.dp)
+            .hoverable(hoverInteraction)
+            .clip(RoundedCornerShape(corners.small))
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+            .clickable { settingsDialogVisible.value = true },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = MorpheIcons.Settings,
+            contentDescription = "Settings",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
         )
     }
 }
@@ -230,16 +242,19 @@ fun TopBarRow(
 ) {
     val corners = LocalMorpheCorners.current
     val isSoft = corners.small >= 8.dp
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(if (isSoft) 12.dp else 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+    val isPatchingState = LocalIsPatching.current
+    SideEffect { isPatchingState.value = isPatching }
+    CompositionLocalProvider(
+        LocalOnUpdateChannelChanged provides onUpdateChannelChanged,
     ) {
-        DeviceIndicator()
-        ToolsButton(allowCacheClear = allowCacheClear)
-        SettingsButton(
-            isPatching = isPatching,
-            onUpdateChannelChanged = onUpdateChannelChanged,
-        )
+        Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(if (isSoft) 12.dp else 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DeviceIndicator()
+            ToolsButton(allowCacheClear = allowCacheClear)
+            SettingsButton()
+        }
     }
 }

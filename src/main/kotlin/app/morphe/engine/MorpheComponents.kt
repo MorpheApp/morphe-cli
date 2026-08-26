@@ -37,6 +37,6 @@ object MorpheComponents {
                 .getResourceAsStream(resourcePath)
                 ?.use { Properties().apply { load(it) }.getProperty(key) }
                 ?.trim()
-                ?.takeUnless { it.isEmpty() || it.startsWith("\${") }
+                ?.takeUnless { it.isEmpty() || it.startsWith($$"${") }
         }.getOrNull()
 }

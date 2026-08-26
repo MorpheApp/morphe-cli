@@ -11,6 +11,7 @@ package app.morphe.desktop.command
 import app.morphe.desktop.command.CliHttpClient
 import app.morphe.engine.compatibleVersionsForDisplay
 import app.morphe.engine.isCompatibleWith
+import app.morphe.engine.versionCodesFor
 import app.morphe.patcher.patch.Patch
 import app.morphe.patcher.patch.loadPatchesFromJar
 import picocli.CommandLine
@@ -133,6 +134,12 @@ internal object ListPatchesCommand : Runnable {
                 append("\nType: $type")
             }
 
+        fun getVersionCodesString(patch: Patch<*>, pkgName: String, versionName: String): String {
+            return patch.versionCodesFor(pkgName, versionName)?.let { codes ->
+                codes.entries.joinToString(", ") { "${it.key.name}=${it.value}" }
+            } ?: ""
+        }
+
         fun IndexedValue<Patch<*>>.buildString() =
             let { (index, patch) ->
                 buildString {
@@ -162,14 +169,24 @@ internal object ListPatchesCommand : Runnable {
                                     buildString {
                                         val displayName = name ?: "(universal)"
                                         if (withVersions && versions.isNotEmpty()) {
-                                            appendLine("Package name: $displayName")
-                                            appendLine("Compatible versions:")
-                                            append(versions.joinToString("\n").prependIndent("\t"))
+                                            appendLine("\tPackage name: $displayName")
+                                            appendLine("\tCompatible versions:")
+                                            append(versions.joinToString("\n").prependIndent("\t\t"))
+
+                                            val codesList = versions.mapNotNull { v ->
+                                                val codes = getVersionCodesString(patch, displayName, v)
+                                                if (codes.isNotEmpty()) "$v: $codes" else null
+                                            }
+
+                                            if (codesList.isNotEmpty()) {
+                                                append("\n\tVersion codes:\n")
+                                                append(codesList.joinToString("\n").prependIndent("\t\t"))
+                                            }
                                         } else {
-                                            append("Package name: $displayName")
+                                            append("\tPackage name: $displayName")
                                         }
                                     }
-                                }.prependIndent("\t"),
+                                },
                             )
                         }
                     }

@@ -5,8 +5,6 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import app.morphe.engine.CacheManager
 import app.morphe.engine.MorpheComponents
 import app.morphe.gui.data.constants.AppConstants
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
@@ -47,7 +46,7 @@ fun ToolsDialog(
     onCacheCleared: () -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
 
     var showClearCacheConfirm by remember { mutableStateOf(false) }
@@ -61,11 +60,10 @@ fun ToolsDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
-                text = "TOOLS",
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                fontSize = 13.sp,
-                letterSpacing = 2.sp,
+                text = "Tools",
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = font,
+                fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -75,9 +73,9 @@ fun ToolsDialog(
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 ActionButton(
-                    label = "OPEN LOGS",
+                    label = "Open logs",
                     icon = MorpheIcons.BugReport,
-                    mono = mono,
+                    font = font,
                     borderColor = borderColor,
                     onClick = {
                         try {
@@ -94,9 +92,9 @@ fun ToolsDialog(
                 Spacer(Modifier.height(6.dp))
 
                 ActionButton(
-                    label = "OPEN APP DATA",
+                    label = "Open app data",
                     icon = MorpheIcons.FolderOpen,
-                    mono = mono,
+                    font = font,
                     borderColor = borderColor,
                     onClick = {
                         try {
@@ -113,9 +111,9 @@ fun ToolsDialog(
                 Spacer(Modifier.height(6.dp))
 
                 ActionButton(
-                    label = "VIEW LICENSES",
+                    label = "View licenses",
                     icon = MorpheIcons.Description,
-                    mono = mono,
+                    font = font,
                     borderColor = borderColor,
                     onClick = { showLicensesDialog = true }
                 )
@@ -123,6 +121,7 @@ fun ToolsDialog(
                 Spacer(Modifier.height(6.dp))
 
                 // Clear cache
+                val cacheBytes = remember { getCacheSizeBytes() }
                 val cacheColor = when {
                     cacheCleared -> MorpheColors.Teal
                     cacheClearFailed -> MaterialTheme.colorScheme.error
@@ -130,52 +129,30 @@ fun ToolsDialog(
                 }
                 ActionButton(
                     label = when {
-                        !allowCacheClear -> "CLEAR CACHE (DISABLED)"
-                        cacheCleared -> "CACHE CLEARED"
-                        cacheClearFailed -> "CLEAR FAILED"
-                        else -> "CLEAR CACHE"
+                        cacheCleared -> "Cache cleared"
+                        cacheClearFailed -> "Clear failed"
+                        else -> "Clear cache"
                     },
                     icon = MorpheIcons.Delete,
-                    mono = mono,
+                    font = font,
                     borderColor = if (cacheCleared) MorpheColors.Teal.copy(alpha = 0.3f)
                                   else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
                     contentColor = cacheColor,
-                    enabled = allowCacheClear && !cacheCleared,
+                    enabled = allowCacheClear && !cacheCleared && cacheBytes > 0L,
                     onClick = { showClearCacheConfirm = true }
                 )
 
                 Spacer(Modifier.height(4.dp))
 
-                val cacheSize = calculateCacheSize()
+                val cacheSize = formatCacheSize(cacheBytes)
                 Text(
                     text = "Cache: $cacheSize (patches + logs)",
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    fontSize = 11.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(Modifier.height(14.dp))
-
-                // ── About (Morphe ecosystem versions) ──
-                val aboutColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                Text(
-                    text = "${AppConstants.APP_NAME} ${AppConstants.APP_VERSION}",
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = aboutColor,
-                )
-                Text(
-                    text = "Morphe Patcher ${MorpheComponents.patcherVersion ?: "unknown"}",
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = aboutColor,
-                )
-                Text(
-                    text = "Morphe Library ${MorpheComponents.libraryVersion ?: "unknown"}",
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = aboutColor,
-                )
             }
         },
         confirmButton = {
@@ -185,11 +162,10 @@ fun ToolsDialog(
                 border = BorderStroke(1.dp, borderColor)
             ) {
                 Text(
-                    "CLOSE",
-                    fontFamily = mono,
-                    fontWeight = FontWeight.SemiBold,
+                    "Close",
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
                     fontSize = 11.sp,
-                    letterSpacing = 0.5.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -204,18 +180,18 @@ fun ToolsDialog(
             containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text(
-                    "CLEAR CACHE?",
-                    fontFamily = mono,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    letterSpacing = 1.sp
+                    "Clear cache?",
+                    fontFamily = font,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
                 )
             },
             text = {
                 Text(
-                    "This will delete downloaded patches and log files. Patches will be re-downloaded when needed.",
-                    fontFamily = mono,
-                    fontSize = 12.sp,
+                    "This will delete downloaded patches and log files. Patches will be re-downloaded when needed",
+                    fontFamily = font,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp
                 )
@@ -235,22 +211,20 @@ fun ToolsDialog(
                     shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(
-                        "CLEAR",
-                        fontFamily = mono,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.5.sp
+                        "Clear",
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 11.sp
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearCacheConfirm = false }) {
                     Text(
-                        "CANCEL",
-                        fontFamily = mono,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.5.sp
+                        "Cancel",
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -262,11 +236,13 @@ fun ToolsDialog(
     }
 }
 
-private fun calculateCacheSize(): String {
+private fun getCacheSizeBytes(): Long {
     val patchesSize = FileUtils.getPatchesDir().walkTopDown().filter { it.isFile }.sumOf { it.length() }
     val logsSize = FileUtils.getLogsDir().walkTopDown().filter { it.isFile }.sumOf { it.length() }
-    val totalSize = patchesSize + logsSize
+    return patchesSize + logsSize
+}
 
+private fun formatCacheSize(totalSize: Long): String {
     return when {
         totalSize < 1024 -> "$totalSize B"
         totalSize < 1024 * 1024 -> "%.1f KB".format(totalSize / 1024.0)

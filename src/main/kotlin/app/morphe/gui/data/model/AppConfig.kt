@@ -52,6 +52,9 @@ data class SourceVersionPref(
 @Serializable
 data class AppConfig(
     val themePreference: String = ThemePreference.SYSTEM.name,
+    val backgroundType: String = "CIRCLES",
+    val enableParallax: Boolean = true,
+    val customAccentColorArgb: Int? = null,
     val lastCliVersion: String? = null,
     /**
      * LEGACY single-source version pin. Kept only so it can be migrated (via
@@ -190,6 +193,8 @@ data class PatchSource (
     // Multi-source enablement. Default true so old configs migrate to "all enabled"
     // on first load (per user choice — see project memory).
     val enabled: Boolean = true,
+    val usePreRelease: Boolean = false,
+    val useExperimentalVersions: Boolean = false,
 )
 
 @Serializable

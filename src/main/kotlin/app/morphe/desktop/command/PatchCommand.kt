@@ -529,12 +529,11 @@ internal object PatchCommand : Callable<Int> {
                     }
                 } else {
                     logger.info("Options file ${file.path} does not exist, generating with defaults")
-                    val freshBundles = patchSnapshots
                     val json = Json { prettyPrint = true }
                     file.absoluteFile.parentFile?.mkdirs()
-                    file.writeText(json.encodeToString(freshBundles))
+                    file.writeText(json.encodeToString(patchSnapshots))
                     logger.info("Generated options file at ${file.path}")
-                    loadedBundles.zip(freshBundles).associate { (lb, b) ->
+                    loadedBundles.zip(patchSnapshots).associate { (lb, b) ->
                         lb.sourceFile to b
                     }
                 }
@@ -782,41 +781,38 @@ internal object PatchCommand : Callable<Int> {
                 // stacktrace on failure since there's no "View details" UI
                 // in a terminal.
                 logger.info("Applying ${finalPatches.size} patches...")
-                patchingResult.addStepResult(
-                    PatchingStep.PATCHING,
-                    {
-                        runBlocking {
-                            patcher().collect { patchResult ->
-                                val patchName = patchResult.patch.name ?: "Unknown"
-                                patchResult.exception?.let { exception ->
-                                    StringWriter().use { writer ->
-                                        exception.printStackTrace(PrintWriter(writer))
+                patchingResult.addStepResult(PatchingStep.PATCHING) {
+                    runBlocking {
+                        patcher().collect { patchResult ->
+                            val patchName = patchResult.patch.name ?: "Unknown"
+                            patchResult.exception?.let { exception ->
+                                StringWriter().use { writer ->
+                                    exception.printStackTrace(PrintWriter(writer))
 
-                                        logger.severe("FAILED: $patchName\n$writer")
+                                    logger.severe("FAILED: $patchName\n$writer")
 
-                                        patchingResult.failedPatches.add(
-                                            FailedPatch(
-                                                patchResult.patch.toSerializablePatch(),
-                                                writer.toString()
-                                            )
+                                    patchingResult.failedPatches.add(
+                                        FailedPatch(
+                                            patchResult.patch.toSerializablePatch(),
+                                            writer.toString()
                                         )
+                                    )
 
-                                        if (!continueOnError) {
-                                            patchingResult.success = false
-                                            throw PatchFailedException(
-                                                "FAILED: $patchName",
-                                                exception
-                                            )
-                                        }
+                                    if (!continueOnError) {
+                                        patchingResult.success = false
+                                        throw PatchFailedException(
+                                            "FAILED: $patchName",
+                                            exception
+                                        )
                                     }
-                                } ?: run {
-                                    patchingResult.appliedPatches.add(patchResult.patch.toSerializablePatch())
-                                    logger.info("Applied: $patchName")
                                 }
+                            } ?: run {
+                                patchingResult.appliedPatches.add(patchResult.patch.toSerializablePatch())
+                                logger.info("Applied: $patchName")
                             }
                         }
                     }
-                )
+                }
 
                 // patches lives in the outer try scope (needed for patchesSnapshot and options
                 // file generation before the Patcher block). Clear it explicitly now — after
@@ -830,32 +826,26 @@ internal object PatchCommand : Callable<Int> {
             // region Save.
 
             inputApk.copyTo(patcherTemporaryFilesPath.resolve(inputApk.name), overwrite = true).apply {
-                patchingResult.addStepResult(
-                    PatchingStep.REBUILDING,
-                    {
-                        patcherResult.applyTo(this)
-                    }
-                )
+                patchingResult.addStepResult(PatchingStep.REBUILDING) {
+                    patcherResult.applyTo(this)
+                }
             }.let { patchedApkFile ->
                 if (!mount && !unsigned) {
-                    patchingResult.addStepResult(
-                        PatchingStep.SIGNING,
-                        {
-                            signWithLegacyFallback(
-                                primary = ApkUtils.KeyStoreDetails(
-                                    keystoreFilePath,
-                                    keyStorePassword,
-                                    keyStoreEntryAlias,
-                                    keyStoreEntryPassword,
-                                ),
-                                allowLegacyFallback = keyStoreEntryAlias == DEFAULT_KEYSTORE_ALIAS &&
-                                    keyStoreEntryPassword == DEFAULT_KEYSTORE_PASSWORD,
-                                logger = logger,
-                            ) { details ->
-                                ApkUtils.signApk(patchedApkFile, outputFilePath, signer, details)
-                            }
+                    patchingResult.addStepResult(PatchingStep.SIGNING) {
+                        signWithLegacyFallback(
+                            primary = ApkUtils.KeyStoreDetails(
+                                keystoreFilePath,
+                                keyStorePassword,
+                                keyStoreEntryAlias,
+                                keyStoreEntryPassword,
+                            ),
+                            allowLegacyFallback = keyStoreEntryAlias == DEFAULT_KEYSTORE_ALIAS &&
+                                keyStoreEntryPassword == DEFAULT_KEYSTORE_PASSWORD,
+                            logger = logger,
+                        ) { details ->
+                            ApkUtils.signApk(patchedApkFile, outputFilePath, signer, details)
                         }
-                    )
+                    }
                 } else {
                     patchedApkFile.copyTo(outputFilePath, overwrite = true)
                 }
@@ -869,25 +859,21 @@ internal object PatchCommand : Callable<Int> {
             // region Install.
 
             deviceSerial?.let {
-                patchingResult.addStepResult(
-                    PatchingStep.INSTALLING,
-                    {
-                        runBlocking {
-                            val result = installer!!.install(Installer.Apk(outputFilePath, packageName))
-                            when (result) {
-                                RootInstallerResult.FAILURE -> {
-                                    logger.severe("Failed to mount the patched APK file")
-                                    throw IllegalStateException("Failed to mount the patched APK file")
-                                }
-                                is AdbInstallerResult.Failure -> {
-                                    logger.severe(result.exception.toString())
-                                    throw result.exception
-                                }
-                                else -> logger.info("Installed the patched APK file")
+                patchingResult.addStepResult(PatchingStep.INSTALLING) {
+                    runBlocking {
+                        when (val result = installer!!.install(Installer.Apk(outputFilePath, packageName))) {
+                            RootInstallerResult.FAILURE -> {
+                                logger.severe("Failed to mount the patched APK file")
+                                throw IllegalStateException("Failed to mount the patched APK file")
                             }
+                            is AdbInstallerResult.Failure -> {
+                                logger.severe(result.exception.toString())
+                                throw result.exception
+                            }
+                            else -> logger.info("Installed the patched APK file")
                         }
                     }
-                )
+                }
             }
 
             // endregion

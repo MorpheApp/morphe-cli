@@ -5,12 +5,18 @@
 
 package app.morphe.gui.di
 
+import app.morphe.engine.PatchedAppStore
 import app.morphe.gui.data.repository.ChangelogRepository
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchPreferencesRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.data.repository.UpdateCheckRepository
-import app.morphe.engine.PatchedAppStore
+import app.morphe.gui.ui.screens.home.HomeViewModel
+import app.morphe.gui.ui.screens.patches.PatchSelectionViewModel
+import app.morphe.gui.ui.screens.patches.PatchesViewModel
+import app.morphe.gui.ui.screens.patching.PatchingViewModel
+import app.morphe.gui.ui.screens.quick.QuickPatchViewModel
+import app.morphe.gui.util.Logger as MorpheLogger
 import app.morphe.gui.util.PatchService
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
@@ -18,15 +24,11 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
+import java.net.Inet4Address
 import kotlinx.serialization.json.Json
 import okhttp3.Dns
 import okhttp3.Protocol
 import org.koin.dsl.module
-import java.net.Inet4Address
-import app.morphe.gui.ui.screens.home.HomeViewModel
-import app.morphe.gui.ui.screens.patches.PatchesViewModel
-import app.morphe.gui.ui.screens.patches.PatchSelectionViewModel
-import app.morphe.gui.ui.screens.patching.PatchingViewModel
 
 /**
  * Main Koin module for dependency injection.
@@ -69,7 +71,7 @@ val appModule = module {
                 level = LogLevel.INFO
                 logger = object : Logger {
                     override fun log(message: String) {
-                        app.morphe.gui.util.Logger.debug("HTTP: $message")
+                        MorpheLogger.debug("HTTP: $message")
                     }
                 }
             }
@@ -97,6 +99,9 @@ val appModule = module {
     // ViewModels observe PatchSourceManager.sourceVersion and reload on source changes.
     factory {
         HomeViewModel(get(), get(), get(), get(), get(), get())
+    }
+    factory {
+        QuickPatchViewModel(get(), get(), get(), get())
     }
     factory { params ->
         val psm = get<PatchSourceManager>()

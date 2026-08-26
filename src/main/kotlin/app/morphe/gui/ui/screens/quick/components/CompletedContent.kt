@@ -5,15 +5,13 @@
 
 package app.morphe.gui.ui.screens.quick.components
 
-import app.morphe.gui.ui.screens.quick.QuickApkInfo
-import app.morphe.gui.ui.screens.quick.formatFileSize
-
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,23 +20,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.engine.PatchedAppStore
 import app.morphe.gui.LocalAdbPreference
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.repository.ConfigRepository
+import app.morphe.gui.ui.screens.quick.QuickApkInfo
+import app.morphe.gui.ui.screens.quick.formatFileSize
 import app.morphe.gui.ui.theme.*
-import app.morphe.engine.PatchedAppStore
 import app.morphe.gui.util.AdbManager
 import app.morphe.gui.util.DeviceMonitor
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import java.awt.Desktop
 import java.io.File
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 // ============================================================================
 // COMPLETED CONTENT (output + actions)
@@ -51,9 +52,9 @@ internal fun CompletedContent(
     onPatchAnother: () -> Unit
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     val outputFile = File(outputPath)
     val scope = rememberCoroutineScope()
     val adbManager = remember { AdbManager() }
@@ -73,12 +74,11 @@ internal fun CompletedContent(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "PATCHING COMPLETE",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = accents.secondary,
-            letterSpacing = 1.sp
+            text = "Patching complete",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -90,7 +90,7 @@ internal fun CompletedContent(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(corners.medium))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -108,22 +108,21 @@ internal fun CompletedContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                        .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 14.dp)
                 ) {
                     Text(
-                        text = "OUTPUT FILE",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        letterSpacing = 1.5.sp
+                        text = "Output file",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = outputFile.name,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -133,9 +132,9 @@ internal fun CompletedContent(
                         Text(
                             text = formatFileSize(outputFile.length()),
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = accents.secondary
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.primary
                         )
                     }
                 }
@@ -144,21 +143,13 @@ internal fun CompletedContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .drawBehind {
-                            drawLine(
-                                color = borderColor,
-                                start = Offset(20.dp.toPx(), 0f),
-                                end = Offset(size.width - 20.dp.toPx(), 0f),
-                                strokeWidth = 1f
-                            )
-                        }
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val folderHover = remember { MutableInteractionSource() }
                     val isFolderHovered by folderHover.collectIsHoveredAsState()
                     val folderBg by animateColorAsState(
-                        if (isFolderHovered) accents.primary.copy(alpha = 0.1f)
+                        if (isFolderHovered) accents.primary.copy(alpha = 0.08f)
                         else Color.Transparent,
                         animationSpec = tween(150)
                     )
@@ -170,7 +161,7 @@ internal fun CompletedContent(
                             .background(folderBg, RoundedCornerShape(corners.small))
                             .border(
                                 1.dp,
-                                accents.primary.copy(alpha = if (isFolderHovered) 0.5f else 0.3f),
+                                if (isFolderHovered) accents.primary.copy(alpha = 0.5f) else accents.primary.copy(alpha = 0.25f),
                                 RoundedCornerShape(corners.small)
                             )
                             .clickable {
@@ -185,13 +176,11 @@ internal fun CompletedContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "OPEN FOLDER →",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = if (isFolderHovered) accents.primary
-                                    else accents.primary.copy(alpha = 0.7f),
-                            letterSpacing = 0.5.sp
+                            text = "Open folder",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.primary
                         )
                     }
                 }
@@ -227,12 +216,11 @@ internal fun CompletedContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "ADB OFF · ENABLE TO INSTALL",
+                    text = "ADB off · Enable to install",
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.primary,
-                    letterSpacing = 0.5.sp
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font,
+                    color = accents.primary
                 )
             }
         } else if (monitorState.isAdbAvailable == true) {
@@ -250,16 +238,15 @@ internal fun CompletedContent(
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(accents.secondary, RoundedCornerShape(1.dp))
+                                .background(accents.secondary, CircleShape)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "INSTALLED ON ${(selectedDevice?.displayName ?: "DEVICE").uppercase()}",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = accents.secondary,
-                            letterSpacing = 0.5.sp
+                            text = "Installed on ${(selectedDevice?.displayName ?: "device")}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.secondary
                         )
                     }
                 }
@@ -275,12 +262,11 @@ internal fun CompletedContent(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "INSTALLING…",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = accents.primary,
-                            letterSpacing = 0.5.sp
+                            text = "Installing…",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.primary
                         )
                     }
                 }
@@ -335,21 +321,21 @@ internal fun CompletedContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "INSTALL ON ${device.displayName.uppercase()}",
+                            text = "Install on ${device.displayName}",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = Color.White,
-                            letterSpacing = 0.5.sp
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = Color.White
                         )
                     }
                 }
                 else -> {
                     Text(
                         text = "Connect a device via USB to install with ADB",
-                        fontSize = 10.sp,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        fontSize = 11.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -358,8 +344,9 @@ internal fun CompletedContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = error,
-                    fontSize = 10.sp,
-                    fontFamily = mono,
+                    fontSize = 11.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
                 )
@@ -369,33 +356,25 @@ internal fun CompletedContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Patch another button
-        val patchAnotherHover = remember { MutableInteractionSource() }
-        val isPatchAnotherHovered by patchAnotherHover.collectIsHoveredAsState()
-        val patchAnotherBg by animateColorAsState(
-            if (isPatchAnotherHovered) accents.primary.copy(alpha = 0.9f) else accents.primary,
-            animationSpec = tween(150)
-        )
-
-        Box(
+        OutlinedButton(
+            onClick = onPatchAnother,
             modifier = Modifier
                 .widthIn(max = 480.dp)
                 .fillMaxWidth()
-                .height(42.dp)
-                .hoverable(patchAnotherHover)
-                .clip(RoundedCornerShape(corners.small))
-                .background(patchAnotherBg, RoundedCornerShape(corners.small))
-                .clickable(onClick = onPatchAnother),
-            contentAlignment = Alignment.Center
+                .height(42.dp),
+            shape = RoundedCornerShape(corners.small),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             Text(
-                text = "PATCH ANOTHER",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = Color.White,
-                letterSpacing = 1.sp
+                text = "Patch another",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
             )
         }
     }
 }
-

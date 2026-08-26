@@ -5,42 +5,44 @@
 
 package app.morphe.gui.ui.theme
 
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
+import androidx.compose.ui.unit.sp
 
 /**
- * JetBrains Mono — the monospace face for all technical data:
+ * Roboto - the standard sans-serif font used for the main UI.
+ */
+val Roboto: FontFamily
+    @Composable
+    get() = FontFamily(
+        Font(resource = "fonts/Roboto-Light.ttf", weight = FontWeight.Light),
+        Font(resource = "fonts/Roboto-Regular.ttf", weight = FontWeight.Normal),
+        Font(resource = "fonts/Roboto-Medium.ttf", weight = FontWeight.Medium),
+        Font(resource = "fonts/Roboto-SemiBold.ttf", weight = FontWeight.SemiBold),
+        Font(resource = "fonts/Roboto-Bold.ttf", weight = FontWeight.Bold),
+    )
+
+/**
+ * Roboto Mono - the monospace face for all technical data:
  * versions, package names, architectures, checksums, console output.
  */
-val JetBrainsMono: FontFamily
+val RobotoMono: FontFamily
     @Composable
     get() = FontFamily(
-        Font(resource = "fonts/JetBrainsMono-Light.ttf", weight = FontWeight.Light),
-        Font(resource = "fonts/JetBrainsMono-Regular.ttf", weight = FontWeight.Normal),
-        Font(resource = "fonts/JetBrainsMono-Medium.ttf", weight = FontWeight.Medium),
-        Font(resource = "fonts/JetBrainsMono-SemiBold.ttf", weight = FontWeight.SemiBold),
-        Font(resource = "fonts/JetBrainsMono-Bold.ttf", weight = FontWeight.Bold),
+        Font(resource = "fonts/RobotoMono-Light.ttf", weight = FontWeight.Light),
+        Font(resource = "fonts/RobotoMono-Regular.ttf", weight = FontWeight.Normal),
+        Font(resource = "fonts/RobotoMono-Medium.ttf", weight = FontWeight.Medium),
+        Font(resource = "fonts/RobotoMono-SemiBold.ttf", weight = FontWeight.SemiBold),
+        Font(resource = "fonts/RobotoMono-Bold.ttf", weight = FontWeight.Bold),
     )
 
 /**
- * Nunito — soft, rounded sans-serif for cute themes (Sakura, Matcha).
- * Generous x-height, fully rounded terminals, pillowy feel.
- */
-val Nunito: FontFamily
-    @Composable
-    get() = FontFamily(
-        Font(resource = "fonts/Nunito-Light.ttf", weight = FontWeight.Light),
-        Font(resource = "fonts/Nunito-Regular.ttf", weight = FontWeight.Normal),
-        Font(resource = "fonts/Nunito-Medium.ttf", weight = FontWeight.Medium),
-        Font(resource = "fonts/Nunito-SemiBold.ttf", weight = FontWeight.SemiBold),
-        Font(resource = "fonts/Nunito-Bold.ttf", weight = FontWeight.Bold),
-    )
-
-/**
- * Theme-aware font provider. Sharp themes get JetBrains Mono,
- * soft/cute themes (Sakura, Matcha) get Nunito.
+ * Theme-aware font provider.
  */
 val LocalMorpheFont = compositionLocalOf<FontFamily> { FontFamily.Default }
+val LocalMorpheMono = compositionLocalOf<FontFamily> { FontFamily.Monospace }

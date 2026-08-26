@@ -5,8 +5,8 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -19,34 +19,41 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.repository.ConfigRepository
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.channelColor
+import app.morphe.gui.util.EnabledSourcesLoader
+import java.awt.Cursor
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -71,7 +78,7 @@ enum class SourceSheetMode { MULTI_TOGGLE, SINGLE_SELECT }
 
 /** 4-way move cursor shown over a source's drag handle so the grab affordance
  *  reads as "draggable", distinct from the plain hand used elsewhere. */
-private val DragMoveCursor = PointerIcon(java.awt.Cursor(java.awt.Cursor.MOVE_CURSOR))
+private val DragMoveCursor = PointerIcon(Cursor(Cursor.MOVE_CURSOR))
 
 @Composable
 fun SourceManagementSheet(
@@ -92,7 +99,7 @@ fun SourceManagementSheet(
     /** sourceId → resolved version label (e.g. "v1.27.0-dev.2"). Empty when not loaded. */
     sourceVersions: Map<String, String?> = emptyMap(),
     /** sourceId → channel classification of the resolved release. Drives the badge. */
-    sourceChannels: Map<String, app.morphe.gui.util.EnabledSourcesLoader.Channel?> = emptyMap(),
+    sourceChannels: Map<String, EnabledSourcesLoader.Channel?> = emptyMap(),
     /** True while patches are being (re)loaded. Drives the per-row spinner shown
      *  in place of the version/badge for enabled sources whose data isn't yet
      *  in [sourceVersions]. */
@@ -108,9 +115,9 @@ fun SourceManagementSheet(
     onSelectSingle: (sourceId: String) -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingSource by remember { mutableStateOf<PatchSource?>(null) }
@@ -162,11 +169,10 @@ fun SourceManagementSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "PATCH SOURCES",
-                    fontFamily = mono,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    letterSpacing = 2.sp,
+                    "Patch sources",
+                    fontFamily = font,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
                 )
                 // Reload sources — re-resolves a folder source to its newest .mpp.
                 IconButton(onClick = onRefresh, enabled = enabled, modifier = Modifier.size(28.dp)) {
@@ -200,12 +206,13 @@ fun SourceManagementSheet(
                     text = when {
                         !enabled -> "Disabled while patching"
                         mode == SourceSheetMode.SINGLE_SELECT ->
-                            "Pick which source Quick Patch uses. Multi-source is available in Expert mode."
-                        else -> "Enable/Disable any combination. Patches from all enabled sources are unioned."
+                            "Pick which source Quick Patch uses. Multi-source is available in Expert mode"
+                        else -> "Enable/Disable any combination. Patches from all enabled sources are unioned"
                     },
                     fontSize = 11.sp,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(4.dp))
@@ -222,7 +229,7 @@ fun SourceManagementSheet(
                     // and the visual offset, so they stay in lockstep.
                     val slotPitch = ((rowHeights[source.id] ?: 0) + rowSpacingPx).coerceAtLeast(1f)
                     val dragHandleModifier = if (canReorder) {
-                        Modifier.pointerInput(source.id, canReorder) {
+                        Modifier.pointerInput(source.id) {
                             detectDragGestures(
                                 onDragStart = {
                                     draggingId = source.id
@@ -257,7 +264,7 @@ fun SourceManagementSheet(
                         error = sourceErrors[source.id],
                         accentColor = accents.primary,
                         borderColor = borderColor,
-                        mono = mono,
+                        font = font,
                         enabled = enabled,
                         mode = mode,
                         isActiveSelection = source.id == activeSourceId,
@@ -297,11 +304,10 @@ fun SourceManagementSheet(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "ADD SOURCE",
-                        fontFamily = mono,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 10.sp,
-                        letterSpacing = 0.5.sp
+                        "Add source",
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 11.sp
                     )
                 }
 
@@ -328,11 +334,10 @@ fun SourceManagementSheet(
                 shape = RoundedCornerShape(corners.small),
             ) {
                 Text(
-                    "DONE",
-                    fontFamily = mono,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.5.sp,
+                    "Done",
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 11.sp
                 )
             }
         }
@@ -340,6 +345,7 @@ fun SourceManagementSheet(
 
     if (showAddDialog) {
         AddPatchSourceDialog(
+            isQuickMode = mode == SourceSheetMode.SINGLE_SELECT,
             onDismiss = { showAddDialog = false },
             onAdd = {
                 onAdd(it)
@@ -351,6 +357,7 @@ fun SourceManagementSheet(
     editingSource?.let { src ->
         EditPatchSourceDialog(
             source = src,
+            isQuickMode = mode == SourceSheetMode.SINGLE_SELECT,
             onDismiss = { editingSource = null },
             onSave = {
                 onEdit(it)
@@ -364,12 +371,12 @@ fun SourceManagementSheet(
 private fun SourceRow(
     source: PatchSource,
     version: String?,
-    channel: app.morphe.gui.util.EnabledSourcesLoader.Channel?,
+    channel: EnabledSourcesLoader.Channel?,
     isLoading: Boolean,
     error: String? = null,
     accentColor: Color,
     borderColor: Color,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     enabled: Boolean,
     onToggleEnabled: (Boolean) -> Unit,
     onEdit: () -> Unit,
@@ -390,6 +397,7 @@ private fun SourceRow(
     onMeasured: (heightPx: Int) -> Unit,
 ) {
     val corners = LocalMorpheCorners.current
+    val accents = LocalMorpheAccents.current
     val hoverInteraction = remember(source.id) { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
     val isEnabled = source.enabled
@@ -407,7 +415,7 @@ private fun SourceRow(
     // red dev-older, plus the local tint). Same color source as the home pill LEDs, so
     // the two always agree. While resolving, channelColor's UNKNOWN default applies.
     val statusColor = if (error != null) MaterialTheme.colorScheme.error
-                      else app.morphe.gui.ui.theme.channelColor(channel)
+                      else channelColor(channel)
 
     val animatedBorder by animateColorAsState(
         targetValue = when {
@@ -426,6 +434,11 @@ private fun SourceRow(
         animationSpec = tween(150)
     )
 
+    val baseBg = if (isHighlighted)
+        MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    else
+        MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp).copy(alpha = 0.5f)
+
     Box(
         modifier = Modifier
             .zIndex(if (isDragging) 1f else 0f)
@@ -438,6 +451,7 @@ private fun SourceRow(
                 if (isDragging) accentColor.copy(alpha = 0.7f) else animatedBorder,
                 RoundedCornerShape(corners.medium)
             )
+            .background(baseBg)
             .background(if (isDragging) accentColor.copy(alpha = 0.10f) else animatedBg)
             .hoverable(hoverInteraction)
             .then(
@@ -469,15 +483,13 @@ private fun SourceRow(
                 }
                 Text(
                     text = position.toString(),
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                    fontSize = 11.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 3.dp, end = 7.dp)
                 )
             }
-            // LED indicator — glows when enabled (MULTI) or selected (SINGLE).
-            LedIndicator(isOn = isHighlighted, isHot = isHovered && canInteract, accentColor = statusColor)
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -485,106 +497,96 @@ private fun SourceRow(
                         text = source.name,
                         fontSize = 12.sp,
                         fontWeight = if (isEnabled) FontWeight.SemiBold else FontWeight.Normal,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurface,
-                        // Wrap to a second line instead of cramming/ellipsizing a long name
-                        // against the DEFAULT badge. weight(fill = false) bounds the width so
-                        // it wraps within the row rather than pushing the badge off.
-                        maxLines = 2,
+                        // Prevent the name from cramming against the badge by truncating it
+                        // with an ellipsis. weight(fill = false) bounds the width so it
+                        // truncates rather than pushing the badge off.
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (isDefault) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(percent = 50),
+                    ) {
                         Text(
-                            "DEFAULT",
-                            fontSize = 8.sp,
-                            fontFamily = mono,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            text = when (source.type) {
+                                PatchSourceType.DEFAULT -> "Pre-installed"
+                                PatchSourceType.GITHUB, PatchSourceType.GITLAB -> "Remote"
+                                PatchSourceType.LOCAL -> "Local"
+                            },
+                            fontSize = 10.sp,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = when (source.type) {
-                            PatchSourceType.DEFAULT -> source.url?.removePrefix("https://github.com/") ?: "Built-in"
-                            PatchSourceType.GITHUB -> source.url?.removePrefix("https://github.com/") ?: "GitHub"
-                            PatchSourceType.GITLAB -> source.url?.removePrefix("https://gitlab.com/") ?: "GitLab"
-                            PatchSourceType.LOCAL -> source.filePath?.let { File(it).name } ?: "Local file"
-                        },
-                        fontSize = 10.sp,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (error != null) {
-                        Text(
-                            text = "·",
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
-                        Text(
-                            text = "FAILED",
-                            fontSize = 9.sp,
-                            fontFamily = mono,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    } else if (isEnabled && version != null) {
-                        Text(
-                            text = "·",
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
-                        Text(
-                            text = version,
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accentColor.copy(alpha = 0.9f)
-                        )
-                        ChannelBadge(channel = channel, mono = mono)
-                    } else if (isEnabled && isLoading) {
-                        Text(
-                            text = "·",
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            strokeWidth = 1.5.dp,
-                            color = accentColor,
-                        )
-                        Spacer(Modifier.width(2.dp))
-                        Text(
-                            text = "RESOLVING...",
-                            fontSize = 9.sp,
-                            fontFamily = mono,
-                            fontWeight = FontWeight.Bold,
-                            color = accentColor.copy(alpha = 0.8f),
-                            letterSpacing = 1.sp,
-                        )
-                    }
-                }
+                Text(
+                    text = when (source.type) {
+                        PatchSourceType.DEFAULT -> source.url?.removePrefix("https://github.com/") ?: "Built-in"
+                        PatchSourceType.GITHUB -> source.url?.removePrefix("https://github.com/") ?: "GitHub"
+                        PatchSourceType.GITLAB -> source.url?.removePrefix("https://gitlab.com/") ?: "GitLab"
+                        PatchSourceType.LOCAL -> source.filePath?.let { File(it).name } ?: "Local file"
+                    },
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 if (error != null) {
                     Spacer(Modifier.height(3.dp))
                     Text(
                         text = error,
-                        fontSize = 9.sp,
-                        fontFamily = mono,
-                        lineHeight = 12.sp,
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                        fontSize = 11.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 14.sp,
+                        color = MaterialTheme.colorScheme.error,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(horizontal = 6.dp)
+            ) {
+                if (error != null) {
+                    Text(
+                        text = "Failed",
+                        fontSize = 11.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                } else if (isEnabled && version != null) {
+                    Text(
+                        text = version,
+                        fontSize = 11.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        color = accentColor
+                    )
+                    ChannelBadge(channel = channel, font = font)
+                } else if (isEnabled && isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 2.dp,
+                        color = accentColor,
+                    )
+                    Text(
+                        text = "Resolving...",
+                        fontSize = 11.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        color = accentColor,
                     )
                 }
             }
@@ -600,8 +602,8 @@ private fun SourceRow(
                 )
                 Spacer(Modifier.width(2.dp))
             }
-            // Edit + delete are hidden for default; toggle is always shown
-            if (!isDefault && enabled) {
+            // Edit is shown for all (including default), delete is hidden for default
+            if (enabled) {
                 IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = MorpheIcons.Edit,
@@ -610,36 +612,45 @@ private fun SourceRow(
                         modifier = Modifier.size(14.dp)
                     )
                 }
-                IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        imageVector = MorpheIcons.Close,
-                        contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                        modifier = Modifier.size(14.dp)
-                    )
+                if (!isDefault) {
+                    IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = MorpheIcons.Close,
+                            contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
                 Spacer(Modifier.width(4.dp))
             }
             when (mode) {
-                SourceSheetMode.MULTI_TOGGLE -> Switch(
+                SourceSheetMode.MULTI_TOGGLE -> MorpheSwitch(
                     checked = isEnabled,
                     onCheckedChange = onToggleEnabled,
+                    accentColor = accentColor,
                     enabled = enabled,
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = accentColor.copy(alpha = 0.5f),
-                        checkedThumbColor = accentColor,
-                    ),
                     modifier = Modifier.scale(0.8f)
                 )
-                SourceSheetMode.SINGLE_SELECT -> RadioButton(
-                    selected = isActiveSelection,
-                    onClick = onSelectSingle,
-                    enabled = enabled,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = accentColor,
-                        unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    ),
-                )
+                SourceSheetMode.SINGLE_SELECT -> Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(
+                            enabled = enabled,
+                            onClick = onSelectSingle
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val containerColor = if (isActiveSelection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+                    val contentColor = if (isActiveSelection) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    
+                    StatusCircleIcon(
+                        icon = MorpheIcons.Check,
+                        containerColor = containerColor,
+                        contentColor = contentColor,
+                        modifier = Modifier.alpha(if (enabled) 1f else 0.38f)
+                    )
+                }
             }
         }
     }
@@ -666,7 +677,7 @@ private fun ReorderArrows(
 
 @Composable
 private fun ReorderArrow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     description: String,
     active: Boolean,
     accentColor: Color,
@@ -701,19 +712,19 @@ private fun ReorderArrow(
 
 @Composable
 private fun ChannelBadge(
-    channel: app.morphe.gui.util.EnabledSourcesLoader.Channel?,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    channel: EnabledSourcesLoader.Channel?,
+    font: FontFamily,
 ) {
     val corners = LocalMorpheCorners.current
     val label = when (channel) {
-        app.morphe.gui.util.EnabledSourcesLoader.Channel.STABLE_LATEST -> "STABLE LATEST"
-        app.morphe.gui.util.EnabledSourcesLoader.Channel.STABLE_OLDER -> "STABLE OLDER"
-        app.morphe.gui.util.EnabledSourcesLoader.Channel.DEV_LATEST -> "DEV LATEST"
-        app.morphe.gui.util.EnabledSourcesLoader.Channel.DEV_OLDER -> "DEV OLDER"
-        app.morphe.gui.util.EnabledSourcesLoader.Channel.LOCAL -> "LOCAL"
-        else -> "STABLE LATEST"
+        EnabledSourcesLoader.Channel.STABLE_LATEST -> "Latest Stable"
+        EnabledSourcesLoader.Channel.STABLE_OLDER -> "Older Stable"
+        EnabledSourcesLoader.Channel.DEV_LATEST -> "Latest Dev"
+        EnabledSourcesLoader.Channel.DEV_OLDER -> "Older Dev"
+        EnabledSourcesLoader.Channel.LOCAL -> "Local"
+        else -> "Latest Stable"
     }
-    val color = app.morphe.gui.ui.theme.channelColor(channel)
+    val color = channelColor(channel)
     Box(
         modifier = Modifier
             .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(corners.small))
@@ -722,10 +733,9 @@ private fun ChannelBadge(
     ) {
         Text(
             text = label,
-            fontSize = 8.sp,
-            fontFamily = mono,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.8.sp,
+            fontSize = 11.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Medium,
             color = color,
         )
     }
@@ -754,13 +764,13 @@ private fun LedIndicator(isOn: Boolean, isHot: Boolean, accentColor: Color) {
         Box(
             modifier = Modifier
                 .size(12.dp)
-                .background(haloAlpha, shape = androidx.compose.foundation.shape.CircleShape)
+                .background(haloAlpha, shape = CircleShape)
         )
         // Core dot
         Box(
             modifier = Modifier
                 .size(7.dp)
-                .background(color, shape = androidx.compose.foundation.shape.CircleShape)
+                .background(color, shape = CircleShape)
         )
     }
 }
@@ -789,7 +799,7 @@ private fun DeveloperMppExclusionsSection(enabled: Boolean) {
 
     if (!loaded || !developerOptions) return
 
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Spacer(Modifier.height(4.dp))
         Box(
@@ -799,12 +809,11 @@ private fun DeveloperMppExclusionsSection(enabled: Boolean) {
                 .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
         )
         Text(
-            "IGNORED .MPP PATTERNS",
-            fontFamily = mono,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            "Ignored .mpp patterns",
+            fontFamily = font,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         ExcludedPatternsEditor(
             patterns = patterns,
@@ -829,7 +838,7 @@ private fun ExcludedPatternsEditor(
     onChange: (List<String>) -> Unit,
     enabled: Boolean,
 ) {
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val corners = LocalMorpheCorners.current
     var draft by remember { mutableStateOf("") }
@@ -847,17 +856,18 @@ private fun ExcludedPatternsEditor(
             text = "Only affects folder sources, which auto-load the newest .mpp in a folder. When " +
                 "picking that newest build, files whose name matches a pattern here are skipped. A " +
                 "plain word matches any file containing it (e.g. debug). Use * for globs (e.g. " +
-                "*-debug.mpp). *-sources.mpp and *-javadoc.mpp are always ignored.",
+                "*-debug.mpp). *-sources.mpp and *-javadoc.mpp are always ignored",
             fontSize = 11.sp,
-            fontFamily = mono,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
             lineHeight = 15.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         SlimTextField(
             value = draft,
             onValueChange = { draft = it },
             placeholder = "e.g. debug or *-debug.mpp",
-            mono = mono,
+            font = font,
             accents = accents,
             corners = corners,
             enabled = enabled,
@@ -886,7 +896,8 @@ private fun ExcludedPatternsEditor(
             ) {
                 Text(
                     text = pat,
-                    fontFamily = mono,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
@@ -905,5 +916,40 @@ private fun ExcludedPatternsEditor(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatusCirclePlaceholder(
+    modifier: Modifier = Modifier,
+    size: Dp = 24.dp
+) {
+    Spacer(
+        modifier = modifier
+            .size(size)
+            .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+    )
+}
+
+@Composable
+private fun StatusCircleIcon(
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+    size: Dp = 24.dp
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .background(containerColor, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(size * 0.6f),
+            tint = contentColor
+        )
     }
 }

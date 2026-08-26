@@ -5,48 +5,54 @@
 
 package app.morphe.gui.ui.screens.home
 
-import cafe.adriel.voyager.core.model.ScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
 import app.morphe.engine.MorpheData
+import app.morphe.engine.MultiSourceLoader
+import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_ALIAS
 import app.morphe.engine.PatchedAppStore
 import app.morphe.engine.UpdateInfo
 import app.morphe.engine.model.PatchedAppRecord
+import app.morphe.engine.util.ApkManifestReader
 import app.morphe.engine.util.SignatureIdentity
+import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.FollowMode
 import app.morphe.gui.data.model.SourceVersionPref
 import app.morphe.gui.data.model.SupportedApp
+import app.morphe.gui.data.repository.ActiveMode
 import app.morphe.gui.data.repository.ChangelogRepository
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.data.repository.UpdateCheckRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import app.morphe.engine.util.ApkManifestReader
+import app.morphe.gui.ui.screens.home.components.AppListFilter
 import app.morphe.gui.util.AdbManager
+import app.morphe.gui.util.ChecksumStatus
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.EnabledSourcesLoader
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.SupportedAppExtractor
-import app.morphe.engine.MultiSourceLoader
 import app.morphe.gui.util.ChangelogParser
+import app.morphe.gui.util.VersionResolution
 import app.morphe.gui.util.VersionStatus
 import app.morphe.gui.util.isNewerVersion
-import app.morphe.gui.data.repository.ActiveMode
 import app.morphe.gui.util.humanizePatchLoadError
+import app.morphe.gui.util.resolveVersionStatus
+import cafe.adriel.voyager.core.model.ScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
 import java.io.File
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeViewModel(
     private val patchSourceManager: PatchSourceManager,
@@ -100,8 +106,8 @@ class HomeViewModel(
                 dismissedUpdateVersion = dismissed,
                 showMultiSourceHint = multiSourceShouldShow,
                 appListFilter = runCatching {
-                    app.morphe.gui.ui.screens.home.components.AppListFilter.valueOf(config.homeAppListFilter)
-                }.getOrDefault(app.morphe.gui.ui.screens.home.components.AppListFilter.ALL),
+                    AppListFilter.valueOf(config.homeAppListFilter)
+                }.getOrDefault(AppListFilter.ALL),
             )
         }
 
@@ -245,7 +251,7 @@ class HomeViewModel(
                 val app = apps.find { it.packageName == record.packageName }
                 val (target, _) = suggestedAppVersion(app, record.apkVersion)
                 val needsNewerApk = isNewerVersion(target, record.apkVersion)
-                val currentSupported = app == null || app.recommendedVersion == null ||
+                val currentSupported = app?.recommendedVersion == null ||
                     app.supportedVersions.any { it.equals(record.apkVersion, ignoreCase = true) } ||
                     app.experimentalVersions.any { it.equals(record.apkVersion, ignoreCase = true) }
                 val downloadUrl = if (needsNewerApk && target != null && app != null) {
@@ -343,7 +349,7 @@ class HomeViewModel(
     }
 
     /** Switch the home apps tab (ALL/YOURS) and remember it for next launch. */
-    fun setAppListFilter(filter: app.morphe.gui.ui.screens.home.components.AppListFilter) {
+    fun setAppListFilter(filter: AppListFilter) {
         if (_uiState.value.appListFilter == filter) return
         _uiState.value = _uiState.value.copy(appListFilter = filter)
         screenModelScope.launch { configRepository.setHomeAppListFilter(filter.name) }
@@ -503,8 +509,7 @@ class HomeViewModel(
                     patchedRecords = sortedPatchedRecords(),
                     updateInfoByPackage = buildUpdateInfoMap(supportedApps),
                     patchesVersion = displayVersion,
-                    latestPatchesVersion = displayVersion,
-                    latestDevPatchesVersion = null,
+                    patchesChannel = firstResolved?.channel,
                     patchSourceName = sourceName,
                     patchLoadError = null,
                     showSourcesFailedBanner = failedSourceIds.isNotEmpty() && !sourcesFailedBannerDismissed,
@@ -560,12 +565,12 @@ class HomeViewModel(
     /** All records → their update info. Precomputed for the list/cards (avoids
      *  recomputing per recomposition). [apps] passed explicitly so it can be built
      *  from a freshly-loaded list before it lands in uiState. */
-    private fun buildUpdateInfoMap(apps: List<app.morphe.gui.data.model.SupportedApp>): Map<String, RecallUpdateInfo> =
+    private fun buildUpdateInfoMap(apps: List<SupportedApp>): Map<String, RecallUpdateInfo> =
         patchedRecordsByPackage.values.associate { it.packageName to recallUpdateInfo(it, apps) }
 
     // supportedApps parsed from the LATEST patches (eagerly resolved when a newer
     // patch exists), so the UI shows the real future app version without tapping Update.
-    private var latestResolvedApps: List<app.morphe.gui.data.model.SupportedApp>? = null
+    private var latestResolvedApps: List<SupportedApp>? = null
 
     /**
      * When a newer patch than the loaded one exists, resolve+download the latest
@@ -596,7 +601,7 @@ class HomeViewModel(
 
     private fun recallUpdateInfo(
         record: PatchedAppRecord,
-        apps: List<app.morphe.gui.data.model.SupportedApp>,
+        apps: List<SupportedApp>,
     ): RecallUpdateInfo {
         val resolvedBySource = resolvedVersionBySource()   // what Re-patch will use right now
         val latestBySource = latestAvailableBySource()     // newest available (may need downloading)
@@ -627,7 +632,7 @@ class HomeViewModel(
         val latestStable = app?.recommendedVersion
         // Supported if the patch targets any version (recommendedVersion null), or the
         // used version is in its stable/experimental lists. Unknown app → assume yes.
-        val usedSupported = app == null || app.recommendedVersion == null ||
+        val usedSupported = app?.recommendedVersion == null ||
             app.supportedVersions.any { it.equals(used, ignoreCase = true) } ||
             app.experimentalVersions.any { it.equals(used, ignoreCase = true) }
         return RecallUpdateInfo(
@@ -654,7 +659,7 @@ class HomeViewModel(
      * though the user's 21.20.400 has rolled off the experimental list.
      */
     private fun suggestedAppVersion(
-        app: app.morphe.gui.data.model.SupportedApp?,
+        app: SupportedApp?,
         used: String,
     ): Pair<String?, RecallUpdateInfo.AppChannel> {
         if (app == null) return null to RecallUpdateInfo.AppChannel.UNKNOWN
@@ -717,7 +722,7 @@ class HomeViewModel(
             ?: emptyMap()
 
     private suspend fun computePatchedStates(
-        apps: List<app.morphe.gui.data.model.SupportedApp>,
+        apps: List<SupportedApp>,
     ): Map<String, PatchedAppState> = try {
         val records = patchedAppStore.getAll().associateBy { it.packageName }
         patchedRecordsByPackage = records
@@ -1096,7 +1101,7 @@ class HomeViewModel(
         SignatureIdentity.idForKeystore(
             MorpheData.defaultKeystoreFile,
             storePassword = null,
-            alias = app.morphe.engine.PatchEngine.Config.DEFAULT_KEYSTORE_ALIAS,
+            alias = DEFAULT_KEYSTORE_ALIAS,
         )?.let { add(it) }
         val config = configRepository.loadConfig()
         config.resolvedKeystorePath()?.let { ks ->
@@ -1284,8 +1289,8 @@ class HomeViewModel(
             val dynamicSupportedApp = _uiState.value.supportedApps.find { it.packageName == packageName }
             val isSupported = dynamicSupportedApp != null ||
                 packageName in listOf(
-                    app.morphe.gui.data.constants.AppConstants.YouTube.PACKAGE_NAME,
-                    app.morphe.gui.data.constants.AppConstants.YouTubeMusic.PACKAGE_NAME
+                    AppConstants.YouTube.PACKAGE_NAME,
+                    AppConstants.YouTubeMusic.PACKAGE_NAME
                 )
 
             if (!isSupported) {
@@ -1299,9 +1304,9 @@ class HomeViewModel(
                 ?: SupportedApp.resolveDisplayName(packageName, manifest.applicationLabel)
 
             val versionResolution = if (dynamicSupportedApp != null) {
-                app.morphe.gui.util.resolveVersionStatus(versionName, dynamicSupportedApp)
+                resolveVersionStatus(versionName, dynamicSupportedApp)
             } else {
-                app.morphe.gui.util.VersionResolution(VersionStatus.UNKNOWN, null)
+                VersionResolution(VersionStatus.UNKNOWN, null)
             }
             val suggestedVersion = versionResolution.suggestedVersion
             val versionStatus = versionResolution.status
@@ -1311,7 +1316,7 @@ class HomeViewModel(
             val architectures = FileUtils.extractArchitectures(if (isBundleFormat) file else apkToParse)
 
             // TODO: Re-enable when checksums are provided via .mpp files
-            val checksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured
+            val checksumStatus = ChecksumStatus.NotConfigured
 
             Logger.info("Parsed APK: $packageName v$versionName (recommended=$suggestedVersion, minSdk=$minSdk, archs=$architectures)")
 
@@ -1361,7 +1366,7 @@ class HomeViewModel(
      * Patching still works regardless. The patcher merges splits first and reads
      * the manifest from the merged APK via its own (working) reader.
      */
-    private fun parseApkManifestMinimal(file: File, isBundleFormat: Boolean): ApkInfo? {
+    private fun parseApkManifestMinimal(file: File, isBundleFormat: Boolean): ApkInfo {
         val (packageFromName, versionFromName) = parseFromApkMirrorFilename(file.name)
         val supportedApps = _uiState.value.supportedApps
 
@@ -1379,9 +1384,9 @@ class HomeViewModel(
             ?: file.nameWithoutExtension
 
         val versionResolution = if (matched != null && versionFromName != null) {
-            app.morphe.gui.util.resolveVersionStatus(versionFromName, matched)
+            resolveVersionStatus(versionFromName, matched)
         } else {
-            app.morphe.gui.util.VersionResolution(VersionStatus.UNKNOWN, null)
+            VersionResolution(VersionStatus.UNKNOWN, null)
         }
 
         // Architectures scan is independent of manifest parsing. Still reliable.
@@ -1404,7 +1409,7 @@ class HomeViewModel(
             minSdk = null,
             suggestedVersion = versionResolution.suggestedVersion,
             versionStatus = versionResolution.status,
-            checksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured,
+            checksumStatus = ChecksumStatus.NotConfigured,
             isUnsupportedApp = matched == null,
             hasLimitedInfo = true,
         )
@@ -1455,8 +1460,8 @@ class HomeViewModel(
      */
     private fun fuzzyMatchSupportedApp(
         filename: String,
-        supportedApps: List<app.morphe.gui.data.model.SupportedApp>,
-    ): app.morphe.gui.data.model.SupportedApp? {
+        supportedApps: List<SupportedApp>,
+    ): SupportedApp? {
         val noExt = filename.substringBeforeLast('.').lowercase()
         val leadingToken = noExt
             .substringBefore('_')
@@ -1644,8 +1649,7 @@ data class HomeUiState(
     /** Per-package update info (patch-file + app freshness) for the list/cards. */
     val updateInfoByPackage: Map<String, RecallUpdateInfo> = emptyMap(),
     /** Which home apps tab is active (ALL/YOURS). Restored from config on launch. */
-    val appListFilter: app.morphe.gui.ui.screens.home.components.AppListFilter =
-        app.morphe.gui.ui.screens.home.components.AppListFilter.ALL,
+    val appListFilter: AppListFilter = AppListFilter.ALL,
     /** In-flight "Update" preparation (resolve latest → decide APK), or null. */
     val updatePrep: UpdatePrep? = null,
     /** Package currently being installed to the device from its stored output APK. */
@@ -1655,8 +1659,7 @@ data class HomeUiState(
     /** Per-package device install info (optional layer. Empty when no device connected). */
     val deviceAppInfo: Map<String, DeviceAppInfo> = emptyMap(),
     val patchesVersion: String? = null,
-    val latestPatchesVersion: String? = null,
-    val latestDevPatchesVersion: String? = null,
+    val patchesChannel: EnabledSourcesLoader.Channel? = null,
     val patchSourceName: String? = null,
     val patchLoadError: String? = null,
     val updateInfo: UpdateInfo? = null,
@@ -1685,8 +1688,8 @@ data class HomeUiState(
                 !updateBannerSessionDismissed
 
     val isUsingLatestPatches: Boolean
-        get() = patchesVersion != null &&
-                (patchesVersion == latestPatchesVersion || patchesVersion == latestDevPatchesVersion)
+        get() = patchesChannel == EnabledSourcesLoader.Channel.STABLE_LATEST ||
+                patchesChannel == EnabledSourcesLoader.Channel.DEV_LATEST
 
     /**
      * Label for the LATEST badge. Distinguishes stable vs dev so users can tell
@@ -1694,10 +1697,9 @@ data class HomeUiState(
      * the newest of either channel.
      */
     val latestPatchesLabel: String?
-        get() = when (patchesVersion) {
-            null -> null
-            latestPatchesVersion -> "LATEST STABLE"
-            latestDevPatchesVersion -> "LATEST DEV"
+        get() = when (patchesChannel) {
+            EnabledSourcesLoader.Channel.STABLE_LATEST -> "Latest Stable"
+            EnabledSourcesLoader.Channel.DEV_LATEST -> "Latest Dev"
             else -> null
         }
 }
@@ -1714,7 +1716,7 @@ data class ApkInfo(
     val minSdk: Int? = null,
     val suggestedVersion: String? = null,
     val versionStatus: VersionStatus = VersionStatus.UNKNOWN,
-    val checksumStatus: app.morphe.gui.util.ChecksumStatus = app.morphe.gui.util.ChecksumStatus.NotConfigured,
+    val checksumStatus: ChecksumStatus = ChecksumStatus.NotConfigured,
     val isUnsupportedApp: Boolean = false,
     /** True when full manifest parsing failed and we fell back to filename heuristics
      *  + fuzzy supported-app matching. Most fields are still populated but may be

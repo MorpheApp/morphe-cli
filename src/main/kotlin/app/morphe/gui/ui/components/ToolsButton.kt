@@ -5,26 +5,28 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import app.morphe.gui.data.repository.PatchSourceManager
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import org.koin.compose.koinInject
 
@@ -47,9 +49,11 @@ fun ToolsButton(
 
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
+    
+    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f)
+    
     val borderColor by animateColorAsState(
-        if (isHovered) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+        MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(150)
     )
 
@@ -58,6 +62,7 @@ fun ToolsButton(
             .size(34.dp)
             .hoverable(hoverInteraction)
             .clip(RoundedCornerShape(corners.small))
+            .background(containerColor)
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
             .clickable { showToolsDialog = true },
         contentAlignment = Alignment.Center
@@ -65,8 +70,7 @@ fun ToolsButton(
         Icon(
             imageVector = MorpheIcons.Build,
             contentDescription = "Tools",
-            tint = if (isHovered) MaterialTheme.colorScheme.onSurface
-                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp)
         )
     }

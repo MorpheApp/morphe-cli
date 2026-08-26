@@ -5,20 +5,21 @@
 
 package app.morphe.gui.ui.screens.result
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -29,23 +30,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
+import app.morphe.engine.PatchedAppStore
+import app.morphe.engine.util.ApkManifestReader
 import app.morphe.gui.LocalAdbPreference
+import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ConfigRepository
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.components.morpheScrollbarStyle
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.MorpheCornerStyle
 import app.morphe.gui.util.AdbDevice
 import app.morphe.gui.util.AdbException
 import app.morphe.gui.util.AdbManager
@@ -53,13 +55,15 @@ import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.DeviceStatus
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
-import app.morphe.engine.PatchedAppStore
-import app.morphe.engine.util.ApkManifestReader
-import app.morphe.gui.data.model.SupportedApp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import java.awt.Desktop
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 
 /**
  * Screen showing the result of patching.
@@ -78,9 +82,9 @@ data class ResultScreen(
 fun ResultScreenContent(outputPath: String) {
     val navigator = LocalNavigator.currentOrThrow
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     val outputFile = File(outputPath)
     val scope = rememberCoroutineScope()
@@ -228,7 +232,6 @@ fun ResultScreenContent(outputPath: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
     ) {
         // Header row
         Row(
@@ -255,37 +258,32 @@ fun ResultScreenContent(outputPath: String) {
                 )
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
                         .hoverable(backHover)
                         .clip(RoundedCornerShape(corners.small))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                         .background(backBg)
-                        .clickable { navigator.popUntilRoot() },
+                        .clickable { navigator.pop() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = MorpheIcons.ArrowBack,
                         contentDescription = "Back",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Spacer(Modifier.width(12.dp))
 
-                // Title + success indicator
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(accents.secondary, RoundedCornerShape(2.dp))
-                )
-                Spacer(Modifier.width(8.dp))
+                // Title
                 Text(
-                    text = "PATCHING COMPLETE",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.secondary,
-                    letterSpacing = 1.sp
+                    text = "Patching complete",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = font,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(Modifier.weight(1f))
@@ -310,13 +308,13 @@ fun ResultScreenContent(outputPath: String) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
             ) {
-            OutputFileCard(outputFile = outputFile, corners = corners, mono = mono, borderColor = borderColor)
+            OutputFileCard(outputFile = outputFile, corners = corners, font = font, borderColor = borderColor)
 
             // ADB Install section
             if (isAdbDisabledByUser) {
                 AdbDisabledHint(
                     corners = corners,
-                    mono = mono,
+                    font = font,
                     borderColor = borderColor,
                     onEnableClick = { adbPreference.onChange(true) }
                 )
@@ -330,7 +328,7 @@ fun ResultScreenContent(outputPath: String) {
                     installError = installError,
                     installSuccess = installSuccess,
                     corners = corners,
-                    mono = mono,
+                    font = font,
                     borderColor = borderColor,
                     onDeviceSelected = { DeviceMonitor.selectDevice(it) },
                     onInstallClick = { installViaAdb() },
@@ -358,7 +356,7 @@ fun ResultScreenContent(outputPath: String) {
                         success = linkSuccess,
                         selectedDeviceName = device.displayName,
                         corners = corners,
-                        mono = mono,
+                        font = font,
                         borderColor = borderColor,
                         onApply = { applyLinkHandling(enable = true) },
                         onRestore = { applyLinkHandling(enable = false) },
@@ -375,7 +373,7 @@ fun ResultScreenContent(outputPath: String) {
                     tempFilesCleared = tempFilesCleared,
                     autoCleanupEnabled = autoCleanupEnabled,
                     corners = corners,
-                    mono = mono,
+                    font = font,
                     borderColor = borderColor,
                     onCleanupClick = {
                         FileUtils.cleanupAllTempDirs()
@@ -391,10 +389,11 @@ fun ResultScreenContent(outputPath: String) {
             // the explanation; suppress the duplicate "ADB not found" text.
             if (!isAdbDisabledByUser && monitorState.isAdbAvailable == false) {
                 Text(
-                    text = "ADB not found. Install Android SDK Platform Tools to enable direct installation.",
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    text = "ADB not found. Install Android SDK Platform Tools to enable direct installation",
+                    fontSize = 11.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.widthIn(max = 520.dp)
                 )
@@ -402,7 +401,7 @@ fun ResultScreenContent(outputPath: String) {
 
             // Patch Another button
             Spacer(Modifier.height(4.dp))
-            PatchAnotherButton(corners = corners, mono = mono)
+            PatchAnotherButton(corners = corners, font = font)
 
             Spacer(Modifier.height(8.dp))
             }
@@ -434,14 +433,15 @@ private fun AdbInstallSection(
     installProgress: String,
     installError: String?,
     installSuccess: Boolean,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
     borderColor: Color,
     onDeviceSelected: (AdbDevice) -> Unit,
     onInstallClick: () -> Unit,
     onRetryClick: () -> Unit,
     onDismissError: () -> Unit
 ) {
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     Box(
         modifier = Modifier
@@ -449,7 +449,7 @@ private fun AdbInstallSection(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
             .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
     ) {
         Column(
             modifier = Modifier
@@ -462,12 +462,11 @@ private fun AdbInstallSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "ADB INSTALL",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    letterSpacing = 1.5.sp
+                    text = "ADB install",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = font,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -487,12 +486,11 @@ private fun AdbInstallSection(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "INSTALLED ON ${(selectedDevice?.displayName ?: "DEVICE").uppercase()}",
+                            text = "Installed on ${(selectedDevice?.displayName ?: "device")}",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = accents.secondary,
-                            letterSpacing = 0.5.sp
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.secondary
                         )
                     }
                 }
@@ -501,7 +499,7 @@ private fun AdbInstallSection(
                     Text(
                         text = installError,
                         fontSize = 11.sp,
-                        fontFamily = mono,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -526,12 +524,11 @@ private fun AdbInstallSection(
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = "DISMISS",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                letterSpacing = 0.5.sp
+                                text = "Dismiss",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal,
+                                fontFamily = font,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
@@ -550,12 +547,11 @@ private fun AdbInstallSection(
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = "RETRY",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = mono,
-                                color = Color.White,
-                                letterSpacing = 0.5.sp
+                                text = "Retry",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal,
+                                fontFamily = font,
+                                color = MaterialTheme.colorScheme.onError
                             )
                         }
                     }
@@ -573,12 +569,11 @@ private fun AdbInstallSection(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = installProgress.ifEmpty { "Installing..." }.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = accents.primary,
-                            letterSpacing = 0.5.sp
+                            text = installProgress.ifEmpty { "Installing..." },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.primary
                         )
                     }
                 }
@@ -590,16 +585,18 @@ private fun AdbInstallSection(
                     if (devices.isEmpty()) {
                         Text(
                             text = "No devices connected",
-                            fontSize = 11.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            fontSize = 12.sp,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = "Connect via USB with USB debugging enabled",
-                            fontSize = 10.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            fontSize = 11.sp,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
                         // Device list
@@ -656,15 +653,16 @@ private fun AdbInstallSection(
                                         text = device.displayName,
                                         fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontFamily = mono,
+                                        fontFamily = font,
                                         color = if (enabled) MaterialTheme.colorScheme.onSurface
-                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                     )
                                     Text(
                                         text = device.id,
-                                        fontSize = 9.sp,
-                                        fontFamily = mono,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                        fontSize = 11.sp,
+                                        fontFamily = font,
+                                        fontWeight = FontWeight.Normal,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 // Status tag
@@ -681,16 +679,15 @@ private fun AdbInstallSection(
                                 ) {
                                     Text(
                                         text = when (device.status) {
-                                            DeviceStatus.DEVICE -> "READY"
-                                            DeviceStatus.UNAUTHORIZED -> "UNAUTH"
-                                            DeviceStatus.OFFLINE -> "OFFLINE"
-                                            DeviceStatus.UNKNOWN -> "UNKNOWN"
+                                            DeviceStatus.DEVICE -> "Ready"
+                                            DeviceStatus.UNAUTHORIZED -> "Unauth"
+                                            DeviceStatus.OFFLINE -> "Offline"
+                                            DeviceStatus.UNKNOWN -> "Unknown"
                                         },
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = mono,
-                                        color = statusColor,
-                                        letterSpacing = 0.5.sp
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        fontFamily = font,
+                                        color = statusColor
                                     )
                                 }
                             }
@@ -725,14 +722,13 @@ private fun AdbInstallSection(
                         ) {
                             Text(
                                 text = if (selectedDevice != null)
-                                    "${if (alreadyInstalled) "UPDATE" else "INSTALL"} ON ${selectedDevice.displayName.uppercase()}"
+                                    "${if (alreadyInstalled) "Update" else "Install"} on ${selectedDevice.displayName}"
                                 else
-                                    "SELECT A DEVICE",
+                                    "Select a device",
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = mono,
-                                color = Color.White,
-                                letterSpacing = 0.5.sp
+                                fontWeight = FontWeight.Normal,
+                                fontFamily = font,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -764,13 +760,14 @@ private fun LinkHandlingSection(
     error: String?,
     success: Boolean,
     selectedDeviceName: String?,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
     borderColor: Color,
     onApply: () -> Unit,
     onRestore: () -> Unit,
     onDismissError: () -> Unit,
 ) {
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     Box(
         modifier = Modifier
@@ -778,7 +775,7 @@ private fun LinkHandlingSection(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
             .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
     ) {
         Column(
             modifier = Modifier
@@ -786,19 +783,19 @@ private fun LinkHandlingSection(
                 .padding(20.dp)
         ) {
             Text(
-                text = "LINK HANDLING",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                letterSpacing = 1.5.sp
+                text = "Link handling",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Open supported web links in the patched app instead of the browser.",
+                text = "Open supported web links in the patched app instead of the browser",
                 fontSize = 11.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             // Optional OFF half — only when a rename was used so stock + patched coexist.
@@ -824,8 +821,9 @@ private fun LinkHandlingSection(
                     Text(
                         text = "Also stop $stockName from opening these links",
                         fontSize = 11.sp,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -837,12 +835,13 @@ private fun LinkHandlingSection(
                     Text(
                         text = error,
                         fontSize = 11.sp,
-                        fontFamily = mono,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(10.dp))
-                    SecondaryActionChip(text = "DISMISS", corners = corners, mono = mono, onClick = onDismissError)
+                    SecondaryActionChip(text = "Dismiss", corners = corners, font = font, onClick = onDismissError)
                 }
 
                 isApplying -> {
@@ -857,12 +856,11 @@ private fun LinkHandlingSection(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = progress.ifEmpty { "Applying..." }.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = accents.primary,
-                            letterSpacing = 0.5.sp
+                            text = progress.ifEmpty { "Applying..." },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = accents.primary
                         )
                     }
                 }
@@ -880,16 +878,15 @@ private fun LinkHandlingSection(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = progress.ifEmpty { "Links routed to patched app" }.uppercase(),
+                            text = progress.ifEmpty { "Links routed to patched app" },
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
                             color = accents.secondary,
-                            letterSpacing = 0.5.sp,
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(8.dp))
-                        SecondaryActionChip(text = "RESTORE", corners = corners, mono = mono, onClick = onRestore)
+                        SecondaryActionChip(text = "Restore", corners = corners, font = font, onClick = onRestore)
                     }
                 }
 
@@ -911,12 +908,11 @@ private fun LinkHandlingSection(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "OPEN LINKS WITH PATCHED APP",
+                            text = "Open links with patched app",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
-                            color = Color.White,
-                            letterSpacing = 0.5.sp
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -929,10 +925,11 @@ private fun LinkHandlingSection(
 @Composable
 private fun SecondaryActionChip(
     text: String,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
     onClick: () -> Unit,
 ) {
+    val font = LocalMorpheFont.current
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
     Box(
@@ -949,11 +946,10 @@ private fun SecondaryActionChip(
     ) {
         Text(
             text = text,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurface,
-            letterSpacing = 0.5.sp
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -968,11 +964,12 @@ private fun CleanupSection(
     tempFilesSize: Long,
     tempFilesCleared: Boolean,
     autoCleanupEnabled: Boolean,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
     borderColor: Color,
     onCleanupClick: () -> Unit
 ) {
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val accentColor = if (tempFilesCleared) accents.secondary else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -988,7 +985,7 @@ private fun CleanupSection(
             )
             .background(
                 if (tempFilesCleared) accents.secondary.copy(alpha = 0.04f)
-                else MaterialTheme.colorScheme.surface
+                else MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
             )
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -996,13 +993,12 @@ private fun CleanupSection(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (tempFilesCleared) "TEMP FILES CLEANED" else "TEMPORARY FILES",
+                text = if (tempFilesCleared) "Temp files cleaned" else "Temporary files",
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = mono,
+                fontFamily = font,
                 color = if (tempFilesCleared) accents.secondary
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                letterSpacing = 1.sp
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(2.dp))
             Text(
@@ -1012,9 +1008,10 @@ private fun CleanupSection(
                     else -> "${formatFileSize(tempFilesSize)} can be freed"
                 },
                 fontSize = 11.sp,
-                fontFamily = mono,
-                color = if (tempFilesCleared) accents.secondary.copy(alpha = 0.7f)
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                fontFamily = font,
+                fontWeight = FontWeight.Normal,
+                color = if (tempFilesCleared) accents.secondary
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -1034,12 +1031,11 @@ private fun CleanupSection(
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "CLEAN UP",
+                    text = "Clean up",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.warning,
-                    letterSpacing = 0.5.sp
+                    fontFamily = font,
+                    color = accents.warning
                 )
             }
         } else if (tempFilesCleared) {
@@ -1061,11 +1057,12 @@ private fun CleanupSection(
  */
 @Composable
 private fun AdbDisabledHint(
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
     borderColor: Color,
     onEnableClick: () -> Unit,
 ) {
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
@@ -1076,30 +1073,31 @@ private fun AdbDisabledHint(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
             .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
             Text(
-                text = "ADB INSTALL",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                letterSpacing = 1.5.sp
+                text = "ADB install",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "ADB is off. Install-on-device is disabled.",
+                text = "ADB is off. Install-on-device is disabled",
                 fontSize = 12.sp,
-                fontFamily = mono,
+                fontWeight = FontWeight.Medium,
+                fontFamily = font,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Enable ADB in Settings to push patched APKs directly.",
+                text = "Enable ADB in Settings to push patched APKs directly",
                 fontSize = 11.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(14.dp))
             Box(
@@ -1122,12 +1120,11 @@ private fun AdbDisabledHint(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "ENABLE ADB",
+                    text = "Enable ADB",
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.primary,
-                    letterSpacing = 1.sp
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font,
+                    color = accents.primary
                 )
             }
         }
@@ -1146,10 +1143,11 @@ private fun formatFileSize(bytes: Long): String {
 @Composable
 private fun OutputFileCard(
     outputFile: File,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
     borderColor: Color,
 ) {
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     Box(
         modifier = Modifier
@@ -1157,7 +1155,7 @@ private fun OutputFileCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
             .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
     ) {
         // Teal left stripe
         Box(
@@ -1177,22 +1175,21 @@ private fun OutputFileCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 14.dp)
             ) {
                 Text(
-                    text = "OUTPUT FILE",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    letterSpacing = 1.5.sp
+                    text = "Output file",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = font,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = outputFile.name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = font,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1203,16 +1200,17 @@ private fun OutputFileCard(
                         text = formatFileSize(outputFile.length()),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
-                        color = accents.secondary
+                        fontFamily = font,
+                        color = accents.primary
                     )
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = outputFile.parent ?: "",
-                    fontSize = 10.sp,
-                    fontFamily = mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1222,25 +1220,13 @@ private fun OutputFileCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .drawBehind {
-                        drawLine(
-                            color = borderColor,
-                            start = Offset(20.dp.toPx(), 0f),
-                            end = Offset(size.width - 20.dp.toPx(), 0f),
-                            strokeWidth = 1f
-                        )
-                    }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val folderHover = remember { MutableInteractionSource() }
                 val isFolderHovered by folderHover.collectIsHoveredAsState()
-                val folderColor by animateColorAsState(
-                    if (isFolderHovered) accents.primary else accents.primary.copy(alpha = 0.7f),
-                    animationSpec = tween(150)
-                )
                 val folderBg by animateColorAsState(
-                    if (isFolderHovered) accents.primary.copy(alpha = 0.1f) else Color.Transparent,
+                    if (isFolderHovered) accents.primary.copy(alpha = 0.08f) else Color.Transparent,
                     animationSpec = tween(150)
                 )
 
@@ -1252,7 +1238,7 @@ private fun OutputFileCard(
                         .background(folderBg, RoundedCornerShape(corners.small))
                         .border(
                             1.dp,
-                            accents.primary.copy(alpha = if (isFolderHovered) 0.5f else 0.3f),
+                            if (isFolderHovered) accents.primary.copy(alpha = 0.5f) else accents.primary.copy(alpha = 0.25f),
                             RoundedCornerShape(corners.small)
                         )
                         .clickable {
@@ -1267,12 +1253,11 @@ private fun OutputFileCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "OPEN FOLDER →",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
-                        color = folderColor,
-                        letterSpacing = 0.5.sp
+                        text = "Open folder",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = accents.primary
                     )
                 }
             }
@@ -1282,36 +1267,30 @@ private fun OutputFileCard(
 
 @Composable
 private fun PatchAnotherButton(
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    corners: MorpheCornerStyle,
+    font: FontFamily,
 ) {
+    val font = LocalMorpheFont.current
     val navigator = LocalNavigator.currentOrThrow
     val accents = LocalMorpheAccents.current
-    val patchAnotherHover = remember { MutableInteractionSource() }
-    val isPatchAnotherHovered by patchAnotherHover.collectIsHoveredAsState()
-    val patchAnotherBg by animateColorAsState(
-        if (isPatchAnotherHovered) accents.primary.copy(alpha = 0.9f) else accents.primary,
-        animationSpec = tween(150)
-    )
-
-    Box(
+    OutlinedButton(
+        onClick = { navigator.popUntilRoot() },
         modifier = Modifier
             .widthIn(max = 520.dp)
             .fillMaxWidth()
-            .height(42.dp)
-            .hoverable(patchAnotherHover)
-            .clip(RoundedCornerShape(corners.small))
-            .background(patchAnotherBg, RoundedCornerShape(corners.small))
-            .clickable { navigator.popUntilRoot() },
-        contentAlignment = Alignment.Center
+            .height(42.dp),
+        shape = RoundedCornerShape(corners.small),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            contentColor = MaterialTheme.colorScheme.primary
+        )
     ) {
         Text(
-            text = "PATCH ANOTHER",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = Color.White,
-            letterSpacing = 1.sp
+            text = "Patch another",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font
         )
     }
 }

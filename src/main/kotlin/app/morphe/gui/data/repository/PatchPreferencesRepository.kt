@@ -10,13 +10,15 @@ import app.morphe.desktop.command.model.PatchBundleMeta
 import app.morphe.desktop.command.model.PatchEntry
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
+import java.io.File
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.io.File
-
+import kotlinx.serialization.json.JsonElement
 /**
  * Stores per-(source, package) patch selections and option values across sessions.
  *
@@ -39,7 +41,7 @@ class PatchPreferencesRepository {
 
     private fun prefsFile(): File = File(FileUtils.getAppDataDir(), "patch-preferences.json")
 
-    private suspend fun load(): MutableMap<String, MutableMap<String, PatchBundle>> {
+    private fun load(): MutableMap<String, MutableMap<String, PatchBundle>> {
         cache?.let { return it }
         val file = prefsFile()
         val parsed = try {
@@ -88,7 +90,7 @@ class PatchPreferencesRepository {
         packageName: String,
         enabledPatchNames: Set<String>,
         disabledPatchNames: Set<String>,
-        options: Map<String, Map<String, kotlinx.serialization.json.JsonElement>> = emptyMap(),
+        options: Map<String, Map<String, JsonElement>> = emptyMap(),
     ) = withContext(Dispatchers.IO) {
         mutex.withLock {
             val all = load()
@@ -109,7 +111,7 @@ class PatchPreferencesRepository {
                 )
             }
 
-            val now = java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now())
+            val now = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
             val bundle = PatchBundle(
                 meta = PatchBundleMeta(
                     createdAt = existing?.meta?.createdAt ?: now,

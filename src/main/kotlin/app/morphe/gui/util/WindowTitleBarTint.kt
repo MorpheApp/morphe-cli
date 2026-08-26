@@ -12,6 +12,7 @@ import com.sun.jna.platform.win32.WinDef
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.win32.StdCallLibrary
 import java.awt.Window
+import javax.swing.JFrame
 
 /**
  * Cross-platform title bar tinting helpers.
@@ -77,7 +78,7 @@ fun applyTitleBarTint(window: Window, color: Color) {
 
 private fun applyMacOSAppearance(window: Window, isDark: Boolean) {
     try {
-        val rootPane = (window as? javax.swing.JFrame)?.rootPane ?: return
+        val rootPane = (window as? JFrame)?.rootPane ?: return
         rootPane.putClientProperty(
             "apple.awt.appearance",
             if (isDark) "NSAppearanceNameDarkAqua" else "NSAppearanceNameAqua"

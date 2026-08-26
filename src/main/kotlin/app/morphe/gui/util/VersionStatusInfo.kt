@@ -41,22 +41,22 @@ fun resolveVersionStatusDisplay(
     return when (versionStatus) {
         VersionStatus.LATEST_STABLE -> when (checksumStatus) {
             is ChecksumStatus.Verified -> VersionStatusDisplay(
-                label = "LATEST STABLE",
+                label = "Latest Stable",
                 detail = "Checksum matches APKMirror",
                 colorType = StatusColorType.PRIMARY
             )
             is ChecksumStatus.Mismatch -> VersionStatusDisplay(
-                label = "CHECKSUM MISMATCH",
+                label = "Checksum mismatch",
                 detail = "File may be corrupted, re-download from APKMirror",
                 colorType = StatusColorType.ERROR
             )
             is ChecksumStatus.Error -> VersionStatusDisplay(
-                label = "LATEST STABLE",
+                label = "Latest Stable",
                 detail = "Checksum verification failed",
                 colorType = StatusColorType.WARNING
             )
             is ChecksumStatus.NotConfigured -> VersionStatusDisplay(
-                label = "LATEST STABLE",
+                label = "Latest Stable",
                 detail = null,
                 colorType = StatusColorType.PRIMARY
             )
@@ -64,7 +64,7 @@ fun resolveVersionStatusDisplay(
         }
 
         VersionStatus.OLDER_STABLE -> VersionStatusDisplay(
-            label = "OLDER STABLE",
+            label = "Older stable",
             detail = suggestedVersion
                 ?.let { "Newer stable v$it available" }
                 ?: "A newer stable version is available",
@@ -72,13 +72,13 @@ fun resolveVersionStatusDisplay(
         )
 
         VersionStatus.LATEST_EXPERIMENTAL -> VersionStatusDisplay(
-            label = "EXPERIMENTAL",
+            label = "Experimental",
             detail = "Supported, but may not work properly",
             colorType = StatusColorType.WARNING
         )
 
         VersionStatus.OLDER_EXPERIMENTAL -> VersionStatusDisplay(
-            label = "OLDER EXPERIMENTAL",
+            label = "Older Experimental",
             detail = suggestedVersion
                 ?.let { "Newer experimental v$it available" }
                 ?: "A newer experimental build is available",
@@ -86,20 +86,20 @@ fun resolveVersionStatusDisplay(
         )
 
         VersionStatus.TOO_NEW -> VersionStatusDisplay(
-            label = "VERSION TOO NEW",
-            detail = "Not officially supported — patches will most likely fail",
+            label = "Version too new",
+            detail = "Not officially supported - patches will most likely fail",
             colorType = StatusColorType.ERROR
         )
 
         VersionStatus.TOO_OLD -> VersionStatusDisplay(
-            label = "VERSION TOO OLD",
-            detail = "Not officially supported — patches will most likely fail",
+            label = "Version too old",
+            detail = "Not officially supported - patches will most likely fail",
             colorType = StatusColorType.ERROR
         )
 
         VersionStatus.UNSUPPORTED_BETWEEN -> VersionStatusDisplay(
-            label = "UNSUPPORTED VERSION",
-            detail = "Not officially supported — patches will most likely fail",
+            label = "Unsupported version",
+            detail = "Not officially supported - patches will most likely fail",
             colorType = StatusColorType.ERROR
         )
 
@@ -149,43 +149,43 @@ fun resolveVersionWarningContent(
 ): VersionWarningContent {
     val (title, message) = when (versionStatus) {
         VersionStatus.OLDER_STABLE -> Pair(
-            "OLDER STABLE VERSION",
+            "Older Stable version",
             "Current: v$currentVersion\nLatest stable: v$suggestedVersion\n\n" +
                 "This version is supported, but a newer stable version is available. " +
-                "You may be missing recent fixes."
+                "You may be missing recent fixes"
         )
         VersionStatus.LATEST_EXPERIMENTAL -> Pair(
-            "DO YOU WANT TO EXPERIMENT? \uD83E\uDDEA",
+            "Do you want to experiment? \uD83E\uDDEA",
             "Current: v$currentVersion\n\n" +
                 "This version has early experimental support\n\n" +
                 "\uD83D\uDD27 Expect quirky app behavior or unidentified bugs as the " +
                 "patches are refined for this app version."
         )
         VersionStatus.OLDER_EXPERIMENTAL -> Pair(
-            "OLDER EXPERIMENTAL VERSION.\nDO YOU WANT TO EXPERIMENT? \uD83E\uDDEA",
+            "Older Experimental Version\nDo you want to experiment? \uD83E\uDDEA",
             "Current: v$currentVersion\nLatest experimental: v$suggestedVersion\n\n" +
                 "This is a supported experimental build, but a newer experimental " +
                 "version is available. Expect quirky app behavior or unidentified" +
-                " bugs as the patches are refined for this app version."
+                " bugs as the patches are refined for this app version"
         )
         VersionStatus.TOO_NEW -> Pair(
-            "DO YOU WANT TO EXPERIMENT? \uD83E\uDDEA",
+            "Do you want to experiment? \uD83E\uDDEA",
             "Current: v$currentVersion\nNewest known: v$suggestedVersion\n\n" +
                 "This version has early experimental support\n\n" +
                 "\uD83D\uDD27 Expect quirky app behavior or unidentified bugs as the " +
-                "patches are refined for this app version."
+                "patches are refined for this app version"
         )
         VersionStatus.TOO_OLD -> Pair(
-            "VERSION TOO OLD",
+            "Version too old",
             "Current: v$currentVersion\nOldest supported: v$suggestedVersion\n\n" +
-                "This isn't an officially supported version. Patches will most likely fail."
+                "This isn't an officially supported version. Patches will most likely fail"
         )
         VersionStatus.UNSUPPORTED_BETWEEN -> Pair(
-            "UNSUPPORTED VERSION",
+            "Unsupported version",
             "Current: v$currentVersion\n\n" +
-                "This isn't an officially supported version. Patches will most likely fail."
+                "This isn't an officially supported version. Patches will most likely fail"
         )
-        else -> Pair("VERSION NOTICE", "Continue with v$currentVersion?")
+        else -> Pair("Version notice", "Continue with v$currentVersion?")
     }
 
     val isHardError = versionStatus == VersionStatus.TOO_OLD ||

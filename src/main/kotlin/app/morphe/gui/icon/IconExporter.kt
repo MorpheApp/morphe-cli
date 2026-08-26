@@ -6,6 +6,7 @@
 package app.morphe.gui.icon
 
 import app.morphe.engine.MorpheData
+import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
@@ -89,7 +90,7 @@ object IconExporter {
 
     /** Vectorise an opaque silhouette into VectorDrawable path data — one rectangle
      *  per horizontal run of opaque pixels (keeps the path compact). */
-    private fun silhouetteToPath(img: java.awt.image.BufferedImage): String {
+    private fun silhouetteToPath(img: BufferedImage): String {
         val w = img.width; val h = img.height
         val px = IntArray(w * h); img.getRGB(0, 0, w, h, px, 0, w)
         val sb = StringBuilder()

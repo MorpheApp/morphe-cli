@@ -1,11 +1,10 @@
 /*
  * Copyright 2026 Morphe.
- * https://github.com/MorpheApp/morphe-cli
+ * https://github.com/MorpheApp/morphe-desktop
  */
 
 package app.morphe.gui.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,12 +38,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 
 /**
- * Dialog chrome alone: shape, surface colour, accent border, padding, spacing.
+ * Dialog chrome alone: shape, surface colour, padding, spacing.
  * Use [MorpheDialogCard] for a plain confirm or message dialog. Sheets needing
  * their own header, scrolling or left-aligned content SHOULD build on this.
  *
@@ -62,12 +60,10 @@ fun MorpheDialogSurface(
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val accents = LocalMorpheAccents.current
     val corners = LocalMorpheCorners.current
     Surface(
         shape = RoundedCornerShape(corners.large),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, accents.primary.copy(alpha = 0.25f)),
         modifier = modifier,
     ) {
         Column(
@@ -81,7 +77,7 @@ fun MorpheDialogSurface(
 
 /**
  * Morphe-styled modal card (Dialog + Surface), the house replacement for stock
- * Material `AlertDialog`s. Sharp corners, accent border, mono title.
+ * Material `AlertDialog`s.
  */
 @Composable
 fun MorpheDialogCard(
@@ -91,16 +87,15 @@ fun MorpheDialogCard(
     maxWidth: Dp = 440.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     Dialog(onDismissRequest = onDismiss) {
         MorpheDialogSurface(modifier = Modifier.widthIn(max = maxWidth)) {
             Text(
                 text = title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = font,
                 color = MaterialTheme.colorScheme.onSurface,
-                letterSpacing = 0.5.sp,
             )
             content()
         }
@@ -110,10 +105,12 @@ fun MorpheDialogCard(
 /** Body paragraph for a [MorpheDialogCard]. */
 @Composable
 fun MorpheDialogText(text: String) {
+    val font = LocalMorpheFont.current
     Text(
         text = text,
-        fontSize = 12.sp,
-        fontFamily = LocalMorpheFont.current,
+        fontSize = 11.sp,
+        fontFamily = font,
+        fontWeight = FontWeight.Normal,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         lineHeight = 17.sp,
         textAlign = TextAlign.Center,
@@ -128,7 +125,7 @@ fun RowScope.MorpheDialogButton(
     filled: Boolean,
     onClick: () -> Unit,
 ) {
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val corner = LocalMorpheCorners.current.small
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
@@ -153,10 +150,9 @@ fun RowScope.MorpheDialogButton(
     ) {
         Text(
             text = label,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            letterSpacing = 0.5.sp,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
             color = if (filled) MaterialTheme.colorScheme.surface else color,
         )
     }

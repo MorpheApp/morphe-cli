@@ -104,9 +104,8 @@ object PatchEngine {
             // a single APK. ApkMerger is format-agnostic (it just extracts the
             // .apk entries from the zip), so all three formats go through here.
             val actualInputApk = if (BundleFormats.isBundle(config.inputApk)) {
-                onProgress("Merging split APKs...")
                 val mergedApk = File(tempDir, "${config.inputApk.nameWithoutExtension}-merged.apk")
-                ApkMerger(logger.toMorpheLogger()).merge(
+                ApkMerger(Logger.getLogger("app.morphe.patcher.ApkMerger").toMorpheLogger()).merge(
                     inputFile = config.inputApk,
                     outputFile = mergedApk,
                     cleanMetaInf = false
@@ -130,7 +129,8 @@ object PatchEngine {
                 patcherTempDir.absolutePath,
                 useArsclib = true,
                 keepArchitectures = config.architecturesToKeep,
-                useBytecodeMode = config.bytecodeMode
+                useBytecodeMode = config.bytecodeMode,
+                fileWorkspacePath = File(tempDir, "workspace").also { it.mkdirs() }
             )
 
             Patcher(patcherConfig).use { patcher ->
@@ -209,7 +209,6 @@ object PatchEngine {
                 currentCoroutineContext().ensureActive()
 
                 // 6. Rebuild APK
-                onProgress("Rebuilding APK...")
                 try {
                     val patcherResult = patcher.get()
                     val rebuiltApk = File(tempDir, "rebuilt.apk")
@@ -235,11 +234,7 @@ object PatchEngine {
                         Config.DEFAULT_KEYSTORE_PASSWORD,
                     )
 
-                    if (config.keystoreDetails != null) {
-                        onProgress("Signing APK with custom keystore: ${keystoreDetails.keyStore.name}")
-                    } else {
-                        onProgress("Signing APK...")
-                    }
+
 
                     try {
                         signWithLegacyFallback(
@@ -267,7 +262,7 @@ object PatchEngine {
                 config.outputApk.parentFile?.mkdirs()
                 tempOutput.copyTo(config.outputApk, overwrite = true)
 
-                onProgress("Patching complete!")
+
 
                 // When failOnError=false (user asked to continue on error), reaching this
                 // line means the APK was successfully rebuilt from the patches that worked,
@@ -275,7 +270,7 @@ object PatchEngine {
                 // `failedPatches` for the UI to display. Only strict mode (failOnError=true)
                 // treats any failure as an overall failure.
                 return Result(
-                    success = if (config.failOnError) failedPatches.isEmpty() else true,
+                    success = !config.failOnError || failedPatches.isEmpty(),
                     outputPath = config.outputApk.absolutePath,
                     packageName = packageName,
                     packageVersion = packageVersion,

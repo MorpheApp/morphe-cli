@@ -6,10 +6,29 @@
 package app.morphe.engine
 
 import app.morphe.patcher.patch.Patch
+import app.morphe.patcher.patch.SupportedAbi
 
 typealias VersionMap = LinkedHashMap<String, Int>
 typealias CompatibleVersionsMap = Map<String, VersionMap>
 
+
+fun Patch<*>.versionCodesFor(
+    packageName: String?,
+    versionName: String,
+): Map<SupportedAbi, Int>? {
+    val compat = compatibility ?: return null
+    return compat
+        .filter { packageName == null || it.packageName == null || it.packageName == packageName }
+        .flatMap { it.targets }
+        .find { it.version == versionName && !it.versionCodes.isNullOrEmpty() }
+        ?.versionCodes
+}
+
+fun Iterable<Patch<*>>.versionCodesFor(
+    packageName: String?,
+    versionName: String,
+): Map<SupportedAbi, Int>? =
+    firstNotNullOfOrNull { it.versionCodesFor(packageName, versionName) }
 
 @Suppress("DEPRECATION")
 fun Patch<*>.versionsFor(
@@ -118,8 +137,8 @@ fun Iterable<Patch<*>>.mostCommonCompatibleVersions(
         for (patch in this@mostCommonCompatibleVersions) {
             val compat = patch.compatibility
             if (!compat.isNullOrEmpty()) {
-                for (entry in compat) {
-                    entry.packageName?.let { add(it) }
+                for ((packageName) in compat) {
+                    packageName?.let { add(it) }
                 }
             } else {
                 @Suppress("DEPRECATION")

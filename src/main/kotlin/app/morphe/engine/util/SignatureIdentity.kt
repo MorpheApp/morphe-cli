@@ -9,7 +9,6 @@ import java.io.File
 import java.security.KeyStore
 import java.security.Security
 import java.security.cert.Certificate
-import java.util.Arrays
 
 /**
  * Identifies a signing certificate by the same value Android reports in
@@ -19,7 +18,7 @@ import java.util.Arrays
  * signatures=PackageSignatures{… signatures:[a7001add], past signatures:[]}
  * ```
  *
- * That `a7001add` is `Integer.toHexString(Arrays.hashCode(certDER))` of the
+ * That `a7001add` is `Integer.toHexString(certDER.contentHashCode())` of the
  * signing cert (Android's `Signature.hashCode()`). Computing the same value from
  * Morphe's keystore cert lets us tell, from a connected device, whether an
  * installed app was signed by Morphe — without pulling the APK.
@@ -30,9 +29,9 @@ import java.util.Arrays
  */
 object SignatureIdentity {
 
-    /** Android's signature id for [cert]: `toHexString(Arrays.hashCode(DER))`. */
+    /** Android's signature id for [cert]: `toHexString(DER.contentHashCode())`. */
     fun idForCert(cert: Certificate): String =
-        Integer.toHexString(Arrays.hashCode(cert.encoded))
+        Integer.toHexString(cert.encoded.contentHashCode())
 
     /**
      * Signature id of the cert under [alias] in the BKS [keystoreFile], or null

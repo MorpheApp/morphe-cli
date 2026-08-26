@@ -5,10 +5,10 @@
 
 package app.morphe.gui.ui.screens.quick.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +33,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.model.SupportedApp
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import app.morphe.gui.ui.components.morpheScrollbarStyle
+import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.screens.home.components.AppCard
 import app.morphe.gui.ui.theme.*
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 
@@ -46,11 +49,12 @@ internal fun SupportedAppsRow(
     isLoading: Boolean,
     loadError: String? = null,
     isDefaultSource: Boolean = true,
+    useExperimentalVersions: Boolean = false,
     onRetry: () -> Unit = {},
     onManageSources: () -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val uriHandler = LocalUriHandler.current
     val focusManager = LocalFocusManager.current
@@ -60,23 +64,21 @@ internal fun SupportedAppsRow(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "SUPPORTED APPS",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            letterSpacing = 3.sp
+            text = "Supported apps",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = if (isDefaultSource) "Download the exact version from APKMirror and drop it here."
-                   else "Drop the APK for a supported app here.",
-            fontSize = 11.sp,
-            fontFamily = mono,
+            text = "Drop the exact APK version for a supported app here",
+            fontFamily = font,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .widthIn(max = 500.dp)
@@ -100,8 +102,10 @@ internal fun SupportedAppsRow(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Loading supported apps…",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -114,16 +118,17 @@ internal fun SupportedAppsRow(
                     Text(
                         text = loadError ?: "Could not load supported apps",
                         fontSize = 11.sp,
-                        fontFamily = mono,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    ErrorActionPill(text = "RETRY", onClick = onRetry)
+                    ErrorActionPill(text = "Retry", onClick = onRetry)
                     // Retrying a source that is itself broken (bad URL, corrupt .mpp,
                     // needs a newer patcher) loops forever, so the picker has to be
                     // reachable from the error itself and not only from the header badge.
                     Spacer(modifier = Modifier.width(6.dp))
-                    ErrorActionPill(text = "CHANGE SOURCE", onClick = onManageSources)
+                    ErrorActionPill(text = "Change source", onClick = onManageSources)
                 }
             }
             else -> {
@@ -151,8 +156,9 @@ internal fun SupportedAppsRow(
                         singleLine = true,
                         interactionSource = searchInteraction,
                         textStyle = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = mono,
+                            fontFamily = font,
                             fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         cursorBrush = SolidColor(accents.primary),
@@ -161,6 +167,7 @@ internal fun SupportedAppsRow(
                             .fillMaxWidth()
                             .height(32.dp)
                             .clip(RoundedCornerShape(corners.small))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                             .border(1.dp, searchBorder, RoundedCornerShape(corners.small)),
                         decorationBox = { innerTextField ->
                             Row(
@@ -181,7 +188,8 @@ internal fun SupportedAppsRow(
                                         Text(
                                             "Filter apps…",
                                             fontSize = 11.sp,
-                                            fontFamily = mono,
+                                            fontWeight = FontWeight.Normal,
+                                            fontFamily = font,
                                             color = muted.copy(alpha = 0.4f)
                                         )
                                     }
@@ -220,8 +228,9 @@ internal fun SupportedAppsRow(
                         Text(
                             text = "No matching apps",
                             fontSize = 11.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     }
                     return@Column
@@ -250,19 +259,16 @@ internal fun SupportedAppsRow(
                     filteredApps.forEach { app ->
                         val url = app.apkDownloadUrl
 
-                        Surface(
+                        AppCard(
                             modifier = Modifier
                                 .then(
                                     if (useScrolling) Modifier.width(170.dp)
                                     else Modifier.weight(1f)
                                 )
                                 .fillMaxHeight(),
-                            shape = RoundedCornerShape(corners.small),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-                            )
+                            cornerRadius = corners.small,
+                            appIconColorHex = app.appIconColor,
+                            interactive = false
                         ) {
                             Column(
                                 modifier = Modifier
@@ -276,6 +282,8 @@ internal fun SupportedAppsRow(
                                     text = app.displayName,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
+                                    fontFamily = font,
+                                    color = Color.White,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -284,52 +292,64 @@ internal fun SupportedAppsRow(
                                     Spacer(modifier = Modifier.weight(1f))
                                 }
 
+                                val hasExperimental = app.experimentalVersions.isNotEmpty()
+                                val isExperimental = useExperimentalVersions && hasExperimental
+                                val recommendedVersionText = if (app.recommendedVersion != null) {
+                                    if (isExperimental) "Experimental" else "Stable"
+                                } else {
+                                    "Any version"
+                                }
+                                
                                 Text(
-                                    text = if (app.recommendedVersion != null) "STABLE" else "ANY VERSION",
-                                    fontSize = 9.sp,
-                                    fontFamily = mono,
-                                    fontWeight = FontWeight.Medium,
-                                    letterSpacing = 1.2.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                    text = recommendedVersionText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    fontFamily = font,
+                                    color = Color.White.copy(alpha = 0.6f)
                                 )
 
                                 if (url != null) {
                                     val pillInteraction = remember { MutableInteractionSource() }
                                     val isPillHovered by pillInteraction.collectIsHoveredAsState()
                                     val pillBg by animateColorAsState(
-                                        if (isPillHovered) accents.primary.copy(alpha = 0.15f)
-                                        else Color.Transparent,
-                                        animationSpec = tween(150)
-                                    )
-                                    val pillBorder by animateColorAsState(
-                                        if (isPillHovered) accents.primary.copy(alpha = 0.7f)
-                                        else accents.primary.copy(alpha = 0.35f),
+                                        if (isPillHovered) Color.White.copy(alpha = 0.26f)
+                                        else Color.White.copy(alpha = 0.20f),
                                         animationSpec = tween(150)
                                     )
 
-                                    Box(
+                                    Row(
                                         modifier = Modifier
                                             .hoverable(pillInteraction)
                                             .clip(RoundedCornerShape(corners.small))
                                             .background(pillBg, RoundedCornerShape(corners.small))
-                                            .border(
-                                                1.dp,
-                                                pillBorder,
-                                                RoundedCornerShape(corners.small)
-                                            )
+                                            .pointerHoverIcon(PointerIcon.Hand)
                                             .clickable {
                                                 openUrlAndFollowRedirects(url) { resolved ->
                                                     uriHandler.openUri(resolved)
                                                 }
                                             }
-                                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
+                                        val versionToDisplay = if (isExperimental) {
+                                            app.experimentalVersions.firstOrNull()
+                                        } else {
+                                            app.recommendedVersion
+                                        }
+                                        
                                         Text(
-                                            text = app.recommendedVersion?.let { "v$it ↗" } ?: "Download ↗",
+                                            text = versionToDisplay?.let { "v$it" } ?: "Download",
                                             fontSize = 11.sp,
-                                            fontFamily = mono,
-                                            color = accents.primary,
-                                            fontWeight = FontWeight.Medium
+                                            fontFamily = font,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Normal
+                                        )
+                                        Icon(
+                                            imageVector = MorpheIcons.OpenInNew,
+                                            contentDescription = "Download",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(10.dp)
                                         )
                                     }
                                 }
@@ -355,15 +375,15 @@ internal fun SupportedAppsRow(
 // ERROR ACTION PILL
 // ============================================================================
 
-/** Outlined action used in the patch-load error row. Matches the quiet, mono
- *  pill style of this screen rather than a Material button. */
+/** Outlined action used in the patch-load error row. Matches the quiet, pill
+ *  style of this screen rather than a Material button. */
 @Composable
 private fun ErrorActionPill(
     text: String,
     onClick: () -> Unit,
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
     Box(
@@ -382,12 +402,10 @@ private fun ErrorActionPill(
     ) {
         Text(
             text = text,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurface,
-            letterSpacing = 0.5.sp
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
-

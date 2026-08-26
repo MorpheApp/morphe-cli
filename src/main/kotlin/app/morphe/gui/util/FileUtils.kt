@@ -6,6 +6,7 @@
 package app.morphe.gui.util
 
 import app.morphe.engine.MorpheData
+import app.morphe.engine.util.BundleFormats
 import java.io.File
 import java.util.zip.ZipFile
 
@@ -26,7 +27,7 @@ object FileUtils {
      */
     val ANDROID_ARCHITECTURES = setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
-    private val EXTENSION_APK_BUNDLES = app.morphe.engine.util.BundleFormats.EXTENSIONS
+    private val EXTENSION_APK_BUNDLES = BundleFormats.EXTENSIONS
     private val EXTENSION_APK_ANY = EXTENSION_APK_BUNDLES + "apk"
 
     /** Returns the unified Morphe data root. Was: per-OS app-data folder. */
@@ -67,11 +68,7 @@ object FileUtils {
      */
     fun cleanupTempDir(dir: File): Boolean {
         return try {
-            if (dir.exists() && dir.startsWith(getTempDir())) {
-                dir.deleteRecursively()
-            } else {
-                false
-            }
+            dir.exists() && dir.startsWith(getTempDir()) && dir.deleteRecursively()
         } catch (e: Exception) {
             false
         }
