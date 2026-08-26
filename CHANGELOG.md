@@ -1,3 +1,10 @@
+# [1.15.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.14.0...v1.15.0-dev.1) (2026-08-26)
+
+
+### Features
+
+* Port Manager typography and overhaul UI to Material 3 ([#259](https://github.com/MorpheApp/morphe-desktop/issues/259)) ([b4f994b](https://github.com/MorpheApp/morphe-desktop/commit/b4f994bd5b1e7a060f800c05a09be4d097f064bb)), closes [#190](https://github.com/MorpheApp/morphe-desktop/issues/190)
+
 # [1.14.0](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.2...v1.14.0) (2026-08-25)
 
 
