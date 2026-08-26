@@ -1,6 +1,6 @@
 /*
  * Copyright 2026 Morphe.
- * https://github.com/MorpheApp/morphe-cli
+ * https://github.com/MorpheApp/morphe-desktop
  */
 
 package app.morphe.gui.ui.components
@@ -48,7 +48,7 @@ enum class MorpheButtonVariant { PRIMARY, GHOST, DANGER }
 private val DANGER_COLOR = Color(0xFFE0504D)
 
 /**
- * The house button. One place for corners, padding, mono type, centred label (with a
+ * The house button. One place for corners, padding, font type, centred label (with a
  * pinned line-height so the text never sits off-centre), optional leading icon, hover
  * feedback and a disabled state. Prefer this over hand-rolling `Box { Text }` buttons.
  *
@@ -65,14 +65,14 @@ fun MorpheButton(
     onClick: () -> Unit,
 ) {
     val accents = LocalMorpheAccents.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val corner = RoundedCornerShape(LocalMorpheCorners.current.small)
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
     val a = if (enabled) 1f else 0.4f
 
     val base = when (variant) {
-        MorpheButtonVariant.PRIMARY -> accents.secondary
+        MorpheButtonVariant.PRIMARY -> accents.primary
         MorpheButtonVariant.GHOST -> MaterialTheme.colorScheme.onSurfaceVariant
         MorpheButtonVariant.DANGER -> DANGER_COLOR
     }
@@ -92,12 +92,12 @@ fun MorpheButton(
             .hoverable(hover)
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             if (icon != null) Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(13.dp))
-            Text(label, fontFamily = mono, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = content)
+            Text(label, fontFamily = font, fontSize = 11.sp, lineHeight = 12.sp, fontWeight = FontWeight.Normal, color = content)
         }
     }
 }

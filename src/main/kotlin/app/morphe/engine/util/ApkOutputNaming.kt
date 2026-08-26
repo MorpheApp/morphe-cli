@@ -78,7 +78,7 @@ object ApkOutputNaming {
 
     /**
      * Compute the unified output APK path. Layout:
-     * `<base>/<appName>/<appName>-Morphe-{apkVer}-patches-{patchesVer}.apk`
+     * `<base>/<appName>/<appName>-{apkVer}-patches-{patchesVer}.apk`
      *
      * - Per-app subfolder prevents collisions when patching different APK
      *   versions of the same package
@@ -124,7 +124,7 @@ object ApkOutputNaming {
         )
         val patchesVersion = patchesFile?.name?.let { extractPatchesVersion(it) }
         val patchesSuffix = if (patchesVersion != null) "-patches-$patchesVersion" else ""
-        return File(outputDir, "${appFolderName}-Morphe-${version}${patchesSuffix}.apk")
+        return File(outputDir, "${appFolderName}-${version}${patchesSuffix}.apk")
     }
 
     private fun String.isUsableVersion(): Boolean =

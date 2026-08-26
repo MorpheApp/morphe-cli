@@ -6,19 +6,20 @@
 package app.morphe.gui.util
 
 import app.morphe.engine.PatchEngine
+import app.morphe.engine.patches.PatchBundleLoader
 import app.morphe.gui.data.model.CompatiblePackage
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchOption
 import app.morphe.gui.data.model.PatchOptionType
+import app.morphe.patcher.apk.ApkUtils
+import app.morphe.patcher.patch.Patch as LibraryPatch
 import app.morphe.patcher.patch.loadPatchesFromJar
 import app.morphe.patcher.resource.CpuArchitecture
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import app.morphe.patcher.apk.ApkUtils
-import app.morphe.engine.patches.PatchBundleLoader
 import java.io.File
 import kotlin.reflect.KType
-import app.morphe.patcher.patch.Patch as LibraryPatch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Bridge between GUI and morphe-patcher library.
@@ -151,22 +152,19 @@ class PatchService {
 
                 val engineResult = PatchEngine.patch(config, onProgress)
 
-                // Build the COMPLETE failure detail (full stack traces, incl. any
-                // nested "Caused by:" cause). Used for both the log file and the
-                // UI's expandable "Details" section. The short [failureReason]
-                // below is only the one-line banner summary. It must never be the
-                // single source, or the cause gets lost (e.g. a PatchException
-                // ending in "...which raised an exception:" with the cause dropped).
                 val failureDetail: String? = if (engineResult.success) null else buildString {
-                    engineResult.failedPatches.forEach { fp ->
-                        appendLine("Patch '${fp.name}' failed:")
-                        appendLine(fp.error)
+                    if (engineResult.failedPatches.isNotEmpty()) {
+                        engineResult.failedPatches.forEach { fp ->
+                            appendLine("Patch '${fp.name}' failed:")
+                            appendLine(fp.error)
+                        }
+                    } else {
+                        engineResult.stepResults
+                            .filter { !it.success && it.error != null }
+                            .forEach { appendLine("Step ${it.step.name} failed:"); appendLine(it.error) }
                     }
-                    engineResult.stepResults
-                        .filter { !it.success && it.error != null }
-                        .forEach { appendLine("Step ${it.step.name} failed:"); appendLine(it.error) }
                 }.takeIf { it.isNotBlank() }
-                failureDetail?.let { Logger.error("Patching failed — full detail:\n$it") }
+                failureDetail?.let { Logger.error("Patching failed - full detail:\n$it") }
 
                 val failureReason = if (engineResult.success) null else {
                     // Prefer a specific failed-patch error, else the last failed
@@ -193,7 +191,7 @@ class PatchService {
             } finally {
                 tempCopies.forEach { runCatching { it.delete() } }
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
             // Catch Throwable, not just Exception: a mismatched patch bundle can
@@ -235,7 +233,9 @@ class PatchService {
                     name = packageName,
                     displayName = compatibility.name,
                     versions = stable.mapNotNull { it.version },
-                    experimentalVersions = experimental.mapNotNull { it.version }
+                    experimentalVersions = experimental.mapNotNull { it.version },
+                    appIconColor = compatibility.appIconColor
+                        ?.let { "#%06X".format(it and 0xFFFFFF) }
                 )
             }
             ?: emptyList()

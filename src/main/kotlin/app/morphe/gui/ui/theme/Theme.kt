@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -27,6 +28,26 @@ object MorpheColors {
     val TextLight = Color(0xFFE3E3E3)
     val TextDark = Color(0xFF1C1C1C)
 }
+
+// Morphe Preset Colors
+val THEME_PRESET_COLORS = listOf(
+    Color(0xFF6750A4),
+    Color(0xFF386641),
+    Color(0xFF0061A4),
+    Color(0xFF8E24AA),
+    Color(0xFFEF6C00),
+    Color(0xFF00897B),
+    Color(0xFFD81B60),
+    Color(0xFF5C6BC0),
+    Color(0xFF43A047),
+    Color(0xFF1DE9B6),
+    Color(0xFFFFC400),
+    Color(0xFF00B8D4),
+    Color(0xFFD32F2F),
+    Color(0xFFAFB42B),
+    Color(0xFF795548),
+    Color(0xFF546E7A)
+)
 
 // ════════════════════════════════════════════════════════════════════
 //  ACCENT COLOR SYSTEM
@@ -45,62 +66,20 @@ data class MorpheAccentColors(
 
 val LocalMorpheAccents = compositionLocalOf { MorpheAccentColors(MorpheColors.Blue, MorpheColors.Teal) }
 
-/** Morphe Dark — brand blue + teal on dark gray. */
+/** Morphe Dark. Morphe's Material 3 palette on dark charcoal. */
 private val DarkAccents = MorpheAccentColors(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
+    primary = Color(0xFFA4C9FF),   // Morphe dark primary, light blue
+    secondary = Color(0xFF9CCC65), // Success green for dark surfaces
+    tertiary = Color(0xFFD9BDE3),  // Morphe dark tertiary
+    warning = Color(0xFFE0A030),   // Amber
 )
 
-/** Amoled — slightly brighter accents to pop on pure black. */
-private val AmoledAccents = MorpheAccentColors(
-    primary = Color(0xFF5B9AFF),   // Punchy blue for pure black
-    secondary = Color(0xFF00E8C6), // Vivid teal for pure black
-)
-
-/** Morphe Light — brand colors work fine on light backgrounds. */
+/** Morphe Light. Morphe's Material 3 blue accent on light neutrals. */
 private val LightAccents = MorpheAccentColors(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
-)
-
-/** Nord — native Nord palette. Arctic frost + aurora. */
-private val NordAccents = MorpheAccentColors(
-    primary = Color(0xFF5EC4DB),   // Nord Frost — saturated
-    secondary = Color(0xFF8FD46E), // Nord Aurora Green — vivid
-    tertiary = Color(0xFF6AA3D9),  // Nord Frost Blue — punchy
-    warning = Color(0xFFE8BF5A),   // Nord Aurora Yellow — stronger
-)
-
-/** Catppuccin Mocha — native Catppuccin palette. Mauve + teal. */
-private val CatppuccinAccents = MorpheAccentColors(
-    primary = Color(0xFFB47BFF),   // Mauve — saturated, less pastel
-    secondary = Color(0xFF4EECD5), // Teal — vivid
-    tertiary = Color(0xFF6A9FFF),  // Blue — punchy
-    warning = Color(0xFFFF9A5C),   // Peach — stronger
-)
-
-/** Sakura — triadic: cherry blossom pink, spring sage, wisteria dusk. */
-private val SakuraAccents = MorpheAccentColors(
-    primary = Color(0xFFD44B76),   // Cherry blossom pink
-    secondary = Color(0xFF5B8A72), // Spring-leaf sage (complementary green)
-    tertiary = Color(0xFF8B6B99),  // Wisteria dusk (purple structural accent)
-    warning = Color(0xFFD89A2B),   // Golden stamen amber
-)
-
-/** Matcha — forest green + sage. */
-private val MatchaAccents = MorpheAccentColors(
-    primary = Color(0xFF4C7A35),   // Tea-leaf green
-    secondary = Color(0xFF4C7871), // Muted jade
-    tertiary = Color(0xFF7D6A9B),  // Soft plum contrast
-    warning = Color(0xFFB77833),   // Toasted ochre
-)
-
-/** Deepspace — high-saturation cyan on near-black. Cyberdeck/dev-tool aesthetic. */
-private val DeepspaceAccents = MorpheAccentColors(
-    primary = Color(0xFF00D9FF),   // Electric cyan — primary
-    secondary = Color(0xFF79E3A5), // Mint green — stable / success
-    tertiary = Color(0xFF7AB7FF),  // Cool blue — structural
-    warning = Color(0xFFFFB347),   // Warm amber — older / warning
+    primary = Color(0xFF005FAC),   // Morphe Material blue (buttons, links, selections)
+    secondary = Color(0xFF386A20), // Success green (manager uses green for installed states)
+    tertiary = Color(0xFF6D5677),  // Morphe tertiary, muted purple
+    warning = Color(0xFFB26A00),   // Amber
 )
 
 // ════════════════════════════════════════════════════════════════════
@@ -109,7 +88,6 @@ private val DeepspaceAccents = MorpheAccentColors(
 
 /**
  * Defines the corner radius style for the current theme.
- * Sharp themes use 2dp, soft/cute themes use larger radii.
  */
 data class MorpheCornerStyle(
     val small: Dp = 2.dp,
@@ -137,160 +115,76 @@ data class MorpheDimens(
 
 val LocalMorpheDimens = compositionLocalOf { MorpheDimens() }
 
-/** Sharp corners for cyberdeck/dev themes. */
-private val SharpCorners = MorpheCornerStyle(small = 2.dp, medium = 2.dp, large = 2.dp)
-
-/** Soft rounded corners for cute/warm themes. */
-private val SoftCorners = MorpheCornerStyle(small = 10.dp, medium = 14.dp, large = 18.dp)
+/** Material 3 rounding: 12dp cards, 16dp sheets, 24dp dialogs. */
+private val Corners = MorpheCornerStyle(small = 12.dp, medium = 16.dp, large = 24.dp)
 
 // ════════════════════════════════════════════════════════════════════
 //  COLOR SCHEMES
 // ════════════════════════════════════════════════════════════════════
 
 private val MorpheDarkColorScheme = darkColorScheme(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
-    tertiary = MorpheColors.Cyan,
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
-    surfaceVariant = Color(0xFF2A2A2A),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.Black,
-    onBackground = MorpheColors.TextLight,
-    onSurface = MorpheColors.TextLight,
-    onSurfaceVariant = Color(0xFFB0B0B0),
-    error = Color(0xFFCF6679),
-    onError = Color.Black
+    primary = Color(0xFFA4C9FF),
+    onPrimary = Color(0xFF00315D),
+    primaryContainer = Color(0xFF004884),
+    onPrimaryContainer = Color(0xFFD4E3FF),
+    secondary = Color(0xFFBCC7DB),
+    onSecondary = Color(0xFF263141),
+    secondaryContainer = Color(0xFF3D4758),
+    onSecondaryContainer = Color(0xFFD8E3F8),
+    tertiary = Color(0xFFD9BDE3),
+    onTertiary = Color(0xFF3D2946),
+    background = Color(0xFF1A1C1E),
+    onBackground = Color(0xFFE3E2E6),
+    surface = Color(0xFF1A1C1E),
+    onSurface = Color(0xFFE3E2E6),
+    surfaceVariant = Color(0xFF43474E),
+    onSurfaceVariant = Color(0xFFC3C6CF),
+    outline = Color(0xFF8D9199),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
 )
 
-private val MorpheAmoledColorScheme = darkColorScheme(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
-    tertiary = MorpheColors.Cyan,
+private val MorphePureBlackColorScheme = darkColorScheme(
+    primary = Color(0xFFA4C9FF),
+    onPrimary = Color(0xFF00315D),
+    primaryContainer = Color(0xFF004884),
+    onPrimaryContainer = Color(0xFFD4E3FF),
+    secondary = Color(0xFFBCC7DB),
+    onSecondary = Color(0xFF263141),
+    secondaryContainer = Color(0xFF3D4758),
+    onSecondaryContainer = Color(0xFFD8E3F8),
+    tertiary = Color(0xFFD9BDE3),
+    onTertiary = Color(0xFF3D2946),
     background = Color.Black,
-    surface = Color(0xFF0A0A0A),
-    surfaceVariant = Color(0xFF1A1A1A),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.Black,
+    surface = Color.Black,
+    surfaceVariant = Color.Black,
     onBackground = MorpheColors.TextLight,
     onSurface = MorpheColors.TextLight,
     onSurfaceVariant = Color(0xFFB0B0B0),
-    error = Color(0xFFCF6679),
-    onError = Color.Black
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005)
 )
 
 private val MorpheLightColorScheme = lightColorScheme(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
-    tertiary = MorpheColors.Cyan,
-    background = Color(0xFFFAFAFA),
-    surface = MorpheColors.SurfaceLight,
-    surfaceVariant = Color(0xFFE8E8E8),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.Black,
-    onBackground = MorpheColors.TextDark,
-    onSurface = MorpheColors.TextDark,
-    onSurfaceVariant = Color(0xFF505050),
-    error = Color(0xFFB00020),
-    onError = Color.White
-)
-
-// ── Nord ──
-// Arctic, cool-toned dark theme inspired by nordtheme.com
-private val NordColorScheme = darkColorScheme(
-    primary = Color(0xFF88C0D0),       // Frost
-    secondary = Color(0xFFA3BE8C),     // Aurora Green
-    tertiary = Color(0xFF81A1C1),      // Frost Blue
-    background = Color(0xFF2E3440),    // Polar Night
-    surface = Color(0xFF3B4252),       // Polar Night lighter
-    surfaceVariant = Color(0xFF434C5E),
-    onPrimary = Color(0xFF2E3440),
-    onSecondary = Color(0xFF2E3440),
-    onTertiary = Color(0xFF2E3440),
-    onBackground = Color(0xFFECEFF4), // Snow Storm
-    onSurface = Color(0xFFECEFF4),
-    onSurfaceVariant = Color(0xFFD8DEE9),
-    error = Color(0xFFBF616A),         // Aurora Red
-    onError = Color(0xFFECEFF4)
-)
-
-// ── Catppuccin Mocha ──
-// Warm, soothing pastel dark theme
-private val CatppuccinMochaColorScheme = darkColorScheme(
-    primary = Color(0xFFCBA6F7),       // Mauve
-    secondary = Color(0xFFF5C2E7),     // Pink
-    tertiary = Color(0xFF89B4FA),      // Blue
-    background = Color(0xFF1E1E2E),    // Base
-    surface = Color(0xFF313244),       // Surface0
-    surfaceVariant = Color(0xFF45475A), // Surface1
-    onPrimary = Color(0xFF1E1E2E),
-    onSecondary = Color(0xFF1E1E2E),
-    onTertiary = Color(0xFF1E1E2E),
-    onBackground = Color(0xFFCDD6F4), // Text
-    onSurface = Color(0xFFCDD6F4),
-    onSurfaceVariant = Color(0xFFBAC2DE), // Subtext1
-    error = Color(0xFFF38BA8),         // Red
-    onError = Color(0xFF1E1E2E)
-)
-
-// ── Sakura ──
-// Triadic cherry blossom: pink + sage + wisteria on warm petal surfaces
-private val SakuraColorScheme = lightColorScheme(
-    primary = Color(0xFFD44B76),       // Cherry blossom pink
-    secondary = Color(0xFF5B8A72),     // Spring-leaf sage
-    tertiary = Color(0xFF8B6B99),      // Wisteria dusk
-    background = Color(0xFFFFF0EA),    // Warm blossom paper
-    surface = Color(0xFFFFE4DC),       // Pink petal surface
-    surfaceVariant = Color(0xFFF5D5CC), // Deeper blush for emphasis
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF3D2832),  // Plum-tinted ink (not pure black)
-    onSurface = Color(0xFF3D2832),
-    onSurfaceVariant = Color(0xFF7A5562), // Plum-brown (sakura bark tone)
-    error = Color(0xFFC03048),
-    onError = Color.White
-)
-
-// ── Matcha ──
-// Pista green, cute aesthetic — light theme with fresh green tones
-private val MatchaColorScheme = lightColorScheme(
-    primary = Color(0xFF4C7A35),       // Tea leaf green
-    secondary = Color(0xFF5E8554),     // Deep herb
-    tertiary = Color(0xFF92B887),      // Soft matcha
-    background = Color(0xFFF6F8F1),    // Green-tinted white
-    surface = Color(0xFFEAF1E1),       // Pale leaf
-    surfaceVariant = Color(0xFFD6E2C9),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color(0xFF21321B),
-    onBackground = Color(0xFF21321B),  // Deep forest
-    onSurface = Color(0xFF21321B),
-    onSurfaceVariant = Color(0xFF476042),
-    error = Color(0xFFAA3A3A),
-    onError = Color.White
-)
-
-// ── Deepspace ──
-// Cyberdeck dev-tool aesthetic: electric cyan + mint on near-black blue.
-private val DeepspaceColorScheme = darkColorScheme(
-    primary = Color(0xFF00D9FF),       // Electric cyan
-    secondary = Color(0xFF79E3A5),     // Mint green
-    tertiary = Color(0xFF7AB7FF),      // Cool blue
-    background = Color(0xFF0D1117),    // Near-black blue
-    surface = Color(0xFF14191F),       // Slightly raised
-    surfaceVariant = Color(0xFF1B2128), // Card surfaces
-    onPrimary = Color(0xFF001A22),     // Deep cyan-black for high contrast on cyan
-    onSecondary = Color(0xFF0A2317),   // Deep green-black on mint
-    onTertiary = Color(0xFF051628),    // Deep blue-black
-    onBackground = Color(0xFFD6DEEB),  // Warm light text
-    onSurface = Color(0xFFD6DEEB),
-    onSurfaceVariant = Color(0xFF8E97A6), // Muted text
-    error = Color(0xFFFF6B6B),
-    onError = Color(0xFF1E0707),
+    primary = Color(0xFF005FAC),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFD4E3FF),
+    onPrimaryContainer = Color(0xFF001C39),
+    secondary = Color(0xFF545F71),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFD8E3F8),
+    onSecondaryContainer = Color(0xFF111C2B),
+    tertiary = Color(0xFF6D5677),
+    onTertiary = Color(0xFFFFFFFF),
+    background = Color(0xFFFDFCFF),
+    onBackground = Color(0xFF1A1C1E),
+    surface = Color(0xFFFDFCFF),
+    onSurface = Color(0xFF1A1C1E),
+    surfaceVariant = Color(0xFFDFE2EB),
+    onSurfaceVariant = Color(0xFF43474E),
+    outline = Color(0xFF73777F),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
 )
 
 // ════════════════════════════════════════════════════════════════════
@@ -300,26 +194,16 @@ private val DeepspaceColorScheme = darkColorScheme(
 enum class ThemePreference {
     LIGHT,
     DARK,
-    AMOLED,
-    NORD,
-    CATPPUCCIN,
-    SAKURA,
-    MATCHA,
-    DEEPSPACE,
+    PURE_BLACK,
     SYSTEM;
 
     /** Whether this theme uses dark color scheme (for resource qualifiers). */
     fun isDark(): Boolean = when (this) {
-        DARK, AMOLED, NORD, CATPPUCCIN, DEEPSPACE -> true
-        LIGHT, SAKURA, MATCHA -> false
+        DARK, PURE_BLACK -> true
+        LIGHT -> false
         SYSTEM -> false // caller should check isSystemInDarkTheme()
     }
 
-    /** Whether this theme uses soft/rounded corners. */
-    fun isSoft(): Boolean = when (this) {
-        SAKURA, MATCHA -> true
-        else -> false
-    }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -329,39 +213,71 @@ enum class ThemePreference {
 @Composable
 fun MorpheTheme(
     themePreference: ThemePreference = ThemePreference.SYSTEM,
+    customAccentColorArgb: Int? = null,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when (themePreference) {
+    val baseColorScheme = when (themePreference) {
         ThemePreference.DARK -> MorpheDarkColorScheme
-        ThemePreference.AMOLED -> MorpheAmoledColorScheme
+        ThemePreference.PURE_BLACK -> MorphePureBlackColorScheme
         ThemePreference.LIGHT -> MorpheLightColorScheme
-        ThemePreference.NORD -> NordColorScheme
-        ThemePreference.CATPPUCCIN -> CatppuccinMochaColorScheme
-        ThemePreference.SAKURA -> SakuraColorScheme
-        ThemePreference.MATCHA -> MatchaColorScheme
-        ThemePreference.DEEPSPACE -> DeepspaceColorScheme
         ThemePreference.SYSTEM -> {
             if (isSystemInDarkTheme()) MorpheDarkColorScheme else MorpheLightColorScheme
         }
     }
 
-    val corners = if (themePreference.isSoft()) SoftCorners else SharpCorners
-    val font = if (themePreference.isSoft()) Nunito else JetBrainsMono
-    val accents = when (themePreference) {
+    val customPrimary = customAccentColorArgb?.let { Color(it) }
+
+    val colorScheme = if (customPrimary != null) {
+        val isDark = baseColorScheme.background.luminance() < 0.5f
+        val secondary = customPrimary.shiftLightness(if (isDark) 0.15f else -0.15f)
+        val tertiary = customPrimary.shiftLightness(if (isDark) -0.10f else 0.10f)
+        val primaryContainer = customPrimary.shiftLightness(if (isDark) 0.25f else -0.25f)
+        val secondaryContainer = customPrimary.shiftLightness(if (isDark) 0.35f else -0.35f)
+        
+        baseColorScheme.copy(
+            primary = customPrimary,
+            onPrimary = customPrimary.contrastingForeground(),
+            secondary = secondary,
+            onSecondary = secondary.contrastingForeground(),
+            tertiary = tertiary,
+            onTertiary = tertiary.contrastingForeground(),
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = primaryContainer.contrastingForeground(),
+            secondaryContainer = secondaryContainer,
+            onSecondaryContainer = secondaryContainer.contrastingForeground(),
+            surfaceTint = customPrimary
+        )
+    } else {
+        baseColorScheme
+    }
+
+    val corners = Corners
+    val font = Roboto
+    val monoFont = RobotoMono
+    val baseAccents = when (themePreference) {
         ThemePreference.DARK -> DarkAccents
-        ThemePreference.AMOLED -> AmoledAccents
+        ThemePreference.PURE_BLACK -> DarkAccents
         ThemePreference.LIGHT -> LightAccents
-        ThemePreference.NORD -> NordAccents
-        ThemePreference.CATPPUCCIN -> CatppuccinAccents
-        ThemePreference.SAKURA -> SakuraAccents
-        ThemePreference.MATCHA -> MatchaAccents
-        ThemePreference.DEEPSPACE -> DeepspaceAccents
         ThemePreference.SYSTEM -> if (isSystemInDarkTheme()) DarkAccents else LightAccents
+    }
+
+    val accents = if (customPrimary != null) {
+        val isDark = baseColorScheme.background.luminance() < 0.5f
+        val secondary = customPrimary.shiftLightness(if (isDark) 0.15f else -0.15f)
+        val tertiary = customPrimary.shiftLightness(if (isDark) -0.10f else 0.10f)
+        baseAccents.copy(
+            primary = customPrimary,
+            secondary = secondary,
+            tertiary = tertiary
+        )
+    } else {
+        baseAccents
     }
 
     CompositionLocalProvider(
         LocalMorpheCorners provides corners,
         LocalMorpheFont provides font,
+        LocalMorpheMono provides monoFont,
         LocalMorpheAccents provides accents,
         LocalMorpheDimens provides MorpheDimens(),
     ) {
@@ -370,4 +286,67 @@ fun MorpheTheme(
             content = content
         )
     }
+}
+
+fun Color.shiftLightness(delta: Float): Color {
+    val hsl = FloatArray(3)
+    colorToHSL(this, hsl)
+    hsl[2] = (hsl[2] + delta).coerceIn(0f, 1f)
+    return hslToColor(hsl)
+}
+
+fun Color.contrastingForeground(): Color {
+    return if (this.luminance() > 0.5f) Color.Black else Color.White
+}
+
+private fun colorToHSL(color: Color, hsl: FloatArray) {
+    val r = color.red
+    val g = color.green
+    val b = color.blue
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    var h = 0f
+    var s = 0f
+    val l = (max + min) / 2f
+    if (max != min) {
+        val d = max - min
+        s = if (l > 0.5f) d / (2f - max - min) else d / (max + min)
+        h = when (max) {
+            r -> (g - b) / d + (if (g < b) 6f else 0f)
+            g -> (b - r) / d + 2f
+            b -> (r - g) / d + 4f
+            else -> 0f
+        }
+        h /= 6f
+    }
+    hsl[0] = h * 360f
+    hsl[1] = s
+    hsl[2] = l
+}
+
+private fun hslToColor(hsl: FloatArray): Color {
+    val h = hsl[0] / 360f
+    val s = hsl[1]
+    val l = hsl[2]
+    var r = l
+    var g = l
+    var b = l
+    if (s != 0f) {
+        val q = if (l < 0.5f) l * (1f + s) else l + s - l * s
+        val p = 2f * l - q
+        r = hueToRGB(p, q, h + 1f / 3f)
+        g = hueToRGB(p, q, h)
+        b = hueToRGB(p, q, h - 1f / 3f)
+    }
+    return Color(r, g, b)
+}
+
+private fun hueToRGB(p: Float, q: Float, t: Float): Float {
+    var t0 = t
+    if (t0 < 0f) t0 += 1f
+    if (t0 > 1f) t0 -= 1f
+    if (t0 < 1f / 6f) return p + (q - p) * 6f * t0
+    if (t0 < 1f / 2f) return q
+    if (t0 < 2f / 3f) return p + (q - p) * (2f / 3f - t0) * 6f
+    return p
 }

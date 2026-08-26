@@ -54,7 +54,8 @@ data class CompatiblePackage(
     val name: String,
     val displayName: String? = null,
     val versions: List<String> = emptyList(),
-    val experimentalVersions: List<String> = emptyList()
+    val experimentalVersions: List<String> = emptyList(),
+    val appIconColor: String? = null
 )
 
 @Serializable
@@ -104,4 +105,7 @@ data class PatchConfig(
     val patchSelectionByBundle: Map<String, Set<String>> = emptyMap(),
     /** Sources + versions enabled at patch time (drives "update available"). */
     val sourcesSnapshot: List<PatchedAppRecord.PatchedSourceSnapshot> = emptyList(),
+    val appVersion: String? = null,
+    val patchesSourceName: String? = null,
+    val patchesVersion: String? = null,
 )

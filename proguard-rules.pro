@@ -35,6 +35,9 @@
 # JNA (Native access)
 -keep class com.sun.jna.** { *; }
 
+# OSHI (Hardware telemetry)
+-keep class oshi.** { *; }
+
 # FileKit (Native file dialogs)
 -keep class io.github.vinceglb.filekit.** { *; }
 
