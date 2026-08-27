@@ -16,6 +16,7 @@ import app.morphe.gui.data.model.UpdateChannelPreference
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
+import app.morphe.gui.util.isDevTag
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -138,25 +139,24 @@ class ConfigRepository {
     }
 
     /**
-     * Returns the per-source version preferences, with a one-time migration from
-     * the legacy tag-only fields ([AppConfig.lastPatchesVersionBySource] and the
-     * even-older single [AppConfig.lastPatchesVersion]).
+     * Returns the per-source version preferences, migrating the legacy tag-only
+     * fields ([AppConfig.lastPatchesVersionBySource] and the even-older single
+     * [AppConfig.lastPatchesVersion]) on first read.
      *
-     * Migration intent: those legacy tags were auto-saved on every selection, not
-     * deliberate freezes, so we can't tell a real pin from "just used the latest."
-     * We therefore convert each old tag to a *follow track* based on whether it was
-     * a dev tag — `-dev` ⇒ [FollowMode.FOLLOW_DEV], else [FollowMode.FOLLOW_STABLE].
-     * Net effect: everyone shifts onto the latest of their channel (the fix), at the
-     * cost of un-freezing anyone who had deliberately pinned an old version (they can
+     * Those tags were auto-saved on every selection, not deliberate freezes, so a
+     * real pin cannot be told apart from "just used the latest". Each old tag
+     * therefore becomes a *follow track* based on whether it names a pre-release.
+     * Everyone shifts onto the latest of their channel (the fix), at the cost of
+     * un-freezing anyone who had deliberately pinned an old version (they can
      * re-pin). A dev user parked on a stable tag at migration looks like a stable
-     * user and is migrated as such — an accepted, self-healing one-time loss.
+     * user and is migrated as such, an accepted one-time loss.
      */
     suspend fun getSourceVersionPrefs(): Map<String, SourceVersionPref> {
         val current = loadConfig()
         if (current.sourceVersionPrefs.isNotEmpty()) return current.sourceVersionPrefs
 
-        // Build the legacy tag map (per-source map, or the single legacy field
-        // mapped onto the default source).
+        // Legacy tags, either the per-source map or the single field mapped onto
+        // the default source.
         val legacyTags: Map<String, String> = when {
             current.lastPatchesVersionBySource.isNotEmpty() -> current.lastPatchesVersionBySource
             current.lastPatchesVersion != null -> mapOf(DEFAULT_PATCH_SOURCE.id to current.lastPatchesVersion)
@@ -165,12 +165,43 @@ class ConfigRepository {
         if (legacyTags.isEmpty()) return emptyMap()
 
         val migrated = legacyTags.mapValues { (_, tag) ->
-            val mode = if (tag.contains("-dev", ignoreCase = true)) FollowMode.FOLLOW_DEV
-                       else FollowMode.FOLLOW_STABLE
+            val mode = if (tag.isDevTag()) FollowMode.FOLLOW_DEV else FollowMode.FOLLOW_STABLE
             SourceVersionPref(mode = mode)
         }
         saveConfig(current.copy(sourceVersionPrefs = migrated))
         return migrated
+    }
+
+    /**
+     * One-time seeding of [PatchSource.usePreRelease] from each source's follow
+     * track. Call once at startup, before anything resolves a source.
+     *
+     * `usePreRelease` decides dev-versus-stable for every source since the Material 3
+     * overhaul, but it was added after [AppConfig.sourceVersionPrefs] and decodes as
+     * `false` in every config written before it existed. Without this, an existing
+     * dev follower would quietly resolve to stable on first launch while the UI
+     * still said dev.
+     *
+     * A source pinned to a dev tag counts as a dev follower. The flag is inert while
+     * a pin is in force, and it MUST be right for the moment the user unpins.
+     *
+     * Guarded by [AppConfig.sourceChannelFlagsSeeded] rather than by "every flag is
+     * false", because that state is also what a user who deliberately turned dev off
+     * everywhere looks like. Re-running would fight them on every launch.
+     */
+    suspend fun migrateSourceChannelFlags() {
+        // Reads through the legacy migration, so a config coming straight from a
+        // legacy dev tag is seeded as a dev follower too.
+        val prefs = getSourceVersionPrefs()
+        val config = loadConfig()
+        if (config.sourceChannelFlagsSeeded) return
+
+        val seeded = config.patchSource.map { source ->
+            val wantsDev = prefs[source.id].followsPreRelease()
+            if (source.usePreRelease == wantsDev) source else source.copy(usePreRelease = wantsDev)
+        }
+        saveConfig(config.copy(patchSource = seeded, sourceChannelFlagsSeeded = true))
+        Logger.info("Seeded source pre-release flags: ${seeded.filter { it.usePreRelease }.map { it.name }}")
     }
 
     /**
@@ -185,8 +216,8 @@ class ConfigRepository {
     /**
      * Persist the user's chosen update channel. Marks the choice as explicit
      * so subsequent reads respect it even if the running build's channel
-     * differs. Also clears any prior [AppConfig.dismissedUpdateVersion] —
-     * that dismissal referred to a specific version on the previous channel.
+     * differs. Also clears any prior [AppConfig.dismissedUpdateVersion]. That
+     * dismissal referred to a specific version on the previous channel.
      */
     suspend fun setUpdateChannelPreference(pref: UpdateChannelPreference) {
         val current = loadConfig()
@@ -358,7 +389,7 @@ class ConfigRepository {
     /**
      * Persist a new source ordering given the ids in their desired order. Order
      * only affects the app display-name tiebreak (first source wins) and UI
-     * presentation order — not which patches load — so any source, default
+     * presentation order, not which patches load, so any source, default
      * included, may be reordered. Ignores the call unless [orderedIds] is a
      * permutation of the existing sources (guards against a stale UI snapshot
      * dropping or duplicating a source).
@@ -398,7 +429,7 @@ class ConfigRepository {
     }
 
     /**
-     * Mark the multi-source upgrade hint as dismissed. One-shot — never resets.
+     * Mark the multi-source upgrade hint as dismissed. One-shot, never resets.
      */
     suspend fun setMultiSourceHintDismissed() {
         val current = loadConfig()
@@ -467,4 +498,18 @@ class ConfigRepository {
     fun clearCache() {
         cachedConfig = null
     }
+}
+
+/**
+ * Whether a version preference means "follow pre-releases".
+ *
+ * A pin to a dev tag counts. The pin decides which release loads while it is in
+ * force, so the channel only matters for the moment the user unpins, and it MUST
+ * put them back on the track they were actually on. A missing preference is an
+ * untouched source, which follows stable.
+ */
+internal fun SourceVersionPref?.followsPreRelease(): Boolean = when (this?.mode) {
+    FollowMode.FOLLOW_DEV -> true
+    FollowMode.PINNED -> pinnedTag.isDevTag()
+    else -> false
 }

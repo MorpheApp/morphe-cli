@@ -5,9 +5,11 @@
 
 package app.morphe.gui.util
 
+import app.morphe.engine.model.Release
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class VersionUtilsTest {
@@ -75,5 +77,56 @@ class VersionUtilsTest {
         assertTrue(compareVersions("2.0.0", "2.0.0-beta.1") > 0)
         assertTrue(compareVersions("2.0.0", "2.0.0-rc.1") > 0)
         assertTrue(compareVersions("2.0.0-alpha.1", "2.0.0-alpha.2") < 0)
+    }
+
+    // =========================================================================
+    // RELEASE CHANNEL
+    // =========================================================================
+
+    private fun release(tag: String) = Release(tagName = tag, isPrerelease = tag.isDevTag())
+
+    @Test
+    fun `dev follower takes the newer stable when the dev manifest is stale`() {
+        // The case morphe-manager documents: a repo tags a stable without bumping
+        // its dev branch, so plain dev-first would strand the follower.
+        val picked = newerRelease(release("v1.38.0-dev.3"), release("v1.39.0"))
+        assertEquals("v1.39.0", picked?.tagName)
+    }
+
+    @Test
+    fun `dev follower stays on dev while dev leads`() {
+        val picked = newerRelease(release("v1.40.0-dev.1"), release("v1.39.0"))
+        assertEquals("v1.40.0-dev.1", picked?.tagName)
+    }
+
+    @Test
+    fun `a stable cut from the tracked dev line wins`() {
+        // 1.39.0 is the release of the 1.39.0-dev series, so it outranks it.
+        val picked = newerRelease(release("v1.39.0-dev.7"), release("v1.39.0"))
+        assertEquals("v1.39.0", picked?.tagName)
+    }
+
+    @Test
+    fun `equal versions resolve to the tracked dev channel`() {
+        // Same version, different tag text. The dev channel is what the user asked
+        // to follow, so a tie MUST NOT bounce them onto stable.
+        val picked = newerRelease(release("v1.39.0"), release("1.39.0"))
+        assertEquals("v1.39.0", picked?.tagName)
+    }
+
+    @Test
+    fun `a missing channel falls back to the other`() {
+        assertEquals("v1.39.0", newerRelease(null, release("v1.39.0"))?.tagName)
+        assertEquals("v1.40.0-dev.1", newerRelease(release("v1.40.0-dev.1"), null)?.tagName)
+        assertNull(newerRelease(null, null))
+    }
+
+    @Test
+    fun `dev tags are recognised from the tag alone`() {
+        assertTrue("v1.39.0-dev.4".isDevTag())
+        assertTrue("2.0.0-beta.1".isDevTag())
+        assertTrue("2.0.0-ALPHA".isDevTag())
+        assertFalse("v1.39.0".isDevTag())
+        assertFalse(null.isDevTag())
     }
 }

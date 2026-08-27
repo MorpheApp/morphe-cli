@@ -221,66 +221,6 @@ class HomeViewModel(
     private var lastFailedSourceIds: Set<String> = emptySet()
     private var sourcesFailedBannerDismissed: Boolean = false
 
-    /**
-     * Begin an "Update" for [record]: resolve the LATEST patch files, ignoring any
-     * pinned version for this run only and leaving global config untouched, then work
-     * out whether the user's patched APK version still satisfies what the latest
-     * patches target. Result lands in [HomeUiState.updatePrep] for the screen to act on.
-     */
-    fun prepareUpdate(record: PatchedAppRecord) {
-        _uiState.value = _uiState.value.copy(updatePrep = UpdatePrep.Preparing(record.packageName))
-        screenModelScope.launch {
-            try {
-                val enabled = patchSourceManager.getEnabledRepositories()
-                // emptyMap() preferred versions → each source resolves to its latest
-                // release. The pin override is scoped to this call, config is untouched.
-                val result = EnabledSourcesLoader.loadAll(enabled, patchService, emptyMap(), configRepository.loadConfig().excludedMppPatterns)
-                val resolvedOk = result.resolved.filter { it.patchFile != null }
-                val files = resolvedOk.mapNotNull { it.patchFile?.absolutePath }
-                if (files.isEmpty()) {
-                    _uiState.value = _uiState.value.copy(
-                        updatePrep = UpdatePrep.Failed(record.packageName, "Couldn't resolve the latest patches (offline?)."),
-                    )
-                    return@launch
-                }
-                val names = resolvedOk.map { it.source.name }
-                val apps = SupportedAppExtractor.extractSupportedApps(result.unionGuiPatches)
-                // Use the LATEST patch's supported versions to pick the channel-appropriate
-                // target. So a newer experimental app version a newer patch introduces is
-                // offered, even though the old version has rolled off the experimental list.
-                val app = apps.find { it.packageName == record.packageName }
-                val (target, _) = suggestedAppVersion(app, record.apkVersion)
-                val needsNewerApk = isNewerVersion(target, record.apkVersion)
-                val currentSupported = app?.recommendedVersion == null ||
-                    app.supportedVersions.any { it.equals(record.apkVersion, ignoreCase = true) } ||
-                    app.experimentalVersions.any { it.equals(record.apkVersion, ignoreCase = true) }
-                val downloadUrl = if (needsNewerApk && target != null && app != null) {
-                    app.let { SupportedApp.getDownloadUrl(it.packageName, target) }
-                } else null
-                _uiState.value = _uiState.value.copy(
-                    updatePrep = UpdatePrep.Ready(
-                        packageName = record.packageName,
-                        patchFilePaths = files,
-                        sourceNames = names,
-                        targetVersion = target,
-                        needsNewerApk = needsNewerApk,
-                        currentSupported = currentSupported,
-                        downloadUrl = downloadUrl,
-                    ),
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    updatePrep = UpdatePrep.Failed(record.packageName, e.message ?: "Update preparation failed"),
-                )
-            }
-        }
-    }
-
-    fun clearUpdatePrep() {
-        if (_uiState.value.updatePrep != null) _uiState.value = _uiState.value.copy(updatePrep = null)
-    }
 
     /**
      * Install the already-patched output APK for [packageName] onto the selected
@@ -965,34 +905,6 @@ class HomeViewModel(
         Result.failure(Exception(humanizePatchLoadError(e)))
     }
 
-    /** Verify a user-supplied `.mpp` loads, before it reaches the patcher. */
-    suspend fun validateLocalBundle(path: String): Result<Int> = withContext(Dispatchers.IO) {
-        try {
-            val file = File(path)
-            if (!file.exists() || file.length() == 0L) {
-                return@withContext Result.failure(Exception("File is missing or empty."))
-            }
-            val loaded = app.morphe.engine.MultiSourceLoader.load(
-                listOf(
-                    app.morphe.engine.MultiSourceLoader.SourceInput(
-                        sourceId = "local-override",
-                        sourceName = file.nameWithoutExtension,
-                        patchFile = file,
-                    )
-                )
-            )
-            val failure = loaded.perSource.firstOrNull { !it.isSuccess }?.error
-            if (failure != null) {
-                Result.failure(Exception(humanizePatchLoadError(failure)))
-            } else {
-                Result.success(loaded.allPatches.size)
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(Exception(humanizePatchLoadError(e)))
-        }
-    }
 
     /**
      * packageName to the sources [relevantUpdatedSources] judged relevant.
@@ -1591,32 +1503,6 @@ data class RecallUpdateInfo(
     enum class AppChannel { STABLE, EXPERIMENTAL, UNKNOWN }
 }
 
-/**
- * Async state for the "Update" action: resolve the LATEST patch files (ignoring
- * any pin, for this run only), then decide whether the user's APK still satisfies
- * what the latest patches target. The screen reacts to each state.
- */
-sealed interface UpdatePrep {
-    val packageName: String
-
-    data class Preparing(override val packageName: String) : UpdatePrep
-    data class Failed(override val packageName: String, val message: String) : UpdatePrep
-    data class Ready(
-        override val packageName: String,
-        /** Latest resolved patch-file paths to patch with. */
-        val patchFilePaths: List<String>,
-        val sourceNames: List<String>,
-        /** App version the latest patches recommend (channel-aware), if known. */
-        val targetVersion: String?,
-        /** True when [targetVersion] is newer than the version the user patched. */
-        val needsNewerApk: Boolean,
-        /** Whether the user's current APK version is still supported by the latest
-         *  patch (→ "your call" wording vs "no longer supported"). */
-        val currentSupported: Boolean,
-        /** Download link for [targetVersion] (supported-apps style), if applicable. */
-        val downloadUrl: String?,
-    ) : UpdatePrep
-}
 
 /** What the connected device reports about a patched app (optional device layer). */
 data class DeviceAppInfo(
@@ -1650,8 +1536,6 @@ data class HomeUiState(
     val updateInfoByPackage: Map<String, RecallUpdateInfo> = emptyMap(),
     /** Which home apps tab is active (ALL/YOURS). Restored from config on launch. */
     val appListFilter: AppListFilter = AppListFilter.ALL,
-    /** In-flight "Update" preparation (resolve latest → decide APK), or null. */
-    val updatePrep: UpdatePrep? = null,
     /** Package currently being installed to the device from its stored output APK. */
     val installingPackage: String? = null,
     /** Package currently being uninstalled from the device. */

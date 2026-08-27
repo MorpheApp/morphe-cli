@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 
@@ -253,9 +254,10 @@ object EnabledSourcesLoader {
         }
 
         // Resolve the target release WITHOUT the releases API where possible:
-        //  - FOLLOW_STABLE / default / FOLLOW_DEV → latest via the raw patches-bundle.json.
-        //    getLatest*Release is manifest-first (it only touches the API if the source
-        //    ships no manifest), so following sources cost 0 API calls on startup.
+        //  - Not pinned → latest via the raw patches-bundle.json, with the channel
+        //    coming from PatchSource.usePreRelease. getLatest*Release is manifest-first
+        //    (it only touches the API if the source ships no manifest), so following
+        //    sources cost 0 API calls on startup.
         //  - PINNED → needs the full release list (API) to locate the exact old tag.
         val release: Release?
         val latestStableTag: String?
@@ -269,10 +271,17 @@ object EnabledSourcesLoader {
             latestStableTag = latestStable?.tagName
             latestDevTag = releases.firstOrNull { it.isDevRelease() }?.tagName
         } else {
-            val stable = repo.getLatestStableRelease().getOrNull()
-            val dev = repo.getLatestDevRelease().getOrNull()
-            val wantsDev = source.usePreRelease
-            release = if (wantsDev) (dev ?: stable) else (stable ?: dev)
+            // Both channels are needed whichever one is followed, since the resolved
+            // release is classified against both latest tags below. Fetch in parallel.
+            val (stable, dev) = coroutineScope {
+                val stableAsync = async { repo.getLatestStableRelease().getOrNull() }
+                val devAsync = async { repo.getLatestDevRelease().getOrNull() }
+                stableAsync.await() to devAsync.await()
+            }
+            // A dev follower takes whichever channel is actually newer. See
+            // [newerRelease]. A stable follower MUST NOT be moved onto a
+            // pre-release, so it only falls back when there is no stable at all.
+            release = if (source.usePreRelease) newerRelease(dev, stable) else (stable ?: dev)
             latestStableTag = stable?.tagName
             latestDevTag = dev?.tagName
         }

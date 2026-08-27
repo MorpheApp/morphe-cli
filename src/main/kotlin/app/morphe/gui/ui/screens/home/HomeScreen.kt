@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import app.morphe.engine.model.PatchedAppRecord
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -36,9 +35,6 @@ import app.morphe.gui.ui.screens.home.components.RepatchMissingApkDialog
 import app.morphe.gui.ui.screens.home.components.SourcesFailedBanner
 import app.morphe.gui.ui.screens.home.components.SupportedAppsListPane
 import app.morphe.gui.ui.screens.home.components.UninstallConfirmDialog
-import app.morphe.gui.ui.screens.home.components.UpdateAvailableDialog
-import app.morphe.gui.ui.screens.home.components.UpdateFailedDialog
-import app.morphe.gui.ui.screens.home.components.UpdatePreparingDialog
 import app.morphe.gui.ui.screens.home.components.VersionWarningDialog
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
 import app.morphe.gui.ui.screens.patches.PatchesScreen
@@ -283,66 +279,6 @@ fun HomeScreenContent(
         )
     }
 
-    // ── Update flow (Phase 7, issue 2c): resolve latest → maybe pick a newer APK ──
-    val uriHandler = LocalUriHandler.current
-    when (val prep = uiState.updatePrep) {
-        is UpdatePrep.Preparing -> UpdatePreparingDialog(onCancel = { viewModel.clearUpdatePrep() })
-        is UpdatePrep.Failed -> UpdateFailedDialog(
-            message = prep.message,
-            onDismiss = { viewModel.clearUpdatePrep() },
-        )
-        is UpdatePrep.Ready -> {
-            val record = viewModel.getPatchedRecord(prep.packageName)
-            if (record == null) {
-                viewModel.clearUpdatePrep()
-            } else {
-                // Patch with the latest files using either an existing or a picked APK.
-                suspend fun launchWith(apkPath: String) {
-                    viewModel.clearUpdatePrep()
-                    if (File(apkPath).exists()) {
-                        launchPatch(record, apkPath, prep.patchFilePaths, prep.sourceNames)
-                    } else {
-                        val picked = MorpheFilePicker.pickFile(
-                            title = "Select APK to patch",
-                            extensions = listOf("apk", "apkm", "xapk", "apks"),
-                        )
-                        picked?.takeIf { it.exists() }
-                            ?.let { launchPatch(record, it.absolutePath, prep.patchFilePaths, prep.sourceNames) }
-                    }
-                }
-                if (!prep.needsNewerApk) {
-                    // APK still satisfies the latest patches → patch straight away.
-                    LaunchedEffect(prep) { launchWith(record.inputApkPath) }
-                } else {
-                    val targetV = prep.targetVersion?.removePrefix("v") ?: "newer"
-                    UpdateAvailableDialog(
-                        appName = record.displayName,
-                        currentVersion = record.apkVersion.removePrefix("v"),
-                        targetVersion = targetV,
-                        currentSupported = prep.currentSupported,
-                        onDismiss = { viewModel.clearUpdatePrep() },
-                        onUseMyApk = { coroutineScope.launch { launchWith(record.inputApkPath) } },
-                        onGetNewer = {
-                            val url = prep.downloadUrl
-                            val files = prep.patchFilePaths
-                            val names = prep.sourceNames
-                            viewModel.clearUpdatePrep()
-                            if (url != null) uriHandler.openUri(url)
-                            coroutineScope.launch {
-                                val picked = MorpheFilePicker.pickFile(
-                                    title = "Select the v$targetV APK",
-                                    extensions = listOf("apk", "apkm", "xapk", "apks"),
-                                )
-                                picked?.takeIf { it.exists() }
-                                    ?.let { launchPatch(record, it.absolutePath, files, names) }
-                            }
-                        },
-                    )
-                }
-            }
-        }
-        null -> {}
-    }
 
     // Re-show the sheet after the pop animation finishes, NOT immediately on
     // re-entry. Without the delay the sheet flashes in mid-transition.

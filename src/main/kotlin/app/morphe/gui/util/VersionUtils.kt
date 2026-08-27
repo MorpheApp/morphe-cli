@@ -5,6 +5,7 @@
 
 package app.morphe.gui.util
 
+import app.morphe.engine.model.Release
 import app.morphe.gui.data.model.SupportedApp
 
 /**
@@ -182,4 +183,37 @@ fun resolveVersionStatus(currentVersion: String, app: SupportedApp): VersionReso
         VersionStatus.UNSUPPORTED_BETWEEN,
         latestStable ?: latestExperimental
     )
+}
+
+// =============================================================================
+// RELEASE CHANNEL
+// =============================================================================
+
+/**
+ * True when a release tag names a pre-release. Mirrors [Release.isDevRelease]'s
+ * tag heuristic, for callers holding a bare tag rather than a [Release].
+ */
+fun String?.isDevTag(): Boolean {
+    val tag = this ?: return false
+    return tag.contains("dev", ignoreCase = true) ||
+        tag.contains("alpha", ignoreCase = true) ||
+        tag.contains("beta", ignoreCase = true)
+}
+
+/**
+ * The release a pre-release follower belongs on, given the latest of each channel.
+ *
+ * NOT `dev ?: stable`. A repo can tag a stable without bumping its dev manifest,
+ * which strands a dev follower on an older pre-release indefinitely. Compare the
+ * two and take whichever is genuinely newer. A tie goes to [dev], the channel the
+ * user asked to track.
+ *
+ * Mirrors morphe-manager's `JsonPatchBundle.getLatestInfo`. Both projects MUST
+ * resolve a pre-release follower to the same release.
+ */
+fun newerRelease(dev: Release?, stable: Release?): Release? = when {
+    dev == null -> stable
+    stable == null -> dev
+    compareVersions(dev.tagName, stable.tagName) >= 0 -> dev
+    else -> stable
 }
