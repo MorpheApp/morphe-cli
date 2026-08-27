@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -76,7 +77,6 @@ import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
 import app.morphe.gui.util.MorpheFilePicker
-import app.morphe.gui.util.openUrlInBrowser
 import app.morphe.morphe_desktop.generated.resources.Res
 import app.morphe.morphe_desktop.generated.resources.morphe_logo
 import app.morphe.patcher.apk.ApkSigner
@@ -130,6 +130,7 @@ fun SettingsDialog(
     customAccentColorArgb: Int? = null,
     onCustomAccentColorChange: (Int?) -> Unit = {}
 ) {
+    val uriHandler = LocalUriHandler.current
     val corners = LocalMorpheCorners.current
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
@@ -718,7 +719,7 @@ fun SettingsDialog(
                                     }
                                     IconButton(
                                         onClick = {
-                                            openUrlInBrowser("https://morphe.software")
+                                            uriHandler.openUri("https://morphe.software")
                                         },
                                         modifier = Modifier.size(32.dp)
                                     ) {
