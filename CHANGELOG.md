@@ -1,3 +1,10 @@
+# [1.15.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.1...v1.15.0-dev.2) (2026-08-26)
+
+
+### Bug Fixes
+
+* Recognize repository URLs passed to `--patches` on Windows ([#266](https://github.com/MorpheApp/morphe-desktop/issues/266)) ([5ed40a2](https://github.com/MorpheApp/morphe-desktop/commit/5ed40a2ee3895c4763d239aaea44b7cab97bf63e))
+
 # [1.15.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.14.0...v1.15.0-dev.1) (2026-08-26)
 
 
