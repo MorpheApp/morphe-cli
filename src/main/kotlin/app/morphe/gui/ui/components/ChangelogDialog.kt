@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,13 +24,13 @@ import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.util.openUrlInBrowser
 import java.io.File
 
 @Composable
 fun ChangelogDialog(
     onDismiss: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
     val font = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
     val accents = LocalMorpheAccents.current
@@ -120,7 +121,7 @@ fun ChangelogDialog(
             TextButton(
                 onClick = {
                     val version = AppConstants.APP_VERSION.removePrefix("v")
-                    openUrlInBrowser("https://github.com/MorpheApp/morphe-desktop/releases/tag/v$version")
+                    uriHandler.openUri("https://github.com/MorpheApp/morphe-desktop/releases/tag/v$version")
                 },
                 shape = RoundedCornerShape(corners.small),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -22,7 +23,6 @@ import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.util.openUrlInBrowser
 import app.morphe.morphe_desktop.generated.resources.Res
 import app.morphe.morphe_desktop.generated.resources.morphe_logo
 import org.jetbrains.compose.resources.painterResource
@@ -31,6 +31,7 @@ import org.jetbrains.compose.resources.painterResource
 fun AppInfoDialog(
     onDismiss: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
     val corners = LocalMorpheCorners.current
     val font = LocalMorpheFont.current
 
@@ -103,16 +104,16 @@ fun AppInfoDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
-                    IconButton(onClick = { openUrlInBrowser("https://morphe.software") }) {
+                    IconButton(onClick = { uriHandler.openUri("https://morphe.software") }) {
                         Icon(imageVector = MorpheIcons.Public, contentDescription = "Website", tint = iconTint)
                     }
-                    IconButton(onClick = { openUrlInBrowser("https://morphe.software/changelog") }) {
+                    IconButton(onClick = { uriHandler.openUri("https://morphe.software/changelog") }) {
                         Icon(imageVector = MorpheIcons.Article, contentDescription = "Changelog", tint = iconTint)
                     }
-                    IconButton(onClick = { openUrlInBrowser("https://github.com/MorpheApp") }) {
+                    IconButton(onClick = { uriHandler.openUri("https://github.com/MorpheApp") }) {
                         Icon(imageVector = MorpheIcons.Github, contentDescription = "GitHub", tint = iconTint)
                     }
-                    IconButton(onClick = { openUrlInBrowser("https://reddit.com/r/MorpheApp") }) {
+                    IconButton(onClick = { uriHandler.openUri("https://reddit.com/r/MorpheApp") }) {
                         Icon(imageVector = MorpheIcons.Reddit, contentDescription = "Reddit", tint = iconTint)
                     }
                 }
