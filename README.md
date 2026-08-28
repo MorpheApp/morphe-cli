@@ -63,7 +63,7 @@ The GUI is far more user-friendly and straightforward than the CLI. On your firs
 > [!NOTE]
 > **First launch only.** Morphe ships as a single small jar. The command-line tool runs on its own, but the GUI needs a couple of platform-specific components (the Skiko renderer and JNA) that aren't bundled, so the download stays small. The **first** time you open the GUI, Morphe fetches the right components for your operating system into `morphe-data/libs/` and shows a brief setup window before the home screen appears. This happens only once. Later launches reuse the cached files and need no internet connection.
 
-2. Drag and drop your `.apk` (or `.apkm` / `.xapk` / `.apks` bundle) into the window. Once it's analyzed, click **PATCH** to begin:
+2. Drag and drop your `.apk` (or `.apkm` / `.xapk` / `.apks` bundle) into the window. Once it's analyzed, click **Patch** to begin:
 
 ![Morphe GUI App Selected](docs/images/main_readme/app_selected.png)
 
