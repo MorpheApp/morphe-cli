@@ -132,12 +132,12 @@ class PatchingViewModel(
             )
 
             // Resolve keystore. Two modes:
-            //  - User configured one in Settings → use it; fail loudly if the
-            //    file is missing (don't silently swap in our default — that
+            //  - User configured one in Settings, so use it and fail loudly if the
+            //    file is missing (don't silently swap in our default, that
             //    would produce APKs signed by a different identity than the
             //    user picked, breaking on-device updates without explanation).
             //  - Otherwise → use the shared MorpheData default keystore. The
-            //    patcher library creates it on first sign if missing; reused
+            //    patcher library creates it on first sign if missing, reused
             //    every patch session so all Morphe-patched apps share one
             //    signing identity.
             val appConfig = configRepository.loadConfig()
@@ -259,10 +259,11 @@ class PatchingViewModel(
                     packageName = pkg,
                     currentPackageName = manifest?.packageName,
                     displayName = config.appDisplayName.ifEmpty { pkg },
-                    // Prefer the manifest's versionName (e.g. "21.20.400") — the patch
+                    // Prefer the manifest's versionName (e.g. "21.20.400"). The patch
                     // result's packageVersion can be the numeric versionCode, which breaks
                     // version comparisons for update detection.
                     apkVersion = manifest?.versionName?.takeIf { it.isNotBlank() } ?: patchResult.packageVersion,
+                    apkVersionCode = manifest?.versionCode,
                     inputApkPath = config.inputApkPath,
                     outputApkPath = config.outputApkPath,
                     outputApkSha256 = sha,

@@ -95,12 +95,12 @@ class QuickPatchViewModel(
 
     /** Snapshot of the most recent multi-source load. Used by the QuickPatchScreen
      *  header to render the same SourcesCountPill as Expert mode (no click action
-     *  in Quick Patch — sources are managed only from Expert mode). */
+     *  in Quick Patch, since sources are managed only from Expert mode). */
     fun getResolvedSourcesSnapshot(): EnabledSourcesLoader.Result? = cachedSourcesResult
     private var cachedSourcesResult: EnabledSourcesLoader.Result? = null
 
     init {
-        // Background CLI update check — non-blocking, banner only.
+        // Background CLI update check, non-blocking and banner only.
         screenModelScope.launch {
             val info = updateCheckRepository.getUpdateInfo()
             val dismissed = configRepository.loadConfig().dismissedUpdateVersion
@@ -126,7 +126,7 @@ class QuickPatchViewModel(
         // Observe source changes
         screenModelScope.launch {
             patchSourceManager.sourceVersion.drop(1).collect {
-                // Skip when Expert mode is active — HomeViewModel will handle
+                // Skip when Expert mode is active, as HomeViewModel will handle
                 // the multi-source reload. QuickVM still lives in memory
                 // (it's `remember`-scoped to App.kt) but staying silent here
                 // halves the parallel HTTP traffic and removes the duplicate
@@ -202,11 +202,11 @@ class QuickPatchViewModel(
             _uiState.update { it.copy(isLoadingPatches = true, patchLoadError = null) }
 
             try {
-                // Quick Patch is intentionally single-source — multi-source belongs in
+                // Quick Patch is intentionally single-source. Multi-source belongs in
                 // Expert mode. The user picks WHICH single source via the source-picker
                 // sheet, which calls patchSourceManager.switchSource and updates
                 // activePatchSourceId. Quick Patch loads only that source regardless of
-                // Expert's enabled flags — the two modes operate independently.
+                // Expert's enabled flags, as the two modes operate independently.
                 val activeSource = patchSourceManager.getActiveSource()
                 val activeRepo = patchSourceManager.getRepositoryForSource(activeSource)
                 val pair: Pair<PatchSource, PatchRepository?> =
@@ -277,7 +277,7 @@ class QuickPatchViewModel(
                 ) }
             } catch (e: CancellationException) {
                 // See HomeViewModel for the rationale: never overwrite UI
-                // state from a cancelled load — the cancellation race would
+                // state from a cancelled load, because the cancellation race would
                 // clobber a successor's progress with a stale error.
                 throw e
             } catch (e: Throwable) {
@@ -323,7 +323,7 @@ class QuickPatchViewModel(
 
             val result = analyzeApk(file)
             if (result != null) {
-                // Filter patches compatible with this package (ignore version — patcher will attempt all)
+                // Filter patches compatible with this package (version ignored, the patcher attempts all)
                 val compatible = cachedPatches.filter {
                     it.isCompatibleWith(result.packageName)
                 }
@@ -363,8 +363,8 @@ class QuickPatchViewModel(
         }
 
         try {
-            // ARSCLib manifest reader (engine) — replaces apk-parser. Same
-            // library morphe-patcher uses; handles split APKs cleanly.
+            // ARSCLib manifest reader (engine), replacing apk-parser. The same
+            // library morphe-patcher uses, and it handles split APKs cleanly.
             val manifest = ApkManifestReader.read(apkToParse)
                 ?: throw IllegalStateException("ARSCLib couldn't read manifest")
 
@@ -415,7 +415,7 @@ class QuickPatchViewModel(
             // Resolve version status against the supported app's stable +
             // experimental version lists.
             val versionResolution = if (dynamicAppInfo != null) {
-                resolveVersionStatus(versionName, dynamicAppInfo)
+                resolveVersionStatus(versionName, dynamicAppInfo, manifest.versionCode)
             } else {
                 VersionResolution(VersionStatus.UNKNOWN, null)
             }
@@ -432,6 +432,8 @@ class QuickPatchViewModel(
                     "Experimental build - supported, but may not work properly"
                 VersionStatus.OLDER_EXPERIMENTAL ->
                     "Older experimental build - newer experimental v${versionResolution.suggestedVersion} available"
+                VersionStatus.BUILD_UNSUPPORTED ->
+                    "Build not supported - this version is patchable, but not this build of it"
                 VersionStatus.TOO_NEW ->
                     "Version too new - not officially supported, patches will most likely fail"
                 VersionStatus.TOO_OLD ->
@@ -445,7 +447,7 @@ class QuickPatchViewModel(
             // TODO: Re-enable when checksums are provided via .mpp files
             val checksumStatus = ChecksumStatus.NotConfigured
 
-            // Extract architectures — scan the original file (bundles have splits with native libs)
+            // Extract architectures by scanning the original file (bundles have splits with native libs)
             val architectures = FileUtils.extractArchitectures(if (isBundleFormat) file else apkToParse)
             val minSdk = manifest.minSdkVersion
 
@@ -455,6 +457,7 @@ class QuickPatchViewModel(
                 fileName = file.name,
                 packageName = packageName,
                 versionName = versionName,
+                versionCode = manifest.versionCode,
                 fileSize = file.length(),
                 displayName = displayName,
                 recommendedVersion = recommendedVersion,
@@ -539,7 +542,7 @@ class QuickPatchViewModel(
                 totalPatches = _uiState.value.compatiblePatches.count { it.isEnabled }
             )
 
-            // Generate output path via the shared engine helper — same path
+            // Generate output path via the shared engine helper, the same path
             // the CLI and Expert mode compute. Passing apkInfo.displayName
             // as the display name preserves the friendly label.
             val appConfig = configRepository.loadConfig()
@@ -551,8 +554,8 @@ class QuickPatchViewModel(
                 appVersion = apkInfo.versionName,
             ).absolutePath
 
-            // Resolve keystore — see PatchingViewModel for the full rationale.
-            // User-configured: use it; fail loudly if missing.
+            // Resolve keystore. See PatchingViewModel for the full rationale.
+            // User-configured: use it, and fail loudly if missing.
             // Default: shared MorpheData keystore, auto-created on first sign.
             val userKeystore = appConfig.resolvedKeystorePath()
             if (userKeystore != null && !userKeystore.exists()) {
@@ -680,6 +683,7 @@ class QuickPatchViewModel(
                     // Prefer the manifest's versionName (e.g. "21.20.400") over the numeric
                     // versionCode so update-detection version comparisons work.
                     apkVersion = manifest?.versionName?.takeIf { it.isNotBlank() } ?: result.packageVersion,
+                    apkVersionCode = manifest?.versionCode,
                     inputApkPath = inputApkPath,
                     outputApkPath = outputApkPath,
                     outputApkSha256 = sha,
@@ -734,7 +738,7 @@ class QuickPatchViewModel(
     /**
      * Reset to start over. Preserves the already-loaded patches metadata so
      * the patches version badge (and its LATEST chip) stays correct without
-     * a re-fetch — losing `patchesChannel` or `patchSourceName` here
+     * a re-fetch, losing `patchesChannel` or `patchSourceName` here
      * would cause the LATEST chip to silently disappear after the user
      * removes the loaded APK.
      */
@@ -795,6 +799,8 @@ data class QuickApkInfo(
     val fileName: String,
     val packageName: String,
     val versionName: String,
+    /** The APK's build code, or null when the manifest omits it. */
+    val versionCode: Int? = null,
     val fileSize: Long,
     val displayName: String,
     val recommendedVersion: String?,
@@ -843,7 +849,7 @@ data class QuickPatchUiState(
     val compatiblePatches: List<Patch> = emptyList(),
     val updateInfo: UpdateInfo? = null,
     val dismissedUpdateVersion: String? = null,
-    /** Session-only dismiss; cleared on next app start. Not persisted. */
+    /** Session-only dismiss, cleared on next app start. Not persisted. */
     val updateBannerSessionDismissed: Boolean = false,
     val useExperimentalVersions: Boolean = false,
 ) {

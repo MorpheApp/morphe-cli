@@ -91,6 +91,14 @@ data class AppConfig(
      * See [ConfigRepository.getSourceVersionPrefs].
      */
     val sourceChannelFlagsSeeded: Boolean = false,
+    /**
+     * Per-app card fill, keyed by package name, for apps the user has recoloured.
+     *
+     * Absent means "not customised", which falls back to the bundle's
+     * `appIconColor` and then to the built-in default. Only user overrides live
+     * here, so a bundle changing its own colour still shows through.
+     */
+    val cardFills: Map<String, MorpheFill> = emptyMap(),
     val preferredPatchChannel: String = PatchChannel.STABLE.name,
     val defaultOutputDirectory: String? = null,
     val autoCleanupTempFiles: Boolean = true,  // Default ON
@@ -162,6 +170,10 @@ data class AppConfig(
         }
     }
     fun getThemePreference(): ThemePreference {
+        // PURE_BLACK was the name #259 gave the manager palette on true black.
+        // It is MANAGER_AMOLED now, so map the stored name rather than let it
+        // fail the parse and silently reset the user to SYSTEM.
+        if (themePreference == "PURE_BLACK") return ThemePreference.MANAGER_AMOLED
         return try {
             ThemePreference.valueOf(themePreference)
         } catch (e: Exception) {

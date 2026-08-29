@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.LocalOnSettingsDismiss
 import app.morphe.gui.data.model.Patch
@@ -66,6 +67,8 @@ import app.morphe.gui.ui.components.getFriendlyErrorMessage
 import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.screens.patching.PatchingScreen
+import app.morphe.gui.ui.theme.contrastingForeground
+import app.morphe.gui.ui.theme.themedAccent
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -84,6 +87,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
+
+/** Height shared by the patch search field and the Selected chip beside it. */
+private val FILTER_BAR_HEIGHT = 32.dp
 
 /**
  * Screen for selecting which patches to apply.
@@ -193,7 +199,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
     Column(modifier = Modifier.fillMaxSize()) {
-        val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.5f)
+        val containerColor = Color.Transparent
         val baseBorderColor = MaterialTheme.colorScheme.outlineVariant
         val baseIconTint = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -264,8 +270,11 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             if (!uiState.isLoading && uiState.bundles.isNotEmpty()) {
                 val cmdHover = remember { MutableInteractionSource() }
                 val cmdActive = showCommandPreview
+                // #259 flattened this toggle to a neutral token. Right for the
+                // Manager themes, colourless everywhere else.
+                val cmdAccent = themedAccent(accents.secondary, MaterialTheme.colorScheme.onSurface)
                 val cmdBorder by animateColorAsState(
-                    if (cmdActive) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    if (cmdActive) cmdAccent.copy(alpha = 0.5f)
                     else baseBorderColor,
                     animationSpec = tween(150)
                 )
@@ -276,7 +285,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         .hoverable(cmdHover)
                         .clip(RoundedCornerShape(corners.small))
                         .background(containerColor)
-                        .background(if (cmdActive) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f) else Color.Transparent)
+                        .background(if (cmdActive) cmdAccent.copy(alpha = 0.08f) else Color.Transparent)
                         .border(1.dp, cmdBorder, RoundedCornerShape(corners.small))
                         .clickable { showCommandPreview = !showCommandPreview },
                     contentAlignment = Alignment.Center
@@ -284,7 +293,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                     Icon(
                         imageVector = MorpheIcons.Terminal,
                         contentDescription = "Command Preview",
-                        tint = if (cmdActive) MaterialTheme.colorScheme.onSurface
+                        tint = if (cmdActive) cmdAccent
                                else baseIconTint,
                         modifier = Modifier.size(16.dp)
                     )
@@ -545,7 +554,9 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            // The search row above already pads below itself, so a
+                            // full 8dp here stacked into an oversized gap.
+                            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         val showBanner = uiState.stripLibsStatus !is StripLibsStatus.NoNativeLibs
@@ -645,11 +656,13 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(42.dp),
+                        // Solid, like the other screens' primary actions. This is the
+                        // one thing to click on the screen.
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            contentColor = MaterialTheme.colorScheme.primary
+                            containerColor = accents.primary,
+                            contentColor = accents.primary.contrastingForeground()
                         ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                        border = BorderStroke(1.dp, accents.primary),
                         shape = RoundedCornerShape(corners.small)
                     ) {
                         Text(
@@ -695,9 +708,8 @@ private fun PatchSearchBar(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .height(32.dp)
+                .height(FILTER_BAR_HEIGHT)
                 .clip(RoundedCornerShape(corners.small))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                 .border(1.dp, searchBorderColor, RoundedCornerShape(corners.small))
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -771,10 +783,9 @@ private fun PatchSearchBar(
 
         Box(
             modifier = Modifier
-                .height(38.dp)
+                .height(FILTER_BAR_HEIGHT)
                 .hoverable(chipHover)
                 .clip(RoundedCornerShape(corners.small))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
                 .border(1.dp, chipBorder, RoundedCornerShape(corners.small))
                 .then(
                     if (showOnlySelected) Modifier.background(
@@ -830,15 +841,18 @@ private fun PatchListItem(
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val colors = MaterialTheme.colorScheme
-    val containerColor = if (isSelected)
-        colors.surfaceColorAtElevation(2.dp)
-    else
-        colors.surfaceColorAtElevation(1.dp).copy(alpha = 0.5f)
+    // Transparent unless selected. Selection is the only thing this list has to
+    // communicate, so it is the only thing that gets a fill, and the fill is the
+    // accent rather than another shade of grey.
+    val containerColor = when {
+        isSelected -> accents.primary.copy(alpha = 0.22f)
+        isHovered -> accents.primary.copy(alpha = 0.06f)
+        else -> Color.Transparent
+    }
     val borderColor by animateColorAsState(
         when {
-            isSelected && isHovered -> colors.outlineVariant
-            isSelected -> colors.outlineVariant
-            isHovered -> colors.outlineVariant.copy(alpha = 0.5f)
+            isSelected -> accents.primary.copy(alpha = 0.7f)
+            isHovered -> colors.outlineVariant
             else -> colors.outlineVariant.copy(alpha = 0.5f)
         },
         animationSpec = tween(150)
@@ -864,23 +878,33 @@ private fun PatchListItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Custom checkbox
-            val containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
-            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            
+            // Custom checkbox. Unselected is an empty outlined box, not a grey
+            // filled one: a filled box reads as a third state somewhere between
+            // on and off, and the only states here are on and off.
+            val boxShape = RoundedCornerShape(corners.small)
             Box(
                 modifier = Modifier
                     .size(18.dp)
-                    .clip(RoundedCornerShape(corners.small))
-                    .background(containerColor, RoundedCornerShape(corners.small)),
+                    .clip(boxShape)
+                    .background(if (isSelected) accents.primary else Color.Transparent, boxShape)
+                    .then(
+                        if (isSelected) Modifier
+                        else Modifier.border(
+                            1.dp,
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            boxShape,
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = MorpheIcons.Check,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(12.dp)
-                )
+                if (isSelected) {
+                    Icon(
+                        imageVector = MorpheIcons.Check,
+                        contentDescription = null,
+                        tint = accents.primary.contrastingForeground(),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
 
             Column(modifier = Modifier.weight(1f)) {
@@ -901,15 +925,23 @@ private fun PatchListItem(
                     )
 
                     if (sourceName != null) {
+                        // Accent only once the patch is selected. Every row carrying
+                        // a tinted badge made the accent meaningless: colour reads as
+                        // state, and on an unselected row there is no state to report.
+                        val badgeColor = if (isSelected) {
+                            accents.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                         Box(
                             modifier = Modifier
                                 .border(
                                     1.dp,
-                                    accents.primary.copy(alpha = 0.3f),
+                                    badgeColor.copy(alpha = if (isSelected) 0.3f else 0.2f),
                                     RoundedCornerShape(corners.small)
                                 )
                                 .background(
-                                    accents.primary.copy(alpha = 0.06f),
+                                    if (isSelected) badgeColor.copy(alpha = 0.06f) else Color.Transparent,
                                     RoundedCornerShape(corners.small)
                                 )
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -919,7 +951,7 @@ private fun PatchListItem(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Normal,
                                 fontFamily = font,
-                                color = accents.primary,
+                                color = badgeColor.copy(alpha = if (isSelected) 1f else 0.7f),
                                 maxLines = 1
                             )
                         }
@@ -1019,7 +1051,7 @@ private fun PatchListItem(
                             .align(Alignment.TopEnd)
                             .offset(x = 3.dp, y = (-3).dp)
                             .size(18.dp)
-                            .background(accents.primary, RoundedCornerShape(9.dp)),
+                            .background(accents.primary, RoundedCornerShape(corners.small)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -1504,18 +1536,20 @@ private fun SelectionModeChip(
         },
         animationSpec = tween(150)
     )
+    // Solid when active, transparent otherwise. A chip that is merely tinted
+    // reads as half-on, and these are one-of-four states where exactly one is.
     val bgColor by animateColorAsState(
         when {
-            !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            active -> accents.primary.copy(alpha = 0.20f)
-            isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            !enabled -> Color.Transparent
+            active -> accents.primary
+            isHovered -> accents.primary.copy(alpha = 0.10f)
+            else -> Color.Transparent
         },
         animationSpec = tween(150)
     )
     val textColor = when {
         !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-        active -> accents.primary
+        active -> accents.primary.contrastingForeground()
         else -> accents.primary.copy(alpha = 0.7f)
     }
 
@@ -1747,8 +1781,8 @@ private fun StripLibsStatusBanner(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.small))
+            // Bounded by its border, not filled. See the patch rows above it.
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
-            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp), RoundedCornerShape(corners.small))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1915,7 +1949,9 @@ private fun BundleBox(
     val totalCount = bundle.patches.size
 
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
-    val bgColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    // No fill. The border bounds the bundle, and an elevated grey panel behind a
+    // list of transparent rows just puts a slab under them.
+    val bgColor = Color.Transparent
 
     Column(
         modifier = Modifier

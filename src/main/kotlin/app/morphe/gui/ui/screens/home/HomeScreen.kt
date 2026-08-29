@@ -173,12 +173,6 @@ fun HomeScreenContent(
     // Phase 7. Tap a "Your apps" row to see the full recall breakdown.
     var detailRecord by remember { mutableStateOf<PatchedAppRecord?>(null) }
     val onShowDetail: (PatchedAppRecord) -> Unit = { detailRecord = it }
-    // UPDATE and RE-PATCH open the sheet rather than acting. Both need the user
-    // to settle an APK and a bundle, and the sheet is the only surface that shows
-    // what those currently are. It also leaves one update path instead of two.
-    val onUpdate: (String) -> Unit = { pkg ->
-        viewModel.getPatchedRecord(pkg)?.let { detailRecord = it }
-    }
     // Loaded on sheet open, not up front.
     var bundleVersionsBySource by remember { mutableStateOf(emptyMap<String, List<BundleRelease>>()) }
     var showAddSourceDialog by remember { mutableStateOf(false) }
@@ -502,7 +496,11 @@ fun HomeScreenContent(
                                         .padding(start = padding, end = padding, top = 8.dp),
                                 )
                             }
-                            Row(
+                            // The pair is centred as one unit, and the two panes are
+                            // top-aligned to each other inside it. Centring each pane
+                            // separately, which is what this used to do, lines their
+                            // tops up only when both happen to be the same height.
+                            BoxWithConstraints(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxWidth()
@@ -515,7 +513,13 @@ fun HomeScreenContent(
                                         top = 4.dp,
                                         bottom = padding,
                                     ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                            val bodyViewport = this.maxHeight
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(padding),
+                                verticalAlignment = Alignment.Top,
                             ) {
                                 // Left: browse/discover supported apps (wizard step 1).
                                 SupportedAppsListPane(
@@ -524,8 +528,6 @@ fun HomeScreenContent(
                                     patchedRecords = uiState.patchedRecords,
                                     deviceAppInfo = uiState.deviceAppInfo,
                                     updateInfoByPackage = uiState.updateInfoByPackage,
-                                    onRepatch = onRepatch,
-                                    onUpdate = onUpdate,
                                     onInstall = { viewModel.installPatchedApp(it) },
                                     installingPackage = uiState.installingPackage,
                                     onShowDetail = onShowDetail,
@@ -538,34 +540,41 @@ fun HomeScreenContent(
                                     onManageSources = { showSourceManagementSheet = true },
                                     modifier = Modifier
                                         .weight(1.2f)
-                                        .fillMaxHeight(),
+                                        .heightIn(max = bodyViewport),
                                 )
                                 // Right: APK info / drop zone (wizard step 2, pick the
                                 // APK you want patched). Content centers vertically when
                                 // it fits, scrolls when it doesn't, so the CONTINUE
                                 // button is never clipped off the bottom.
-                                BoxWithConstraints(
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        // Centred within the Row rather than pinned to its
+                                        // top. The Row is as tall as the taller pane, so a
+                                        // long app list would otherwise strand this card at
+                                        // the very top of a tall column.
+                                        .align(Alignment.CenterVertically)
+                                        // Wraps its content so the Row is only as tall as
+                                        // the taller pane, and caps at the viewport so a
+                                        // long card scrolls rather than overflowing.
+                                        .heightIn(max = bodyViewport)
+                                        // Sits a little below the list's first row, so
+                                        // the card reads as the second step rather than
+                                        // as a second column heading.
+                                        .padding(top = 16.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
-                                    val viewport = this.maxHeight
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .verticalScroll(rememberScrollState())
-                                            .heightIn(min = viewport),
-                                        verticalArrangement = Arrangement.Center,
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        MiddleContent(
-                                            uiState = uiState,
-                                            patchesLoaded = patchesLoaded,
-                                            onClearClick = onClearClick,
-                                            onChangeClick = onChangeClick,
-                                            onContinueClick = onContinueClick,
-                                            patchSourceNames = patchSourcesForSelectedApk,
-                                        )
-                                    }
+                                    MiddleContent(
+                                        uiState = uiState,
+                                        patchesLoaded = patchesLoaded,
+                                        onClearClick = onClearClick,
+                                        onChangeClick = onChangeClick,
+                                        onContinueClick = onContinueClick,
+                                        patchSourceNames = patchSourcesForSelectedApk,
+                                    )
                                 }
+                            }
                             }
                     }
                 }

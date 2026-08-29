@@ -81,6 +81,7 @@ fun DeviceIndicator(modifier: Modifier = Modifier) {
                 .clip(RoundedCornerShape(corners.small))
                 .background(containerColor)
                 .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+                .handCursor()
                 .clickable { showPopup = !showPopup }
         ) {
             Row(

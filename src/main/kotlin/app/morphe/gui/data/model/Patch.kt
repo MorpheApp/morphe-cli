@@ -55,7 +55,16 @@ data class CompatiblePackage(
     val displayName: String? = null,
     val versions: List<String> = emptyList(),
     val experimentalVersions: List<String> = emptyList(),
-    val appIconColor: String? = null
+    val appIconColor: String? = null,
+    /**
+     * Build codes a version may be patched at, keyed by version name.
+     *
+     * A version absent from this map carries no build constraint, which is what
+     * a patch that names only a version produces. An app like Instagram ships
+     * many builds under one version name, and only some are patchable, so the
+     * version name alone is not enough to answer whether an APK will patch.
+     */
+    val versionBuildCodes: Map<String, Set<Int>> = emptyMap()
 )
 
 @Serializable

@@ -19,8 +19,30 @@ data class SupportedApp(
     val recommendedVersion: String?,
     val apkDownloadUrl: String? = null,
     val experimentalDownloadUrl: String? = null,
-    val appIconColor: String? = null
+    val appIconColor: String? = null,
+    /**
+     * Build codes each version may be patched at. See
+     * [app.morphe.gui.data.model.CompatiblePackage.versionBuildCodes].
+     *
+     * A version missing from this map has no build constraint, so any build of it
+     * passes. Use [buildCodeSupported] rather than reading this directly.
+     */
+    val versionBuildCodes: Map<String, Set<Int>> = emptyMap()
 ) {
+    /**
+     * Whether an APK of [version] with [versionCode] can be patched.
+     *
+     * Mirrors morphe-manager's `patchableAt`. Absent constraints pass, and an
+     * unknown [versionCode] passes too: refusing an APK because its build could
+     * not be read would be worse than letting the patch itself decide.
+     */
+    fun buildCodeSupported(version: String, versionCode: Int?): Boolean {
+        val codes = versionBuildCodes[version.removePrefix("v")]
+            ?: versionBuildCodes[version]
+            ?: return true
+        return versionCode == null || versionCode in codes
+    }
+
     companion object {
         fun resolveDisplayName(packageName: String, providedName: String?): String {
             return providedName?.takeIf { it.isNotBlank() } ?: getDisplayName(packageName)

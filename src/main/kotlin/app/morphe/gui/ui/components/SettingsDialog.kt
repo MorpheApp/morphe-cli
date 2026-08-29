@@ -18,6 +18,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -46,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import app.morphe.engine.MorpheData
@@ -135,6 +141,9 @@ fun SettingsDialog(
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     var selectedCategory by remember { mutableStateOf("Appearance") }
+    // Keyed on the category so switching tabs starts at the top rather than
+    // stranding the user mid-way down a section they just left.
+    val contentScroll = remember(selectedCategory) { ScrollState(0) }
     var showCustomColorDialog by remember { mutableStateOf(false) }
     var showChangelogDialog by remember { mutableStateOf(false) }
     var showAppInfoDialog by remember { mutableStateOf(false) }
@@ -151,11 +160,25 @@ fun SettingsDialog(
         )
     }
 
-    AlertDialog(
+    // Material's AlertDialog caps its content at 560dp wide whatever the window
+    // does, which is why this two-pane body was always cramped. Build on the house
+    // surface instead and size it here. Width is the axis that needed the room, so
+    // height stays close to what it was and only creeps up on a tall display.
+    val windowSize = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    val dialogWidth = with(density) { (windowSize.width * 0.86f).toDp() }
+        .coerceIn(720.dp, 1280.dp)
+    val dialogHeight = with(density) { (windowSize.height * 0.62f).toDp() }
+        .coerceIn(480.dp, 620.dp)
+
+    Dialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(corners.medium),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        MorpheDialogSurface(
+            modifier = Modifier.width(dialogWidth),
+            horizontalAlignment = Alignment.Start,
+        ) {
             Text(
                 text = "Settings",
                 fontWeight = FontWeight.SemiBold,
@@ -163,10 +186,8 @@ fun SettingsDialog(
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
-        },
-        text = {
             Row(
-                modifier = Modifier.width(640.dp).height(480.dp)
+                modifier = Modifier.fillMaxWidth().height(dialogHeight)
             ) {
                 Column(
                     modifier = Modifier
@@ -191,6 +212,7 @@ fun SettingsDialog(
                                     else Color.Transparent
                                 )
                                 .hoverable(hoverInteraction)
+                                .handCursor()
                                 .clickable { selectedCategory = category }
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -219,544 +241,541 @@ fun SettingsDialog(
                 VerticalDivider(color = borderColor, modifier = Modifier.fillMaxHeight())
                 Spacer(modifier = Modifier.width(16.dp))
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    when (selectedCategory) {
-                        "Appearance" -> {
-                            SectionLabel("Theme", font, icon = MorpheIcons.Palette)
-                            Spacer(Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                ThemePreference.entries.forEach { theme ->
-                                    val isSelected = currentTheme == theme
-                                    val themeAccent = theme.accentColor()
-                                    val hoverInteraction = remember { MutableInteractionSource() }
-                                    val isHovered by hoverInteraction.collectIsHoveredAsState()
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(corners.small))
-                                            .border(
-                                                1.dp,
-                                                when {
-                                                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                                    isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                                    else -> borderColor
-                                                },
-                                                RoundedCornerShape(corners.small)
-                                            )
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                                else Color.Transparent
-                                            )
-                                            .hoverable(hoverInteraction)
-                                            .clickable { onThemeChange(theme) }
-                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = theme.icon(),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = theme.toDisplayName(),
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                            fontFamily = font,
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary
-                                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-
-                            SettingsDivider(borderColor)
-
-                            SectionLabel("Accent color", font, icon = MorpheIcons.Palette)
-                            Spacer(Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(RoundedCornerShape(corners.small))
-                                        .border(
-                                            2.dp,
-                                            if (customAccentColorArgb == null) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                            RoundedCornerShape(corners.small)
-                                        )
-                                        .clickable { onCustomAccentColorChange(null) },
-                                    contentAlignment = Alignment.Center
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(contentScroll)
+                            .padding(end = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        when (selectedCategory) {
+                            "Appearance" -> {
+                                SectionLabel("Theme", font, icon = MorpheIcons.Palette)
+                                Spacer(Modifier.height(8.dp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = MorpheIcons.Close,
-                                        contentDescription = "Clear accent color",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                THEME_PRESET_COLORS.forEach { preset ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(42.dp)
-                                            .clip(RoundedCornerShape(corners.small))
-                                            .background(preset)
-                                            .border(
-                                                2.dp,
-                                                if (customAccentColorArgb == preset.toArgb()) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                                RoundedCornerShape(corners.small)
-                                            )
-                                            .clickable { onCustomAccentColorChange(preset.toArgb()) }
-                                    )
-                                }
-
-                                val isCustomNonPreset = customAccentColorArgb != null && THEME_PRESET_COLORS.none { it.toArgb() == customAccentColorArgb }
-                                Box {
-                                    val yOff = with(LocalDensity.current) { 46.dp.roundToPx() }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(42.dp)
-                                            .clip(RoundedCornerShape(corners.small))
-                                            .background(
-                                                if (isCustomNonPreset) Color(customAccentColorArgb) else MaterialTheme.colorScheme.surfaceVariant
-                                            )
-                                            .border(
-                                                2.dp,
-                                                if (isCustomNonPreset) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                                RoundedCornerShape(corners.small)
-                                            )
-                                            .clickable { showCustomColorDialog = true },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = MorpheIcons.Edit,
-                                            contentDescription = "Custom Accent Color",
-                                            tint = if (isCustomNonPreset) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    if (showCustomColorDialog) {
-                                        Popup(
-                                            alignment = Alignment.TopStart,
-                                            offset = IntOffset(0, yOff),
-                                            onDismissRequest = { showCustomColorDialog = false },
-                                            properties = PopupProperties(focusable = true)
+                                    ThemePreference.entries.forEach { theme ->
+                                        val isSelected = currentTheme == theme
+                                        val themeAccent = theme.accentColor()
+                                        val hoverInteraction = remember { MutableInteractionSource() }
+                                        val isHovered by hoverInteraction.collectIsHoveredAsState()
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(corners.small))
+                                                .border(
+                                                    1.dp,
+                                                    when {
+                                                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                        isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                                        else -> borderColor
+                                                    },
+                                                    RoundedCornerShape(corners.small)
+                                                )
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                    else Color.Transparent
+                                                )
+                                                .hoverable(hoverInteraction)
+                                                .handCursor()
+                                                .clickable { onThemeChange(theme) }
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
-                                            MorpheColorPickerCard(
-                                                argb = customAccentColorArgb ?: 0xFFF44336.toInt(),
-                                                accents = accents,
-                                                font = font,
-                                                showAlphaAndSaved = false,
-                                                onPick = { onCustomAccentColorChange(it) }
+                                            Icon(
+                                                imageVector = theme.icon(),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                text = theme.toDisplayName(),
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                                fontFamily = font,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
                                 }
-                            }
 
-                            SettingsDivider(borderColor)
+                                SettingsDivider(borderColor)
 
-                            SectionLabel("Background animation", font, icon = MorpheIcons.Wallpaper)
-                            Spacer(Modifier.height(8.dp))
-
-                            val bgState = LocalBackgroundType.current
-                            val parallaxState = LocalEnableParallax.current
-                            val scope = rememberCoroutineScope()
-                            val configRepo: ConfigRepository = koinInject()
-
-                            val onBgChange: (BackgroundType) -> Unit = { newBg ->
-                                bgState.value = newBg
-                                scope.launch { configRepo.setBackgroundType(newBg.name) }
-                            }
-
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                BackgroundType.entries.forEach { bgType ->
-                                    val isSelected = bgState.value == bgType
-                                    val hoverInteraction = remember { MutableInteractionSource() }
-                                    val isHovered by hoverInteraction.collectIsHoveredAsState()
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(corners.small))
-                                            .border(
-                                                1.dp,
-                                                when {
-                                                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                                    isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                                    else -> borderColor
-                                                },
-                                                RoundedCornerShape(corners.small)
-                                            )
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                                else Color.Transparent
-                                            )
-                                            .hoverable(hoverInteraction)
-                                            .clickable { onBgChange(bgType) }
-                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                SectionLabel("Accent color", font, icon = MorpheIcons.Palette)
+                                Spacer(Modifier.height(8.dp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    AccentSwatch(
+                                        selected = customAccentColorArgb == null,
+                                        fill = Color.Transparent,
+                                        onClick = { onCustomAccentColorChange(null) },
                                     ) {
                                         Icon(
-                                            imageVector = bgType.icon,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.primary
+                                            imageVector = MorpheIcons.Close,
+                                            contentDescription = "Clear accent color",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        Text(
-                                            text = bgType.displayName,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                            fontFamily = font,
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary
-                                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+
+                                    THEME_PRESET_COLORS.forEach { preset ->
+                                        AccentSwatch(
+                                            selected = customAccentColorArgb == preset.toArgb(),
+                                            fill = preset,
+                                            onClick = { onCustomAccentColorChange(preset.toArgb()) },
+                                        )
+                                    }
+
+                                    val isCustomNonPreset = customAccentColorArgb != null && THEME_PRESET_COLORS.none { it.toArgb() == customAccentColorArgb }
+                                    Box {
+                                        val yOff = with(LocalDensity.current) { 46.dp.roundToPx() }
+                                        AccentSwatch(
+                                            selected = isCustomNonPreset,
+                                            fill = if (isCustomNonPreset) Color(customAccentColorArgb)
+                                                else MaterialTheme.colorScheme.surfaceVariant,
+                                            onClick = { showCustomColorDialog = true },
+                                        ) {
+                                            Icon(
+                                                imageVector = MorpheIcons.Edit,
+                                                contentDescription = "Custom Accent Color",
+                                                tint = if (isCustomNonPreset) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (showCustomColorDialog) {
+                                            Popup(
+                                                alignment = Alignment.TopStart,
+                                                offset = IntOffset(0, yOff),
+                                                onDismissRequest = { showCustomColorDialog = false },
+                                                properties = PopupProperties(focusable = true)
+                                            ) {
+                                                MorpheColorPickerCard(
+                                                    argb = customAccentColorArgb ?: 0xFFF44336.toInt(),
+                                                    accents = accents,
+                                                    font = font,
+                                                    showAlphaAndSaved = false,
+                                                    onPick = { onCustomAccentColorChange(it) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                SettingsDivider(borderColor)
+
+                                SectionLabel("Background animation", font, icon = MorpheIcons.Wallpaper)
+                                Spacer(Modifier.height(8.dp))
+
+                                val bgState = LocalBackgroundType.current
+                                val parallaxState = LocalEnableParallax.current
+                                val scope = rememberCoroutineScope()
+                                val configRepo: ConfigRepository = koinInject()
+
+                                val onBgChange: (BackgroundType) -> Unit = { newBg ->
+                                    bgState.value = newBg
+                                    scope.launch { configRepo.setBackgroundType(newBg.name) }
+                                }
+
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    BackgroundType.entries.forEach { bgType ->
+                                        val isSelected = bgState.value == bgType
+                                        val hoverInteraction = remember { MutableInteractionSource() }
+                                        val isHovered by hoverInteraction.collectIsHoveredAsState()
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(corners.small))
+                                                .border(
+                                                    1.dp,
+                                                    when {
+                                                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                        isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                                        else -> borderColor
+                                                    },
+                                                    RoundedCornerShape(corners.small)
+                                                )
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                    else Color.Transparent
+                                                )
+                                                .hoverable(hoverInteraction)
+                                                .handCursor()
+                                                .clickable { onBgChange(bgType) }
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = bgType.icon,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                text = bgType.displayName,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                                fontFamily = font,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(Modifier.height(14.dp))
+
+                                SettingToggleRow(
+                                    label = "Parallax effect",
+                                    description = "Smooth background shifting when moving the mouse",
+                                    checked = parallaxState.value,
+                                    onCheckedChange = {
+                                        parallaxState.value = it
+                                        scope.launch { configRepo.setEnableParallax(it) }
+                                    },
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    icon = MorpheIcons.Mouse
+                                )
+                            }
+                            "Advanced" -> {
+                                SettingToggleRow(
+                                    label = "Expert mode",
+                                    description = "Full control over patch selection and configuration",
+                                    checked = useExpertMode,
+                                    onCheckedChange = onExpertModeChange,
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.Psychology
+                                )
+
+                                SettingsDivider(borderColor)
+
+                                SettingToggleRow(
+                                    label = "Route links to patched app",
+                                    description = "After installing via ADB, make the patched app open its supported web links instead of the browser or the stock/default app",
+                                    checked = autoRouteLinksAfterInstall,
+                                    onCheckedChange = onAutoRouteLinksChange,
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.Route
+                                )
+                                AnimatedVisibility(visible = autoRouteLinksAfterInstall) {
+                                    Column {
+                                        Spacer(Modifier.height(12.dp))
+                                        SettingToggleRow(
+                                            label = "Disable stock app's links",
+                                            description = "Also stop the original app from opening these links (only when a " +
+                                                "rename patch was used and the stock app is installed). Reversible.",
+                                            checked = disableStockLinksAfterInstall,
+                                            onCheckedChange = onDisableStockLinksChange,
+                                            accentColor = accents.primary,
+                                            font = font,
+                                            enabled = !isPatching
                                         )
                                     }
                                 }
+
+                                SettingsDivider(borderColor)
+
+                                SigningSection(
+                                    keystorePath = keystorePath,
+                                    keystorePassword = keystorePassword,
+                                    keystoreAlias = keystoreAlias,
+                                    keystoreEntryPassword = keystoreEntryPassword,
+                                    onKeystorePathChange = onKeystorePathChange,
+                                    onCredentialsChange = onKeystoreCredentialsChange,
+                                    font = font,
+                                    accentColor = accents.primary,
+                                    borderColor = borderColor,
+                                    enabled = !isPatching,
+                                    expanded = collapsibleSectionStates["Signing"] == true,
+                                    icon = MorpheIcons.Key,
+                                    onExpandedChange = { onCollapsibleSectionToggle("Signing", it) }
+                                )
+
+                                SettingsDivider(borderColor)
+
+                                StripLibsSection(
+                                    keepArchitectures = keepArchitectures,
+                                    onChange = onKeepArchitecturesChange,
+                                    font = font,
+                                    accentColor = accents.primary,
+                                    enabled = !isPatching,
+                                    expanded = collapsibleSectionStates["Strip libs"] == true,
+                                    icon = MorpheIcons.LayersClear,
+                                    onExpandedChange = { onCollapsibleSectionToggle("Strip libs", it) }
+                                )
+
+                                SettingsDivider(borderColor)
+
+                                SettingToggleRow(
+                                    label = "Developer options",
+                                    description = "For patch developers. Unlocks a suite of workflow options for building and testing patches (see the documentation for the full list). For now, that's pointing a local source at a folder so Morphe always loads its newest .mpp",
+                                    checked = developerOptions,
+                                    onCheckedChange = onDeveloperOptionsChange,
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.CodeXml
+                                )
+
+                                SettingsDivider(borderColor)
+
+                                PatchedAppRuntimeLogsSection(
+                                    font = font,
+                                    accentColor = accents.primary,
+                                    borderColor = borderColor,
+                                    enabled = !isPatching,
+                                    expanded = collapsibleSectionStates["Runtime logs"] == true,
+                                    icon = MorpheIcons.DeployedCode,
+                                    onExpandedChange = { onCollapsibleSectionToggle("Runtime logs", it) }
+                                )
                             }
+                            "System" -> {
+                                SettingToggleRow(
+                                    label = "Auto-cleanup temp files",
+                                    description = "Delete temporary files after patching",
+                                    checked = autoCleanupTempFiles,
+                                    onCheckedChange = onAutoCleanupChange,
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.DeleteSweep
+                                )
 
-                            Spacer(Modifier.height(14.dp))
+                                SettingsDivider(borderColor)
 
-                            SettingToggleRow(
-                                label = "Parallax effect",
-                                description = "Smooth background shifting when moving the mouse",
-                                checked = parallaxState.value,
-                                onCheckedChange = {
-                                    parallaxState.value = it
-                                    scope.launch { configRepo.setEnableParallax(it) }
-                                },
-                                accentColor = accents.primary,
-                                font = font,
-                                icon = MorpheIcons.Mouse
-                            )
-                        }
-                        "Advanced" -> {
-                            SettingToggleRow(
-                                label = "Expert mode",
-                                description = "Full control over patch selection and configuration",
-                                checked = useExpertMode,
-                                onCheckedChange = onExpertModeChange,
-                                accentColor = accents.primary,
-                                font = font,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.Psychology
-                            )
+                                UpdateChannelRow(
+                                    selected = updateChannelPreference,
+                                    onChange = onUpdateChannelChange,
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    borderColor = borderColor,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.Update
+                                )
 
-                            SettingsDivider(borderColor)
+                                SettingsDivider(borderColor)
 
-                            SettingToggleRow(
-                                label = "Route links to patched app",
-                                description = "After installing via ADB, make the patched app open its supported web links instead of the browser or the stock/default app",
-                                checked = autoRouteLinksAfterInstall,
-                                onCheckedChange = onAutoRouteLinksChange,
-                                accentColor = accents.primary,
-                                font = font,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.Route
-                            )
-                            AnimatedVisibility(visible = autoRouteLinksAfterInstall) {
-                                Column {
-                                    Spacer(Modifier.height(12.dp))
-                                    SettingToggleRow(
-                                        label = "Disable stock app's links",
-                                        description = "Also stop the original app from opening these links (only when a " +
-                                            "rename patch was used and the stock app is installed). Reversible.",
-                                        checked = disableStockLinksAfterInstall,
-                                        onCheckedChange = onDisableStockLinksChange,
-                                        accentColor = accents.primary,
+                                OutputFolderSection(
+                                    defaultOutputDirectory = defaultOutputDirectory,
+                                    onDefaultOutputDirectoryChange = onDefaultOutputDirectoryChange,
+                                    font = font,
+                                    borderColor = borderColor,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.FolderOpen
+                                )
+
+                                SettingsDivider(borderColor)
+
+                                SettingToggleRow(
+                                    label = "Auto-start ADB",
+                                    description = "Spawn the ADB daemon on launch so connected devices are monitored. " +
+                                        "When off, Morphe never starts the server, and install/push features are disabled",
+                                    checked = autoStartAdb,
+                                    onCheckedChange = onAutoStartAdbChange,
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    enabled = !isPatching,
+                                    icon = MorpheIcons.ADB
+                                )
+
+                                SettingsDivider(borderColor)
+
+                                SectionLabel("About", font, icon = MorpheIcons.Info)
+                                Spacer(Modifier.height(16.dp))
+
+                                Column(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    AboutRow(
+                                        title = "Morphe",
+                                        subtitle = "Version ${AppConstants.APP_VERSION}",
                                         font = font,
-                                        enabled = !isPatching
-                                    )
-                                }
-                            }
-
-                            SettingsDivider(borderColor)
-
-                            SigningSection(
-                                keystorePath = keystorePath,
-                                keystorePassword = keystorePassword,
-                                keystoreAlias = keystoreAlias,
-                                keystoreEntryPassword = keystoreEntryPassword,
-                                onKeystorePathChange = onKeystorePathChange,
-                                onCredentialsChange = onKeystoreCredentialsChange,
-                                font = font,
-                                accentColor = accents.primary,
-                                borderColor = borderColor,
-                                enabled = !isPatching,
-                                expanded = collapsibleSectionStates["Signing"] == true,
-                                icon = MorpheIcons.Key,
-                                onExpandedChange = { onCollapsibleSectionToggle("Signing", it) }
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            StripLibsSection(
-                                keepArchitectures = keepArchitectures,
-                                onChange = onKeepArchitecturesChange,
-                                font = font,
-                                accentColor = accents.primary,
-                                enabled = !isPatching,
-                                expanded = collapsibleSectionStates["Strip libs"] == true,
-                                icon = MorpheIcons.LayersClear,
-                                onExpandedChange = { onCollapsibleSectionToggle("Strip libs", it) }
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            SettingToggleRow(
-                                label = "Developer options",
-                                description = "For patch developers. Unlocks a suite of workflow options for building and testing patches (see the documentation for the full list). For now, that's pointing a local source at a folder so Morphe always loads its newest .mpp",
-                                checked = developerOptions,
-                                onCheckedChange = onDeveloperOptionsChange,
-                                accentColor = accents.primary,
-                                font = font,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.CodeXml
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            PatchedAppRuntimeLogsSection(
-                                font = font,
-                                accentColor = accents.primary,
-                                borderColor = borderColor,
-                                enabled = !isPatching,
-                                expanded = collapsibleSectionStates["Runtime logs"] == true,
-                                icon = MorpheIcons.DeployedCode,
-                                onExpandedChange = { onCollapsibleSectionToggle("Runtime logs", it) }
-                            )
-                        }
-                        "System" -> {
-                            SettingToggleRow(
-                                label = "Auto-cleanup temp files",
-                                description = "Delete temporary files after patching",
-                                checked = autoCleanupTempFiles,
-                                onCheckedChange = onAutoCleanupChange,
-                                accentColor = accents.primary,
-                                font = font,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.DeleteSweep
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            UpdateChannelRow(
-                                selected = updateChannelPreference,
-                                onChange = onUpdateChannelChange,
-                                accentColor = accents.primary,
-                                font = font,
-                                borderColor = borderColor,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.Update
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            OutputFolderSection(
-                                defaultOutputDirectory = defaultOutputDirectory,
-                                onDefaultOutputDirectoryChange = onDefaultOutputDirectoryChange,
-                                font = font,
-                                borderColor = borderColor,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.FolderOpen
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            SettingToggleRow(
-                                label = "Auto-start ADB",
-                                description = "Spawn the ADB daemon on launch so connected devices are monitored. " +
-                                    "When off, Morphe never starts the server, and install/push features are disabled",
-                                checked = autoStartAdb,
-                                onCheckedChange = onAutoStartAdbChange,
-                                accentColor = accents.primary,
-                                font = font,
-                                enabled = !isPatching,
-                                icon = MorpheIcons.ADB
-                            )
-
-                            SettingsDivider(borderColor)
-
-                            SectionLabel("About", font, icon = MorpheIcons.Info)
-                            Spacer(Modifier.height(16.dp))
-
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Image(
-                                        painter = painterResource(Res.drawable.morphe_logo),
-                                        contentDescription = "Morphe Logo",
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Morphe",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontFamily = font,
-                                        )
-                                        Spacer(Modifier.height(2.dp))
-                                        Text(
-                                            text = "Version ${AppConstants.APP_VERSION}",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontFamily = font,
+                                        onClick = { showAppInfoDialog = true },
+                                    ) {
+                                        Image(
+                                            painter = painterResource(Res.drawable.morphe_logo),
+                                            contentDescription = "Morphe Logo",
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
-                                    IconButton(
-                                        onClick = {
-                                            showAppInfoDialog = true
-                                        },
-                                        modifier = Modifier.size(32.dp)
+
+                                    SettingsDivider(borderColor)
+
+                                    AboutRow(
+                                        title = "View changelogs",
+                                        subtitle = "Check out the latest changes in this update",
+                                        font = font,
+                                        onClick = { showChangelogDialog = true },
                                     ) {
                                         Icon(
-                                            imageVector = MorpheIcons.KeyboardArrowLeft,
+                                            imageVector = MorpheIcons.Article,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .graphicsLayer { rotationZ = 180f }
+                                            tint = accents.primary,
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
-                                }
-                                
-                                SettingsDivider(borderColor)
-                                
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = MorpheIcons.Article,
-                                        contentDescription = null,
-                                        tint = accents.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "View changelogs",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontFamily = font,
-                                        )
-                                        Spacer(Modifier.height(2.dp))
-                                        Text(
-                                            text = "Check out the latest changes in this update",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontFamily = font,
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            showChangelogDialog = true
-                                        },
-                                        modifier = Modifier.size(32.dp)
+
+                                    SettingsDivider(borderColor)
+
+                                    AboutRow(
+                                        title = "Visit website",
+                                        subtitle = "Visit the official Morphe website",
+                                        font = font,
+                                        onClick = { openUrlInBrowser("https://morphe.software") },
                                     ) {
                                         Icon(
-                                            imageVector = MorpheIcons.KeyboardArrowLeft,
+                                            imageVector = MorpheIcons.Public,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .graphicsLayer { rotationZ = 180f }
-                                        )
-                                    }
-                                }
-
-                                SettingsDivider(borderColor)
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = MorpheIcons.Public,
-                                        contentDescription = null,
-                                        tint = accents.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Visit website",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontFamily = font,
-                                        )
-                                        Spacer(Modifier.height(2.dp))
-                                        Text(
-                                            text = "Visit the official Morphe website",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontFamily = font,
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            openUrlInBrowser("https://morphe.software")
-                                        },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = MorpheIcons.KeyboardArrowLeft,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .graphicsLayer { rotationZ = 180f }
+                                            tint = accents.primary,
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
                             }
                         }
                     }
+                    VerticalScrollbar(
+                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                        adapter = rememberScrollbarAdapter(contentScroll),
+                        style = morpheScrollbarStyle(),
+                    )
                 }
             }
-        },
-        confirmButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(corners.small),
-                border = BorderStroke(1.dp, borderColor)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text(
-                    "Close",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = font
-                )
+                OutlinedButton(
+                    modifier = Modifier.handCursor(),
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(corners.small),
+                    border = BorderStroke(1.dp, borderColor)
+                ) {
+                    Text(
+                        "Close",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = font
+                    )
+                }
             }
         }
-    )
+    }
 }
 
 // ── Shared building blocks ──
+
+/**
+ * One 42dp accent chip. Selection draws a solid ring, hover draws a muted one and
+ * lifts the chip slightly, so an unselected swatch still reacts to the pointer.
+ */
+@Composable
+private fun AccentSwatch(
+    selected: Boolean,
+    fill: Color,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit = {},
+) {
+    val corners = LocalMorpheCorners.current
+    val hoverInteraction = remember { MutableInteractionSource() }
+    val isHovered by hoverInteraction.collectIsHoveredAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isHovered) 1.08f else 1f,
+        label = "accentSwatchScale",
+    )
+    val ring = when {
+        selected -> MaterialTheme.colorScheme.primary
+        isHovered -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+        else -> Color.Transparent
+    }
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(corners.small))
+            .background(fill)
+            .border(2.dp, ring, RoundedCornerShape(corners.small))
+            .hoverable(hoverInteraction)
+            .handCursor()
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+/**
+ * One row in the About list: a leading visual, a title and subtitle, and a
+ * chevron. The whole row is the click target. The chevron used to be the only
+ * one, which made a full-width action depend on hitting a 32dp icon.
+ */
+@Composable
+private fun AboutRow(
+    title: String,
+    subtitle: String,
+    font: FontFamily,
+    onClick: () -> Unit,
+    leading: @Composable () -> Unit,
+) {
+    val corners = LocalMorpheCorners.current
+    val hoverInteraction = remember { MutableInteractionSource() }
+    val isHovered by hoverInteraction.collectIsHoveredAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(corners.small))
+            .background(
+                if (isHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                else Color.Transparent
+            )
+            .hoverable(hoverInteraction)
+            .handCursor()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        leading()
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontFamily = font,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = font,
+            )
+        }
+        Icon(
+            imageVector = MorpheIcons.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
 
 @Composable
 private fun SectionLabel(
@@ -818,6 +837,7 @@ private fun CollapsibleSection(
                 if (isHovered) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
                 else Color.Transparent
             )
+            .handCursor()
             .clickable { onExpandedChange(!expanded) }
             .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -878,7 +898,7 @@ private fun SettingsDivider(borderColor: Color) {
 
 /**
  * Inline row letting the user pick which CLI release channel update checks
- * follow. Mirrors [SettingToggleRow]'s layout — label + dynamic description
+ * follow. Mirrors [SettingToggleRow]'s layout, label plus dynamic description
  * on the left, chip group on the right where the switch would be.
  */
 @Composable
@@ -1075,7 +1095,7 @@ private fun OutputFolderSection(
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp),
-                modifier = Modifier.fillMaxHeight()
+                modifier = Modifier.fillMaxHeight().handCursor()
             ) {
                 Text(
                     "Browse",
@@ -1093,7 +1113,7 @@ private fun OutputFolderSection(
                     shape = RoundedCornerShape(corners.small),
                     border = BorderStroke(1.dp, borderColor),
                     contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier.fillMaxHeight()
+                    modifier = Modifier.fillMaxHeight().handCursor()
                 ) {
                     Text(
                         "Reset",
@@ -1152,7 +1172,7 @@ private fun OutputFolderSection(
 /**
  * Architectures exposed in the strip libs settings. Each entry has the
  * patcher-facing value (matching CpuArchitecture.arch) and a short display name.
- * Only modern arches are listed — legacy mips/armeabi are intentionally omitted.
+ * Only modern arches are listed. Legacy mips and armeabi are intentionally omitted.
  */
 private val STRIP_LIBS_ARCHS = listOf(
     "arm64-v8a" to "ARM 64-bit (most modern phones)",
@@ -1302,10 +1322,10 @@ private fun SigningSection(
                         val validExtensions = listOf(".keystore", ".jks", ".bks", ".p12", ".pfx")
                         if (validExtensions.any { selected.name.lowercase().endsWith(it) }) {
                             // Route the picked file through KeystoreImporter:
-                            // BKS files pass through unchanged; PKCS12/JKS get
+                            // BKS files pass through unchanged. PKCS12 and JKS get
                             // converted to BKS and saved as MorpheData.importedKeystoreFile
                             // (original user file is never mutated). The config
-                            // then points at whichever file is BKS — patcher
+                            // then points at whichever file is BKS. The patcher
                             // only speaks BKS, so this is the only safe input.
                             val result = KeystoreImporter.ensureBks(
                                 source = selected,
@@ -1345,7 +1365,7 @@ private fun SigningSection(
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp),
-                modifier = Modifier.fillMaxHeight()
+                modifier = Modifier.fillMaxHeight().handCursor()
             ) {
                 Text(
                     "Browse",
@@ -1363,7 +1383,7 @@ private fun SigningSection(
                     shape = RoundedCornerShape(corners.small),
                     border = BorderStroke(1.dp, borderColor),
                     contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier.fillMaxHeight()
+                    modifier = Modifier.fillMaxHeight().handCursor()
                 ) {
                     Text(
                         "Reset",
@@ -1377,7 +1397,7 @@ private fun SigningSection(
         }
 
         // Warning if keystore path set but file doesn't exist. Patching will
-        // refuse to start with this configured (see PatchingViewModel) — user
+        // refuse to start with this configured (see PatchingViewModel). The user
         // must restore the file, pick another, or reset to use Morphe's default.
         if (keystorePath != null && !keystoreExists) {
             Text(
@@ -1482,7 +1502,7 @@ private fun SigningSection(
                     trailing = {
                         IconButton(
                             onClick = { showPassword = !showPassword },
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(24.dp).handCursor(),
                         ) {
                             Icon(
                                 imageVector = if (showPassword) MorpheIcons.VisibilityOff else MorpheIcons.Visibility,
@@ -1529,7 +1549,7 @@ private fun SigningSection(
                     trailing = {
                         IconButton(
                             onClick = { showEntryPassword = !showEntryPassword },
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(24.dp).handCursor(),
                         ) {
                             Icon(
                                 imageVector = if (showEntryPassword) MorpheIcons.VisibilityOff else MorpheIcons.Visibility,
@@ -1571,7 +1591,7 @@ private fun SigningSection(
                     }
                 },
                 enabled = enabled,
-                modifier = Modifier.fillMaxWidth().height(dimens.controlHeight),
+                modifier = Modifier.fillMaxWidth().height(dimens.controlHeight).handCursor(),
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(
                     1.dp,
@@ -1666,7 +1686,7 @@ private fun SigningSection(
                     }
                 },
                 enabled = enabled,
-                modifier = Modifier.fillMaxWidth().height(dimens.controlHeight),
+                modifier = Modifier.fillMaxWidth().height(dimens.controlHeight).handCursor(),
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(
                     1.dp, if (generateSuccess)
@@ -1728,7 +1748,7 @@ private fun SigningSection(
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).handCursor()
             ) {
                 Icon(
                     imageVector = MorpheIcons.Info,
@@ -1767,7 +1787,7 @@ private fun SigningSection(
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).handCursor()
             ) {
                 Icon(
                     imageVector = MorpheIcons.Share,
@@ -1816,10 +1836,8 @@ private fun KeystoreInfoDialog(
         readKeystoreInfo(keystorePath, password, alias, entryPassword)
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(corners.medium),
-        containerColor = MaterialTheme.colorScheme.surface,
+    MorpheAlertDialog(
+        onDismiss = onDismiss,
         title = {
             Text(
                 "Certificate info",
@@ -1908,6 +1926,7 @@ private fun KeystoreInfoDialog(
         },
         confirmButton = {
             OutlinedButton(
+                modifier = Modifier.handCursor(),
                 onClick = onDismiss,
                 shape = RoundedCornerShape(corners.small),
                 border = BorderStroke(1.dp, borderColor)
@@ -1978,11 +1997,11 @@ private fun readKeystoreInfo(
             )
         }
     } catch (_: Exception) {
-        // BC not on classpath — BKS keystores won't be readable, but JKS/PKCS12 still work
+        // BC not on classpath, so BKS keystores are unreadable. JKS and PKCS12 still work
     }
 
     // Try multiple keystore types: BKS (what Morphe generates), then JKS, then PKCS12
-    // BKS requires BouncyCastle provider — try with provider name, fall back without
+    // BKS requires the BouncyCastle provider. Try with the name, fall back without
     val types = listOf("BKS" to "BC", "BKS" to null, "JKS" to null, "PKCS12" to null)
     for ((type, provider) in types) {
         try {
@@ -2054,7 +2073,15 @@ private fun ThemePreference.toDisplayName(): String {
     return when (this) {
         ThemePreference.LIGHT -> "Light"
         ThemePreference.DARK -> "Dark"
-        ThemePreference.PURE_BLACK -> "Pure black"
+        ThemePreference.AMOLED -> "Amoled"
+        ThemePreference.MANAGER_LIGHT -> "Manager light"
+        ThemePreference.MANAGER_DARK -> "Manager dark"
+        ThemePreference.MANAGER_AMOLED -> "Manager amoled"
+        ThemePreference.NORD -> "Nord"
+        ThemePreference.CATPPUCCIN -> "Catppuccin"
+        ThemePreference.SAKURA -> "Sakura"
+        ThemePreference.MATCHA -> "Matcha"
+        ThemePreference.DEEPSPACE -> "Deep space"
         ThemePreference.SYSTEM -> "System"
     }
 }
@@ -2063,16 +2090,32 @@ private fun ThemePreference.icon(): ImageVector {
     return when (this) {
         ThemePreference.LIGHT -> MorpheIcons.LightMode
         ThemePreference.DARK -> MorpheIcons.DarkMode
-        ThemePreference.PURE_BLACK -> MorpheIcons.Contrast
+        ThemePreference.AMOLED -> MorpheIcons.Contrast
+        ThemePreference.MANAGER_LIGHT -> MorpheIcons.PhoneAndroid
+        ThemePreference.MANAGER_DARK -> MorpheIcons.PhoneAndroid
+        ThemePreference.MANAGER_AMOLED -> MorpheIcons.PhoneAndroid
+        ThemePreference.NORD -> MorpheIcons.AcUnit
+        ThemePreference.CATPPUCCIN -> MorpheIcons.Palette
+        ThemePreference.SAKURA -> MorpheIcons.AutoAwesome
+        ThemePreference.MATCHA -> MorpheIcons.BubbleChart
+        ThemePreference.DEEPSPACE -> MorpheIcons.Terminal
         ThemePreference.SYSTEM -> MorpheIcons.Settings
     }
 }
 
 private fun ThemePreference.accentColor(): Color {
     return when (this) {
-        ThemePreference.LIGHT -> Color(0xFF005FAC)
-        ThemePreference.DARK -> Color(0xFFA4C9FF)
-        ThemePreference.PURE_BLACK -> Color(0xFFA4C9FF)
+        ThemePreference.LIGHT -> MorpheColors.Blue
+        ThemePreference.DARK -> MorpheColors.Blue
+        ThemePreference.AMOLED -> Color(0xFF5B9AFF)
+        ThemePreference.MANAGER_LIGHT -> Color(0xFF005FAC)
+        ThemePreference.MANAGER_DARK -> Color(0xFFA4C9FF)
+        ThemePreference.MANAGER_AMOLED -> Color(0xFFA4C9FF)
+        ThemePreference.NORD -> Color(0xFF88C0D0)
+        ThemePreference.CATPPUCCIN -> Color(0xFFCBA6F7)
+        ThemePreference.SAKURA -> Color(0xFFD44B76)
+        ThemePreference.MATCHA -> Color(0xFF4C7A35)
+        ThemePreference.DEEPSPACE -> Color(0xFF00D9FF)
         ThemePreference.SYSTEM -> Color(0xFFA4C9FF)
     }
 }
@@ -2216,6 +2259,7 @@ private fun PatchedAppRuntimeLogsSection(
                             color = accentColor,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(cornersLocal.small))
+                                .handCursor()
                                 .clickable {
                                     try {
                                         if (Desktop.isDesktopSupported()) {

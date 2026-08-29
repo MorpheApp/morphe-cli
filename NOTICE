@@ -27,3 +27,26 @@ GPLv3 Section 7e: Declining Grant of Trademark Rights
 This License does not grant any rights or permission under trademark law
 to use the name "Morphe" or any of the Program's trade names, trademarks,
 service marks, or logos.
+
+
+=============
+
+Bundled fonts
+
+This software bundles the following font families under src/main/resources/fonts.
+They are licensed separately from the Program and are unmodified.
+
+Nunito
+  Copyright 2016 The Nunito Project Authors
+  https://github.com/googlefonts/nunito
+  SIL Open Font License, Version 1.1
+
+JetBrains Mono
+  Copyright 2020 The JetBrains Mono Project Authors
+  https://github.com/JetBrains/JetBrainsMono
+  SIL Open Font License, Version 1.1
+
+Roboto and Roboto Mono
+  Copyright 2011 Google LLC
+  https://github.com/googlefonts/roboto
+  Apache License, Version 2.0

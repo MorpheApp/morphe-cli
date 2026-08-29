@@ -30,8 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
@@ -41,10 +42,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.components.onCardGradient
+import app.morphe.gui.ui.components.LocalCardFills
+import app.morphe.gui.ui.components.AppCard
+import app.morphe.gui.ui.components.handCursor
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.screens.home.DeviceAppInfo
 import app.morphe.gui.ui.screens.home.PatchedAppState
+import app.morphe.gui.ui.theme.shiftLightness
+import app.morphe.gui.ui.theme.contrastingForeground
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -85,12 +92,18 @@ fun SupportedAppListRow(
     val hasExperimental = app.experimentalVersions.isNotEmpty()
     val latestExperimental = app.experimentalVersions.firstOrNull()
 
+    val cardFills = LocalCardFills.current
+
     AppCard(
         modifier = modifier.fillMaxWidth(),
         cornerRadius = corners.medium,
         appIconColorHex = app.appIconColor,
+        fill = cardFills[app.packageName],
         isExpanded = isExpanded,
-        onClick = onClick
+        onClick = onClick,
+        onCustomise = {
+            cardFills.requestEdit(app.packageName, app.displayName, app.appIconColor)
+        },
     ) {
         Column(
             modifier = Modifier
@@ -272,16 +285,20 @@ private fun VersionChip(
     val uriHandler = LocalUriHandler.current
     val hoverInteraction = remember(channelLabel) { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
+    // Stable and experimental are told apart by colour. Painting the chip white
+    // threw away the [color] this is handed and made the two identical.
+    val chipColor = color.onCardGradient()
+    val chipInk = chipColor.contrastingForeground()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
             .clip(RoundedCornerShape(cornerSmall))
-            .background(Color.White.copy(alpha = if (isHovered && isLink) 0.26f else 0.20f))
+            .background(if (isHovered && isLink) chipColor.shiftLightness(0.08f) else chipColor)
             .hoverable(hoverInteraction)
             .then(
                 if (isLink) Modifier
-                    .pointerHoverIcon(PointerIcon.Hand)
+                    .handCursor()
                     .clickable {
                         openUrlAndFollowRedirects(downloadUrl) { uriHandler.openUri(it) }
                     }
@@ -294,27 +311,27 @@ private fun VersionChip(
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = Color.White
+            color = chipInk
         )
         Text(
             text = "·",
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = Color.White
+            color = chipInk.copy(alpha = 0.6f)
         )
         Text(
             text = version?.let { if (it.startsWith("v")) it else "v$it" } ?: nullLabel,
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = Color.White
+            color = chipInk
         )
         if (isLink) {
             Icon(
                 imageVector = MorpheIcons.OpenInNew,
                 contentDescription = "Download $channelLabel",
-                tint = Color.White,
+                tint = chipInk,
                 modifier = Modifier.size(10.dp),
             )
         }
@@ -343,7 +360,7 @@ private fun ExpandedBody(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (patchSourceNames.isNotEmpty()) {
-            SectionLabel(text = "Patches from", font = font)
+            SectionLabel(text = "Patches from", font = font, color = accents.primary.onCardGradient())
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -358,13 +375,14 @@ private fun ExpandedBody(
                         color = accents.primary,
                         font = font,
                         cornerSmall = cornerSmall,
+                        onGradient = true,
                     )
                 }
             }
         }
 
         if (otherStable.isNotEmpty()) {
-            SectionLabel(text = "Stable", font = font)
+            SectionLabel(text = "Stable", font = font, color = accents.secondary.onCardGradient())
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -378,6 +396,7 @@ private fun ExpandedBody(
                         color = accents.secondary,
                         font = font,
                         cornerSmall = cornerSmall,
+                        onGradient = true,
                         onClick = url?.let { { uriHandler.openUri(it) } },
                     )
                 }
@@ -394,7 +413,7 @@ private fun ExpandedBody(
         }
 
         if (app.experimentalVersions.isNotEmpty()) {
-            SectionLabel(text = "Experimental", font = font)
+            SectionLabel(text = "Experimental", font = font, color = accents.warning.onCardGradient())
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -406,6 +425,7 @@ private fun ExpandedBody(
                         color = accents.warning,
                         font = font,
                         cornerSmall = cornerSmall,
+                        onGradient = true,
                         onClick = url?.let { { uriHandler.openUri(it) } },
                     )
                 }
@@ -427,15 +447,22 @@ private fun ExpandedBody(
 internal fun SectionLabel(
     text: String,
     font: FontFamily,
+    /**
+     * The label's colour. Defaults to the surface foreground rather than white,
+     * because this is used on plain sheets as well as on app cards, and a
+     * hardcoded white is invisible on a light theme.
+     */
+    color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     Text(
         text = text,
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
-        color = Color.White,
+        color = color,
         fontFamily = font,
     )
 }
+
 
 @Composable
 internal fun Pill(
@@ -443,8 +470,14 @@ internal fun Pill(
     color: Color,
     font: FontFamily,
     cornerSmall: Dp,
-    textColor: Color = Color.White,
-    backgroundAlpha: Float = 0.2f,
+    /**
+     * True for pills sitting on an [AppCard], where the gradient behind them
+     * carries the colour and the pill MUST stay white to stay legible. False
+     * tints the pill with [color], which is what a plain surface needs. Getting
+     * this wrong is why the sheet's pills all rendered grey.
+     */
+    onGradient: Boolean = false,
+    backgroundAlpha: Float = if (onGradient) 0.2f else 0.14f,
     // When non-null, the pill becomes a tappable download link: gets a hand
     // cursor, an OpenInNew icon, a subtle hover lift, and fires onClick on tap.
     // detectTapGestures (not .clickable) so scroll wheel / two-finger gestures
@@ -456,19 +489,34 @@ internal fun Pill(
     val isInteractive = onClick != null
     val hoveredLift = if (isInteractive && isHovered) 0.20f else 0f
     val effectiveBackgroundAlpha = (backgroundAlpha + hoveredLift / 2f).coerceAtMost(0.30f)
+    val pillColor = if (onGradient) color.onCardGradient() else color
+    // Solid on a card. A translucent chip borrows the gradient underneath it and
+    // stops looking like its own colour, which is the whole point of the chip.
+    val pillInk = if (onGradient) pillColor.contrastingForeground() else pillColor
 
     Box(
         modifier = Modifier
             .hoverable(hoverSource)
             .then(
                 if (isInteractive) Modifier
-                    .pointerHoverIcon(PointerIcon.Hand)
+                    .handCursor()
                     .pointerInput(onClick) {
                         detectTapGestures(onTap = { onClick() })
                     }
                 else Modifier
             )
-            .background(Color.White.copy(alpha = effectiveBackgroundAlpha), RoundedCornerShape(cornerSmall))
+            .background(
+                if (onGradient) {
+                    if (isInteractive && isHovered) pillColor.shiftLightness(0.08f) else pillColor
+                } else {
+                    pillColor.copy(alpha = effectiveBackgroundAlpha)
+                },
+                RoundedCornerShape(cornerSmall),
+            )
+            .then(
+                if (onGradient) Modifier
+                else Modifier.border(1.dp, pillColor.copy(alpha = 0.35f), RoundedCornerShape(cornerSmall))
+            )
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Row(
@@ -480,14 +528,14 @@ internal fun Pill(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
                 fontFamily = font,
-                color = Color.White,
+                color = pillInk,
                 maxLines = 1,
             )
             if (isInteractive) {
                 Icon(
                     imageVector = MorpheIcons.OpenInNew,
                     contentDescription = "Open download page",
-                    tint = textColor.copy(alpha = if (isHovered) 0.9f else 0.5f),
+                    tint = pillInk.copy(alpha = if (isHovered) 0.9f else 0.6f),
                     modifier = Modifier.size(9.dp),
                 )
             }

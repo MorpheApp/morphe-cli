@@ -31,7 +31,7 @@ import app.morphe.gui.ui.theme.LocalMorpheCorners
 import org.koin.compose.koinInject
 
 /**
- * Tools button — peer of [SettingsButton]. Opens [ToolsDialog]. Wrench icon,
+ * Tools button, the peer of [SettingsButton]. Opens [ToolsDialog]. Wrench icon,
  * same hover/border treatment as Settings. Sits to the LEFT of Settings in the
  * top bar (actions left of preferences).
  *
@@ -64,6 +64,7 @@ fun ToolsButton(
             .clip(RoundedCornerShape(corners.small))
             .background(containerColor)
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
+            .handCursor()
             .clickable { showToolsDialog = true },
         contentAlignment = Alignment.Center
     ) {

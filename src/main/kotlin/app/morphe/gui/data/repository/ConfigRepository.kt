@@ -13,6 +13,7 @@ import app.morphe.gui.data.model.SourceVersionPref
 import app.morphe.gui.data.model.PatchChannel
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.UpdateChannelPreference
+import app.morphe.gui.data.model.MorpheFill
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
@@ -30,6 +31,11 @@ class ConfigRepository {
         prettyPrint = true
         ignoreUnknownKeys = true
         encodeDefaults = true
+        // Needed for the sealed [MorpheFill] in [AppConfig.cardFills]. The default
+        // discriminator is "type", which collides with Gradient's own `type`
+        // property. A "#"-prefixed key cannot be a Kotlin identifier, so it can
+        // never collide. Matches IconProjectStore, which hit this first.
+        classDiscriminator = "#kind"
     }
 
     private var cachedConfig: AppConfig? = null
@@ -87,6 +93,21 @@ class ConfigRepository {
         val current = loadConfig()
         saveConfig(current.copy(themePreference = theme.name))
     }
+
+    /**
+     * Set the card fill for one app, or clear it by passing null.
+     *
+     * Clearing removes the key rather than storing a null, so an uncustomised app
+     * stays absent from the map and keeps falling back to its bundle colour.
+     */
+    suspend fun setCardFill(packageName: String, fill: MorpheFill?) {
+        val current = loadConfig()
+        val updated = current.cardFills.toMutableMap().apply {
+            if (fill == null) remove(packageName) else put(packageName, fill)
+        }
+        saveConfig(current.copy(cardFills = updated))
+    }
+
 
     /**
      * Update background type.

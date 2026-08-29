@@ -34,6 +34,17 @@ enum class VersionStatus {
     /** Between supported versions but not in either list. */
     UNSUPPORTED_BETWEEN,
 
+    /**
+     * The version name is supported, but this APK's build code is not one the
+     * patches target.
+     *
+     * Apps that ship many builds under a single version name (Instagram being the
+     * usual case) can hand you an APK whose version reads as supported while the
+     * build it actually is was never targeted. Matching on the name alone reports
+     * that APK as fine and it fails at patch time instead.
+     */
+    BUILD_UNSUPPORTED,
+
     /** No patch metadata, can't determine. */
     UNKNOWN
 }
@@ -138,7 +149,12 @@ fun isNewerVersion(current: String?, baseline: String?): Boolean {
  * Determine the status of [currentVersion] relative to the stable and
  * experimental versions known for [app].
  */
-fun resolveVersionStatus(currentVersion: String, app: SupportedApp): VersionResolution {
+fun resolveVersionStatus(
+    currentVersion: String,
+    app: SupportedApp,
+    /** The APK's build code, when it could be read. Null skips the build check. */
+    versionCode: Int? = null,
+): VersionResolution {
     val stableList = app.supportedVersions
     val experimentalList = app.experimentalVersions
 
@@ -148,6 +164,13 @@ fun resolveVersionStatus(currentVersion: String, app: SupportedApp): VersionReso
 
     if (latestStable == null && latestExperimental == null) {
         return VersionResolution(VersionStatus.UNKNOWN, null)
+    }
+
+    // A known version whose build is not targeted is unsupported, whichever list
+    // it appears in, so this is checked before the per-list buckets below.
+    val versionIsKnown = currentVersion in stableList || currentVersion in experimentalList
+    if (versionIsKnown && !app.buildCodeSupported(currentVersion, versionCode)) {
+        return VersionResolution(VersionStatus.BUILD_UNSUPPORTED, currentVersion)
     }
 
     // Exact matches in either bucket

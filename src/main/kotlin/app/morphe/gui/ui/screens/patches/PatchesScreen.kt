@@ -6,6 +6,7 @@
 package app.morphe.gui.ui.screens.patches
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
@@ -43,6 +44,7 @@ import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.ToolsButton
 import app.morphe.gui.ui.components.getErrorType
 import app.morphe.gui.ui.components.getFriendlyErrorMessage
+import app.morphe.gui.ui.components.handCursor
 import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
@@ -147,6 +149,7 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                     .hoverable(backHover)
                     .clip(RoundedCornerShape(corners.small))
                     .border(1.dp, backBorder, RoundedCornerShape(corners.small))
+                    .handCursor()
                     .clickable { navigator.pop() },
                 contentAlignment = Alignment.Center
             ) {
@@ -200,8 +203,11 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                         .clip(RoundedCornerShape(corners.small))
                         .border(1.dp, refreshBorder, RoundedCornerShape(corners.small))
                         .then(
-                            if (!uiState.isLoading) Modifier.clickable { viewModel.loadReleases() }
-                            else Modifier
+                            if (!uiState.isLoading) {
+                                Modifier.handCursor().clickable { viewModel.loadReleases() }
+                            } else {
+                                Modifier
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -445,6 +451,7 @@ private fun ChannelChip(
             .background(baseBg)
             .background(tintColor)
             .hoverable(hoverInteraction)
+            .handCursor()
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -502,7 +509,7 @@ private fun ReleaseCard(
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val selectedColor = accents.primary
-    val downloadedColor = accents.primary
+    val downloadedColor = accents.secondary
     val accentColor = when {
         isSelected -> selectedColor
         isDownloaded -> downloadedColor
@@ -517,11 +524,19 @@ private fun ReleaseCard(
 
     val borderColor by animateColorAsState(
         when {
-            isSelected -> accentColor.copy(alpha = 0.5f)
+            isSelected -> selectedColor
             isDownloaded -> downloadedColor.copy(alpha = 0.4f)
             isHovered -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
             else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         },
+        animationSpec = tween(150)
+    )
+
+    // The selected card carries a full-strength 2dp ring. Tint and stripe alone
+    // read as "downloaded" at a glance, so selection needs a weight difference
+    // and not just a hue difference.
+    val borderWidth by animateDpAsState(
+        targetValue = if (isSelected) 2.dp else 1.dp,
         animationSpec = tween(150)
     )
 
@@ -540,10 +555,11 @@ private fun ReleaseCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
-            .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
+            .border(borderWidth, borderColor, RoundedCornerShape(corners.medium))
             .background(baseBg)
             .background(tintColor)
             .hoverable(interactionSource)
+            .handCursor()
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
     ) {
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
@@ -581,7 +597,7 @@ private fun ReleaseCard(
                                 }
                             )
                             if (isLatest) {
-                                val latestColor = accents.primary
+                                val latestColor = accents.secondary
                                 Box(
                                     modifier = Modifier
                                         .background(latestColor.copy(alpha = 0.12f), RoundedCornerShape(corners.small))
@@ -670,6 +686,7 @@ private fun ReleaseCard(
                                     .clip(RoundedCornerShape(corners.small))
                                     .border(1.dp, noteBorder, RoundedCornerShape(corners.small))
                                     .hoverable(noteHover)
+                                    .handCursor()
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null

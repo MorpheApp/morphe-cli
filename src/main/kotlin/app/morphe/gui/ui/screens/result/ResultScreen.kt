@@ -44,6 +44,8 @@ import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.theme.contrastingForeground
+import app.morphe.gui.ui.theme.themedAccent
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -116,8 +118,8 @@ fun ResultScreenContent(outputPath: String) {
             adbManager.listInstalledPackages(device.id).getOrNull()?.contains(pkg) == true
     }
 
-    // Link-handling ("open with") state. The stock package — needed only for the
-    // optional "stop stock from opening links" half — comes from the recall
+    // Link-handling ("open with") state. The stock package, needed only for the
+    // optional "stop stock from opening links" half, comes from the recall
     // record for this output (which stores original + renamed package names).
     var stockPackage by remember { mutableStateOf<String?>(null) }
     var disableStockLinks by remember { mutableStateOf(false) }
@@ -283,7 +285,8 @@ fun ResultScreenContent(outputPath: String) {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = font,
-                    color = MaterialTheme.colorScheme.onSurface
+                    // #259 dropped the success accent here for a neutral token.
+                    color = themedAccent(accents.secondary, MaterialTheme.colorScheme.onSurface)
                 )
 
                 Spacer(Modifier.weight(1f))
@@ -291,7 +294,7 @@ fun ResultScreenContent(outputPath: String) {
                 TopBarRow(allowCacheClear = false)
         }
 
-        // Content — vertically centered when it fits, scrollable when it overflows
+        // Content, vertically centered when it fits and scrollable when it overflows
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -384,9 +387,9 @@ fun ResultScreenContent(outputPath: String) {
                 )
             }
 
-            // ADB help text — only when the toggle is ON but the binary is
+            // ADB help text, only when the toggle is ON but the binary is
             // missing. When the toggle is OFF, AdbDisabledHint above carries
-            // the explanation; suppress the duplicate "ADB not found" text.
+            // the explanation, so suppress the duplicate "ADB not found" text.
             if (!isAdbDisabledByUser && monitorState.isAdbAvailable == false) {
                 Text(
                     text = "ADB not found. Install Android SDK Platform Tools to enable direct installation",
@@ -746,7 +749,7 @@ private fun AdbInstallSection(
  * Route the patched app's web links to it (and optionally stop the stock app
  * from grabbing them). Shown only once the patched app is installed on a ready
  * device. The stock-disable checkbox appears only when a rename patch was used
- * (a distinct [stockPackage]); on-device, [AdbManager.setLinkHandling] still
+ * (a distinct [stockPackage]). On-device, [AdbManager.setLinkHandling] still
  * verifies the stock app is actually installed before touching it.
  */
 @Composable
@@ -798,7 +801,7 @@ private fun LinkHandlingSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // Optional OFF half — only when a rename was used so stock + patched coexist.
+            // Optional OFF half, only when a rename was used so stock and patched coexist.
             if (stockPackage != null) {
                 Spacer(Modifier.height(12.dp))
                 val stockName = SupportedApp.getDisplayName(stockPackage)
@@ -1051,7 +1054,7 @@ private fun CleanupSection(
 
 /**
  * Replaces [AdbInstallSection] when the user has the auto-start ADB toggle off.
- * Mirrors the bordered card layout so the result screen doesn't collapse —
+ * Mirrors the bordered card layout so the result screen doesn't collapse,
  * but the install button is replaced with a clearly-disabled "ENABLE ADB"
  * hint that flips the toggle in one click.
  */
@@ -1155,16 +1158,9 @@ private fun OutputFileCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
             .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
+            // No fill and no accent stripe, matching the APK info card. The border
+            // bounds the card and the window background carries through it.
     ) {
-        // Teal left stripe
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight()
-                .background(accents.secondary)
-                .align(Alignment.CenterStart)
-        )
 
         Column(
             modifier = Modifier
@@ -1280,10 +1276,12 @@ private fun PatchAnotherButton(
             .fillMaxWidth()
             .height(42.dp),
         shape = RoundedCornerShape(corners.small),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+        // Solid. With the card behind it transparent, a tinted button leaves the
+        // screen with nothing to land on.
+        border = BorderStroke(1.dp, accents.primary),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-            contentColor = MaterialTheme.colorScheme.primary
+            containerColor = accents.primary,
+            contentColor = accents.primary.contrastingForeground()
         )
     ) {
         Text(

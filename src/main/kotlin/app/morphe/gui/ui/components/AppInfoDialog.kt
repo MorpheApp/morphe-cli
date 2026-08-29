@@ -34,11 +34,9 @@ fun AppInfoDialog(
     val corners = LocalMorpheCorners.current
     val font = LocalMorpheFont.current
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(corners.medium),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = null,
+    MorpheAlertDialog(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        onDismiss = onDismiss,
         text = {
             Column(
                 modifier = Modifier.widthIn(min = 340.dp).padding(top = 16.dp),

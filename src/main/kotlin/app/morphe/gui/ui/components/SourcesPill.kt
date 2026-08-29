@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,7 +43,7 @@ enum class SourceLedState { DISABLED, STABLE_LATEST, STABLE_OLDER, DEV_LATEST, D
 /**
  * Header pill showing source count + per-source channel LEDs + trailing "+".
  * Used in expert mode (clickable, opens [SourceManagementSheet]) and in Quick
- * Patch mode (purely informational — pass `onClick = null`).
+ * Patch mode (purely informational, pass `onClick = null`).
  */
 @Composable
 fun SourcesCountPill(
@@ -81,7 +80,7 @@ fun SourcesCountPill(
             .then(
                 if (interactive) Modifier
                     .hoverable(hoverInteraction)
-                    .pointerHoverIcon(PointerIcon.Hand)
+                    .handCursor()
                     .clickable(onClick = onClick)
                 else Modifier
             )
@@ -149,7 +148,7 @@ fun sourceLedState(
         EnabledSourcesLoader.Channel.DEV_LATEST -> SourceLedState.DEV_LATEST
         EnabledSourcesLoader.Channel.DEV_OLDER -> SourceLedState.DEV_OLDER
         EnabledSourcesLoader.Channel.LOCAL -> SourceLedState.LOCAL
-        // No load yet — assume latest until we know otherwise.
+        // No load yet, so assume latest until we know otherwise.
         null, EnabledSourcesLoader.Channel.UNKNOWN -> SourceLedState.STABLE_LATEST
     }
 }

@@ -72,17 +72,12 @@ fun ApkInfoCard(
             .fillMaxWidth()
             .clip(cardShape)
             .border(1.dp, borderColor, cardShape)
-            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
+            // No fill. The border alone describes the card, so the window's
+            // background carries straight through it and it sits in the same
+            // material as the app cards on the left rather than on top of them.
+            // The status still reads from the version label and the app initial,
+            // so nothing is lost by dropping the accent stripe that was here.
     ) {
-        // Left accent stripe
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight()
-                .background(accentColor)
-                .align(Alignment.CenterStart)
-        )
-
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -93,7 +88,7 @@ fun ApkInfoCard(
                     .padding(start = 23.dp, end = 20.dp, top = 16.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // App initial — monospace, bold, in accent
+                // App initial, monospace, bold, in accent
                 Box(
                     modifier = Modifier
                         .size(44.dp)
@@ -173,7 +168,7 @@ fun ApkInfoCard(
             // Surfaced when full manifest parsing failed (typically split APKs
             // like SoundCloud where base.apk references resources living in
             // other splits). Patching still works because the patcher merges
-            // splits first — this banner just tells the user the card details
+            // splits first. This banner just tells the user the card details
             // are approximate.
             if (apkInfo.hasLimitedInfo) {
                 Row(
@@ -268,6 +263,16 @@ fun ApkInfoCard(
                     font = font,
                     modifier = Modifier.weight(1f)
                 )
+                // Apps like Instagram ship many builds under one version name, so
+                // the build is what actually identifies an APK to someone comparing.
+                if (apkInfo.versionCode != null) {
+                    TechDataCell(
+                        label = "Build",
+                        value = apkInfo.versionCode.toString(),
+                        font = font,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
                 TechDataCell(
                     label = "Size",
                     value = apkInfo.formattedSize,
@@ -284,7 +289,7 @@ fun ApkInfoCard(
                 }
             }
 
-            // ── Architectures — shown as individual tags, device arch highlighted ──
+            // Architectures, shown as individual tags with the device arch highlighted.
             if (apkInfo.architectures.isNotEmpty()) {
                 val deviceState by DeviceMonitor.state.collectAsState()
                 val deviceArch = deviceState.selectedDevice?.architecture

@@ -62,7 +62,7 @@ import org.koin.compose.koinInject
 /**
  * Multi-source management sheet, summoned from the home header `+` button.
  * Lists every configured patch source with an enable toggle. Default source
- * cannot be deleted or renamed (mirrors morphe-manager rules); other sources
+ * cannot be deleted or renamed (mirrors morphe-manager rules). Other sources
  * can be edited or removed.
  *
  * Caller wires actions to [PatchSourceManager] / [ConfigRepository] equivalents.
@@ -109,9 +109,9 @@ fun SourceManagementSheet(
     sourceErrors: Map<String, String> = emptyMap(),
     /** Selection semantics. Defaults to multi-toggle (Expert mode). */
     mode: SourceSheetMode = SourceSheetMode.MULTI_TOGGLE,
-    /** sourceId of the currently picked source — only used when [mode] is SINGLE_SELECT. */
+    /** sourceId of the currently picked source, used only when [mode] is SINGLE_SELECT. */
     activeSourceId: String? = null,
-    /** Called when the user picks a source — only used when [mode] is SINGLE_SELECT. */
+    /** Called when the user picks a source, used only when [mode] is SINGLE_SELECT. */
     onSelectSingle: (sourceId: String) -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
@@ -123,7 +123,7 @@ fun SourceManagementSheet(
     var editingSource by remember { mutableStateOf<PatchSource?>(null) }
 
     // ── Drag-to-reorder state ──────────────────────────────────────────────
-    // workingOrder is the live ordering the UI renders from; it reseeds only
+    // workingOrder is the live ordering the UI renders from. It reseeds only
     // when the actual id sequence from config changes (List equals is
     // structural), so a drag we just persisted doesn't get clobbered mid-flight.
     val density = LocalDensity.current
@@ -131,16 +131,16 @@ fun SourceManagementSheet(
     val sourcesById = remember(sources) { sources.associateBy { it.id } }
     // Stable identity (no remember key) so the drag gesture's captured reference
     // never goes stale. We instead adopt external order/membership changes via the
-    // effect below — but only while idle, so an in-flight drag is never clobbered.
+    // effect below, but only while idle, so an in-flight drag is never clobbered.
     var workingOrder by remember { mutableStateOf(sources.map { it.id }) }
     val rowHeights = remember { mutableStateMapOf<String, Int>() }
     var draggingId by remember { mutableStateOf<String?>(null) }
-    // Raw total cursor displacement since grab — never mutated mid-drag, so no
+    // Raw total cursor displacement since grab, never mutated mid-drag, so no
     // drift accumulates. Visual offset is derived by subtracting the layout
     // shift already applied via reordering (see dragOffsetY below).
     var dragDeltaY by remember { mutableStateOf(0f) }
     var dragStartIndex by remember { mutableStateOf(0) }
-    // Pull in source add/remove/rename/external-reorder — but never mid-drag, and
+    // Pull in source add/remove/rename/external-reorder, but never mid-drag, and
     // only when the id sequence actually changed (keyed on the id list), so the
     // order we just persisted from a drag doesn't trigger a snap-back.
     LaunchedEffect(sources.map { it.id }) {
@@ -158,10 +158,8 @@ fun SourceManagementSheet(
         onReorder(next)
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(corners.medium),
-        containerColor = MaterialTheme.colorScheme.surface,
+    MorpheAlertDialog(
+        onDismiss = onDismiss,
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -174,7 +172,7 @@ fun SourceManagementSheet(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                 )
-                // Reload sources — re-resolves a folder source to its newest .mpp.
+                // Reload sources, which re-resolves a folder source to its newest .mpp.
                 IconButton(onClick = onRefresh, enabled = enabled, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = MorpheIcons.Refresh,
@@ -188,7 +186,7 @@ fun SourceManagementSheet(
         text = {
             // Hoisted so the scrollbar can share the same state as the
             // scrolling Column. The scrollbar renders only when the
-            // content actually overflows (maxValue > 0) — keeps the
+            // content actually overflows (maxValue > 0), which keeps the
             // dialog clean for the common case of a handful of sources.
             val scrollState = rememberScrollState()
             Box {
@@ -219,12 +217,12 @@ fun SourceManagementSheet(
 
                 orderedSources.forEachIndexed { index, source ->
                   // Key by source id (not list position) so a mid-drag reorder
-                  // moves the same composable instead of rebinding slots — which
+                  // moves the same composable instead of rebinding slots, which
                   // would otherwise cancel the in-flight drag gesture.
                   key(source.id) {
                     val isDragging = source.id == draggingId
                     // One slot's pitch (row height + inter-row spacing). Rows vary
-                    // slightly; the dragged row's own height is a fine unit and,
+                    // slightly. The dragged row's own height is a fine unit and,
                     // crucially, the same value drives both the target-index pick
                     // and the visual offset, so they stay in lockstep.
                     val slotPitch = ((rowHeights[source.id] ?: 0) + rowSpacingPx).coerceAtLeast(1f)
@@ -406,7 +404,7 @@ private fun SourceRow(
     // patches for the source (PatchesScreen). In SINGLE_SELECT mode it picks the
     // source as the active one for Quick Patch. Disabled only while patching.
     val canInteract = enabled
-    // For visual highlight: in MULTI mode highlight when source is enabled; in
+    // For visual highlight: in MULTI mode highlight when source is enabled, in
     // SINGLE_SELECT highlight when this row is the picked one.
     val isHighlighted = if (mode == SourceSheetMode.SINGLE_SELECT) isActiveSelection else isEnabled
 
@@ -456,7 +454,7 @@ private fun SourceRow(
             .hoverable(hoverInteraction)
             .then(
                 if (canInteract) Modifier
-                    .pointerHoverIcon(PointerIcon.Hand)
+                    .handCursor()
                     .clickable(onClick = if (mode == SourceSheetMode.SINGLE_SELECT) onSelectSingle else onOpenPatches)
                 else Modifier
             )
@@ -464,7 +462,7 @@ private fun SourceRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (canReorder) {
-                // Drag handle — the only grab point; the rest of the row stays
+                // Drag handle, the only grab point. The rest of the row stays
                 // click-to-open. Position number sits beside it for orientation.
                 Box(
                     modifier = Modifier
@@ -591,7 +589,7 @@ private fun SourceRow(
                 }
             }
 
-            // Precise fallback to dragging — nudge one slot at a time.
+            // Precise fallback to dragging, nudging one slot at a time.
             if (canReorder) {
                 ReorderArrows(
                     canMoveUp = canMoveUp,
@@ -658,7 +656,7 @@ private fun SourceRow(
 
 
 /**
- * Compact vertical up/down nudge control — a keyboard-free, precise fallback to
+ * Compact vertical up/down nudge control, a keyboard-free precise fallback to
  * drag reordering. Arrows dim out at the list ends.
  */
 @Composable
@@ -691,7 +689,7 @@ private fun ReorderArrow(
             .then(
                 if (active) Modifier
                     .hoverable(interaction)
-                    .pointerHoverIcon(PointerIcon.Hand)
+                    .handCursor()
                     .clickable(onClick = onClick)
                 else Modifier
             ),
@@ -743,7 +741,7 @@ private fun ChannelBadge(
 
 /**
  * Tiny status LED on the left of each source row. Solid glow when the source is
- * enabled; dim ring when off. Brightens on hover for the click-to-open affordance.
+ * enabled, dim ring when off. Brightens on hover for the click-to-open affordance.
  */
 @Composable
 private fun LedIndicator(isOn: Boolean, isHot: Boolean, accentColor: Color) {

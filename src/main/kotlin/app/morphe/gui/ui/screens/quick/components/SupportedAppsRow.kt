@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -32,10 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.components.LocalCardFills
+import app.morphe.gui.ui.components.AppCard
+import app.morphe.gui.ui.components.handCursor
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.icons.MorpheIcons
-import app.morphe.gui.ui.screens.home.components.AppCard
 import app.morphe.gui.ui.theme.*
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 
@@ -256,6 +257,7 @@ internal fun SupportedAppsRow(
                         },
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    val cardFills = LocalCardFills.current
                     filteredApps.forEach { app ->
                         val url = app.apkDownloadUrl
 
@@ -268,7 +270,15 @@ internal fun SupportedAppsRow(
                                 .fillMaxHeight(),
                             cornerRadius = corners.small,
                             appIconColorHex = app.appIconColor,
-                            interactive = false
+                            fill = cardFills[app.packageName],
+                            interactive = false,
+                            onCustomise = {
+                                cardFills.requestEdit(
+                                    app.packageName,
+                                    app.displayName,
+                                    app.appIconColor,
+                                )
+                            },
                         ) {
                             Column(
                                 modifier = Modifier
@@ -322,7 +332,7 @@ internal fun SupportedAppsRow(
                                             .hoverable(pillInteraction)
                                             .clip(RoundedCornerShape(corners.small))
                                             .background(pillBg, RoundedCornerShape(corners.small))
-                                            .pointerHoverIcon(PointerIcon.Hand)
+                                            .handCursor()
                                             .clickable {
                                                 openUrlAndFollowRedirects(url) { resolved ->
                                                     uriHandler.openUri(resolved)

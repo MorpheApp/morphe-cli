@@ -67,8 +67,6 @@ internal fun SupportedAppsListPane(
     patchedRecords: List<PatchedAppRecord> = emptyList(),
     deviceAppInfo: Map<String, DeviceAppInfo> = emptyMap(),
     updateInfoByPackage: Map<String, RecallUpdateInfo> = emptyMap(),
-    onRepatch: (String) -> Unit = {},
-    onUpdate: (String) -> Unit = {},
     onInstall: (String) -> Unit = {},
     installingPackage: String? = null,
     onShowDetail: (PatchedAppRecord) -> Unit = {},
@@ -107,13 +105,16 @@ internal fun SupportedAppsListPane(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    // Wraps its height so the parent Row is only as tall as the taller pane, which
+    // is what lets the pair be centred together instead of each pane centring
+    // itself. The incoming max still bounds the list below.
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
       val paneMaxHeight = maxHeight
       Column(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .align(Alignment.Center),
+            .align(Alignment.TopCenter),
       ) {
         // ── On-open update notice: jumps to "Your apps" where each is badged ──
         val updateCount = patchedStates.values.count { it == PatchedAppState.PATCHED_WITH_UPDATES }
@@ -157,8 +158,6 @@ internal fun SupportedAppsListPane(
                 updateInfoByPackage = updateInfoByPackage,
                 appIconColorByPackage = supportedApps.associate { it.packageName to (it.appIconColor ?: "") }.filterValues { it.isNotEmpty() },
                 onShowDetail = onShowDetail,
-                onRepatch = onRepatch,
-                onUpdate = onUpdate,
                 onInstall = onInstall,
                 installingPackage = installingPackage,
                 paneMaxHeight = paneMaxHeight,

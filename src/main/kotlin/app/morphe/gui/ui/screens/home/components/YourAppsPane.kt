@@ -5,6 +5,10 @@
 
 package app.morphe.gui.ui.screens.home.components
 
+import app.morphe.gui.ui.components.onCardGradient
+import app.morphe.gui.ui.components.LocalCardFills
+import app.morphe.gui.ui.components.AppCard
+import app.morphe.gui.ui.components.handCursor
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.ui.screens.home.BundleChoice
@@ -75,10 +79,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
@@ -99,6 +103,8 @@ import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.screens.home.DeviceAppInfo
 import app.morphe.gui.ui.screens.home.PatchedAppState
 import app.morphe.gui.ui.screens.home.RecallUpdateInfo
+import app.morphe.gui.ui.theme.shiftLightness
+import app.morphe.gui.ui.theme.contrastingForeground
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -170,7 +176,7 @@ fun PatchedUpdatesBanner(count: Int, onView: () -> Unit) {
             .clip(RoundedCornerShape(corners.medium))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onView)
             .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
@@ -216,7 +222,7 @@ private fun FilterChip(
             .border(1.dp, border, RoundedCornerShape(corner))
             .background(if (selected) accent.copy(alpha = 0.20f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp),
     ) {
@@ -251,8 +257,6 @@ fun YourAppRow(
     deviceInfo: DeviceAppInfo?,
     updateInfo: RecallUpdateInfo?,
     onClick: () -> Unit,
-    onRepatch: () -> Unit,
-    onUpdate: () -> Unit,
     onInstall: () -> Unit = {},
     installing: Boolean = false,
     appIconColorHex: String? = null,
@@ -263,11 +267,17 @@ fun YourAppRow(
 
     val initial = record.displayName.firstOrNull()?.uppercase() ?: "?"
 
+    val cardFills = LocalCardFills.current
+
     AppCard(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = corners.medium,
         appIconColorHex = appIconColorHex,
-        onClick = onClick
+        fill = cardFills[record.packageName],
+        onClick = onClick,
+        onCustomise = {
+            cardFills.requestEdit(record.packageName, record.displayName, appIconColorHex)
+        },
     ) {
         Column(
             modifier = Modifier
@@ -309,7 +319,7 @@ fun YourAppRow(
             }
             if (deviceInfo?.installPending == true) {
                 Spacer(Modifier.width(8.dp))
-                MiniBadge("Install ready", MorpheColors.Teal, font)
+                MiniBadge("Install ready", MorpheColors.Teal, font, onGradient = true)
             }
             if (state != PatchedAppState.NEVER_PATCHED) {
                 Spacer(Modifier.width(8.dp))
@@ -368,30 +378,20 @@ fun YourAppRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Keyed off patchesChanged, not sources.any { outdated }, so this matches
-        // the list badge.
-        val hasUpdate = updateInfo != null && (updateInfo.appOutdated || updateInfo.patchesChanged)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 2.dp),
-        ) {
-            // One action, the next step and nothing else. The row opens the sheet,
-            // which is where every other action now lives. Five equal-weight pills
-            // put Forget one misclick from Repatch in a dense list.
-            when {
-                deviceInfo?.installPending == true -> DetailActionPill(
+        // Only the one action the card cannot defer: a patched APK waiting to go
+        // onto the device. Repatch and everything else live in the sheet, which
+        // tapping the card opens, so the card stays a card.
+        if (deviceInfo?.installPending == true) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 2.dp),
+            ) {
+                DetailActionPill(
                     if (installing) "Installing…" else "Install",
                     MorpheIcons.Download,
-                    MorpheColors.Teal, font, corners.small,
+                    accents.secondary, font, corners.small,
+                    onGradient = true,
                     onClick = if (installing) ({}) else onInstall,
-                )
-                // No refresh glyph. On an already-patched app it read as "start over".
-                hasUpdate -> DetailActionPill(
-                    "Update", null,
-                    app.morphe.gui.ui.theme.MorpheColors.Blue, font, corners.small, onClick = onUpdate,
-                )
-                else -> DetailActionPill(
-                    "Repatch", null, accents.primary, font, corners.small, onClick = onRepatch,
                 )
             }
         }
@@ -459,6 +459,7 @@ fun PatchedAppDetailDialog(
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val corners = LocalMorpheCorners.current
+    val cardFills = LocalCardFills.current
     val patchCount = record.patchSelectionByBundle.values.sumOf { it.size }
     // Keyed off patchesChanged, not sources.any { outdated }, so this matches
     // the list badge.
@@ -556,8 +557,12 @@ fun PatchedAppDetailDialog(
         val support = bundleSupport
         val stagedVersion = selectedApkVersion
         val effectiveApp = support?.takeIf { it.missing.isEmpty() }?.app ?: supportedApp
+        // Deliberately NOT gated on [BundleSupport.isCurrent]. That flag only says
+        // whether `app` came from the already-loaded set or a freshly read bundle,
+        // and both carry the same version lists. Skipping the check for the
+        // resolved bundle meant the default selection never warned, which is the
+        // one selection every user starts on.
         val versionUnsupported = support != null &&
-            !support.isCurrent &&
             support.missing.isEmpty() &&
             effectiveApp != null &&
             stagedVersion != null &&
@@ -806,7 +811,14 @@ fun PatchedAppDetailDialog(
                 ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatCell("Patched", fullDate(record.patchedAt), font)
-                    StatCell("App version", "v${record.apkVersion.removePrefix("v")}", font)
+                    StatCell(
+                        "App version",
+                        buildString {
+                            append("v${record.apkVersion.removePrefix("v")}")
+                            record.apkVersionCode?.let { append(" (${'$'}it)") }
+                        },
+                        font,
+                    )
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatCell("Morphe", record.patchedWithMorpheVersion, font)
@@ -884,10 +896,24 @@ fun PatchedAppDetailDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 6.dp),
                 ) {
-                    DetailActionPill("Folder", MorpheIcons.OpenInNew, accents.secondary, font, corners.small, onClick = onOpenFolder)
+                    DetailActionPill(
+                        "Folder", MorpheIcons.OpenInNew, accents.secondary, font, corners.small,
+                        modifier = Modifier.weight(1f), onClick = onOpenFolder,
+                    )
+                    DetailActionPill(
+                        "Customise", MorpheIcons.Palette, accents.primary, font, corners.small,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        cardFills.requestEdit(
+                            record.packageName,
+                            record.displayName,
+                            supportedApp?.appIconColor,
+                        )
+                    }
                     DetailActionPill(
                         "Forget", MorpheIcons.Delete,
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), font, corners.small,
+                        modifier = Modifier.weight(1f),
                     ) { onDismiss(); onForget() }
                 }
                 }
@@ -1039,7 +1065,7 @@ private fun AssemblyRow(
                 .fillMaxWidth()
                 .background(accent.copy(alpha = if (expanded) 0.07f else if (isHovered) 0.05f else 0f))
                 .hoverable(hover)
-                .pointerHoverIcon(PointerIcon.Hand)
+                .handCursor()
                 .clickable(onClick = onToggle)
                 .padding(horizontal = 12.dp, vertical = 11.dp),
         ) {
@@ -1178,7 +1204,7 @@ private fun ActionBar(
                 }
             )
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -1285,7 +1311,7 @@ private fun DisclosureHeader(
             .clip(RoundedCornerShape(corner))
             .background(color.copy(alpha = if (expanded || isHovered) 0.07f else 0f))
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onToggle)
             .padding(horizontal = 8.dp, vertical = 10.dp),
     ) {
@@ -1321,7 +1347,7 @@ private fun CopyableStat(label: String, value: String, font: FontFamily, corner:
             .clip(RoundedCornerShape(corner))
             .background(accents.primary.copy(alpha = if (isHovered) 0.07f else 0f))
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable {
                 Toolkit.getDefaultToolkit().systemClipboard
                     .setContents(StringSelection(value), null)
@@ -1493,16 +1519,26 @@ private fun VersionBumpText(
 
 /** Small pill badge (matches PatchedStateBadge styling) for ad-hoc states. */
 @Composable
-private fun MiniBadge(label: String, color: Color, font: FontFamily) {
+private fun MiniBadge(
+    label: String,
+    color: Color,
+    font: FontFamily,
+    /** See [Pill]. True keeps the badge white for a coloured card behind it. */
+    onGradient: Boolean = false,
+) {
     val corner = LocalMorpheCorners.current.small
+    // Same rule as [Pill]: keep the accent, adjusting it only when it is too
+    // close to the card to read. See [onCardGradient].
+    val badgeColor = if (onGradient) color.onCardGradient() else color
+    val badgeInk = if (onGradient) badgeColor.contrastingForeground() else badgeColor
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(corner))
-            .background(Color.White.copy(alpha = 0.2f))
-            .border(1.dp, Color.Transparent, RoundedCornerShape(corner))
+            .background(if (onGradient) badgeColor else badgeColor.copy(alpha = 0.2f))
+            .then(if (onGradient) Modifier else Modifier.border(1.dp, badgeColor.copy(alpha = 0.4f), RoundedCornerShape(corner)))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Normal, fontFamily = font, color = Color.White)
+        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Normal, fontFamily = font, color = badgeInk)
     }
 }
 
@@ -1539,19 +1575,32 @@ private fun DetailActionPill(
     color: Color,
     font: FontFamily,
     corner: androidx.compose.ui.unit.Dp,
+    /** Pass a weight to share a row equally with its siblings. */
+    modifier: Modifier = Modifier,
     /** 0f..1f while work runs. Paints the fill, matching the PATCH bar. */
     progress: Float? = null,
+    /** See [Pill]. True for pills on an app card, where white stays legible. */
+    onGradient: Boolean = false,
     onClick: () -> Unit,
 ) {
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
     val shape = RoundedCornerShape(corner)
+    // Each action carries its own colour, and on a card the fill is solid. A
+    // translucent fill has to reckon with the gradient underneath, which differs
+    // at every position, so the pill never settles. An opaque fill is its own
+    // surface and reads the same wherever it lands.
+    val pillColor = if (onGradient) color.onCardGradient() else color
+    val pillInk = pillColor.contrastingForeground()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(shape)
-            .background(Color.White.copy(alpha = if (isHovered) 0.26f else 0.20f))
+            // Solid on both surfaces. On a sheet this used to be an 8 percent wash
+            // behind a 35 percent edge, which left the accent barely visible and the
+            // action looking disabled.
+            .background(if (isHovered) pillColor.shiftLightness(0.08f) else pillColor)
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onClick),
     ) {
         if (progress != null) {
@@ -1565,14 +1614,14 @@ private fun DetailActionPill(
             }
         }
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         ) {
             icon?.let {
-                Icon(it, contentDescription = null, tint = color, modifier = Modifier.size(13.dp))
+                Icon(it, contentDescription = null, tint = pillInk, modifier = Modifier.size(13.dp))
             }
-            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Medium, fontFamily = font, color = color)
+            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Medium, fontFamily = font, color = pillInk)
         }
     }
 }
@@ -1687,7 +1736,7 @@ private fun ApkSourceSection(
                 lineHeight = 15.sp,
             )
             DetailActionPill(
-                if (downloadProgress != null) "DOWNLOADING  ${(downloadProgress * 100).toInt()}%"
+                if (downloadProgress != null) "Downloading  ${(downloadProgress * 100).toInt()}%"
                 else if (missing.size > 1) "Download ${missing.size} bundles" else "Download bundle",
                 MorpheIcons.Download, accents.warning, font, corner,
                 progress = downloadProgress,
@@ -1703,14 +1752,16 @@ private fun ApkSourceSection(
                 )
             }
         }
-    } else if (versionUnsupported && chosenLabel != null) {
+    } else if (versionUnsupported) {
         Text(
             text = buildAnnotatedString {
                 withStyle(SpanStyle(color = accents.warning, fontWeight = FontWeight.Bold)) {
                     append("⚠  ")
                 }
                 withStyle(SpanStyle(color = accents.primary, fontWeight = FontWeight.Bold)) {
-                    append(chosenLabel)
+                    // Name whichever bundle is actually in force. Requiring a pinned
+                    // label here was the second reason the default never warned.
+                    append(chosenLabel ?: loadedLabel)
                 }
                 withStyle(SpanStyle(color = muted)) { append(" does not support ") }
                 withStyle(SpanStyle(color = accents.warning, fontWeight = FontWeight.Bold)) {
@@ -1741,7 +1792,7 @@ private fun ApkSourceSection(
     if (app != null) {
         // Uncapped, unlike the list row. Hiding versions would defeat the picker.
         if (app.supportedVersions.isNotEmpty()) {
-            SectionLabel(text = "Stable", font = font)
+            SectionLabel(text = "Stable", font = font, color = accents.secondary)
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1760,7 +1811,7 @@ private fun ApkSourceSection(
             }
         }
         if (app.experimentalVersions.isNotEmpty()) {
-            SectionLabel(text = "Experimental", font = font)
+            SectionLabel(text = "Experimental", font = font, color = accents.warning)
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1808,11 +1859,11 @@ private fun AddSourceControl(
 ) {
     val accents = LocalMorpheAccents.current
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-        DetailActionPill("+ NEW SOURCE…", MorpheIcons.Add, accents.primary, font, corner) {
+        DetailActionPill("New source…", MorpheIcons.Add, accents.primary, font, corner) {
             onAddSource()
         }
         // A local bundle is just another source.
-        DetailActionPill("LOCAL .MPP…", MorpheIcons.FolderOpen, accents.secondary, font, corner) {
+        DetailActionPill("Local .mpp…", MorpheIcons.FolderOpen, accents.secondary, font, corner) {
             val fd = FileDialog(null as Frame?, "Select a patch bundle", FileDialog.LOAD)
             fd.isVisible = true
             val picked = fd.file?.let { File(fd.directory, it) }
@@ -1856,7 +1907,7 @@ private fun PatchSourceSection(
             .then(
                 if (enabled) Modifier
                     .hoverable(cardHover)
-                    .pointerHoverIcon(PointerIcon.Hand)
+                    .handCursor()
                     .clickable { expanded = !expanded }
                 else Modifier
             )
@@ -1870,10 +1921,10 @@ private fun PatchSourceSection(
             if (enabled) Chevron(expanded, accents.secondary)
             Text(
                 text = sourceName,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = font,
-                color = accents.secondary.copy(alpha = 0.85f * dim),
+                color = accents.secondary.copy(alpha = dim),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -1888,7 +1939,10 @@ private fun PatchSourceSection(
         if (!enabled) return@Column
 
         val using = (choice as? BundleChoice.Version)?.tag ?: resolvedVersion
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Text(
                 text = "Using",
                 fontSize = 10.sp,
@@ -1918,7 +1972,7 @@ private fun PatchSourceSection(
                         )
                         .background(accents.warning.copy(alpha = if (clearHovered) 0.14f else 0.06f))
                         .hoverable(clearHover)
-                        .pointerHoverIcon(PointerIcon.Hand)
+                        .handCursor()
                         .clickable { onChoose(null) }
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 ) {
@@ -1961,7 +2015,7 @@ private fun PatchSourceSection(
                 ).forEach { (label, color) ->
                     val group = availableVersions.filter { it.isDev == (label == "Dev") }
                     if (group.isEmpty()) return@forEach
-                    SectionLabel(text = label, font = font)
+                    SectionLabel(text = label, font = font, color = color)
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -2022,7 +2076,7 @@ private fun ChoiceRow(
             )
             .background(tint.copy(alpha = if (selected) 0.10f else 0f))
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 7.dp),
     ) {
@@ -2123,8 +2177,6 @@ internal fun YourAppsListBody(
     updateInfoByPackage: Map<String, RecallUpdateInfo>,
     appIconColorByPackage: Map<String, String>,
     onShowDetail: (PatchedAppRecord) -> Unit,
-    onRepatch: (String) -> Unit,
-    onUpdate: (String) -> Unit,
     onInstall: (String) -> Unit,
     installingPackage: String?,
     paneMaxHeight: Dp,
@@ -2162,8 +2214,6 @@ internal fun YourAppsListBody(
                             deviceInfo = deviceAppInfo[record.packageName],
                             updateInfo = updateInfoByPackage[record.packageName],
                             onClick = { onShowDetail(record) },
-                            onRepatch = { onRepatch(record.packageName) },
-                            onUpdate = { onUpdate(record.packageName) },
                             onInstall = { onInstall(record.packageName) },
                             installing = installingPackage == record.packageName,
                             appIconColorHex = appIconColorByPackage[record.packageName],

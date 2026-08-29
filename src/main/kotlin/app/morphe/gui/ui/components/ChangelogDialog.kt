@@ -6,6 +6,8 @@
 package app.morphe.gui.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,10 +17,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
@@ -46,11 +51,24 @@ fun ChangelogDialog(
     val currentRelease = chunks.getOrNull(0) ?: rawChangelog
     val olderReleases = chunks.getOrNull(1) ?: ""
 
-    AlertDialog(
+    val changelogScroll = rememberScrollState()
+
+    // Release notes are prose, and Material's AlertDialog caps its content at
+    // 560dp wide whatever it is given. Build on the house surface so the width
+    // is ours. See the settings dialog for the same move.
+    val windowSize = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    val dialogWidth = with(density) { (windowSize.width * 0.72f).toDp() }
+        .coerceIn(560.dp, 900.dp)
+
+    Dialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(corners.medium),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        MorpheDialogSurface(
+            modifier = Modifier.width(dialogWidth),
+            horizontalAlignment = Alignment.Start,
+        ) {
             Text(
                 text = "View changelog",
                 fontSize = 16.sp,
@@ -58,81 +76,89 @@ fun ChangelogDialog(
                 fontFamily = font,
                 color = MaterialTheme.colorScheme.onSurface
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 480.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                FormattedReleaseNotes(markdown = currentRelease)
+            Box(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(changelogScroll)
+                        .padding(end = 12.dp)
+                ) {
+                    FormattedReleaseNotes(markdown = currentRelease)
                 
-                if (olderReleases.isNotBlank() && !showAllReleases) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-                        thickness = 1.dp
-                    )
-                    OutlinedButton(
-                        onClick = { showAllReleases = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        shape = RoundedCornerShape(corners.small),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
-                    ) {
-                        Text(
-                            text = "Show older releases",
-                            fontFamily = font,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurface
+                    if (olderReleases.isNotBlank() && !showAllReleases) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+                            thickness = 1.dp
                         )
+                        OutlinedButton(
+                            onClick = { showAllReleases = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp),
+                            shape = RoundedCornerShape(corners.small),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+                        ) {
+                            Text(
+                                text = "Show older releases",
+                                fontFamily = font,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    } else if (showAllReleases) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FormattedReleaseNotes(markdown = olderReleases)
                     }
-                } else if (showAllReleases) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-                        thickness = 1.dp
+                }
+                VerticalScrollbar(
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                    adapter = rememberScrollbarAdapter(changelogScroll),
+                    style = morpheScrollbarStyle(),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(
+                    modifier = Modifier.handCursor(),
+                    onClick = {
+                        val version = AppConstants.APP_VERSION.removePrefix("v")
+                        openUrlInBrowser("https://github.com/MorpheApp/morphe-desktop/releases/tag/v$version")
+                    },
+                    shape = RoundedCornerShape(corners.small),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "View on GitHub",
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FormattedReleaseNotes(markdown = olderReleases)
+                }
+                TextButton(
+                    modifier = Modifier.handCursor(),
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(corners.small),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Close",
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(corners.small),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = "Close",
-                    fontFamily = font,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    val version = AppConstants.APP_VERSION.removePrefix("v")
-                    openUrlInBrowser("https://github.com/MorpheApp/morphe-desktop/releases/tag/v$version")
-                },
-                shape = RoundedCornerShape(corners.small),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = "View on GitHub",
-                    fontFamily = font,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
         }
-    )
+    }
 }

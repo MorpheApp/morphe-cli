@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +39,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import app.morphe.gui.ui.theme.shiftLightness
+import app.morphe.gui.ui.theme.contrastingForeground
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 
@@ -72,6 +76,56 @@ fun MorpheDialogSurface(
             horizontalAlignment = horizontalAlignment,
             content = content,
         )
+    }
+}
+
+/** Material's own AlertDialog width bounds, so a converted dialog does not move. */
+val MorpheDialogMinWidth = 280.dp
+val MorpheDialogMaxWidth = 560.dp
+
+/**
+ * Slot-for-slot house replacement for Material's `AlertDialog`.
+ *
+ * Same call shape (title/text/confirmButton/dismissButton/icon) so converting a
+ * stock dialog is a rename plus dropping `shape` and `containerColor`, which the
+ * house surface already supplies. Width defaults to Material's own bounds, but
+ * unlike `AlertDialog` those are a default rather than a hard ceiling: pass
+ * [maxWidth] when a dialog genuinely needs the room. That ceiling is exactly why
+ * the settings dialog had to stop being an `AlertDialog`.
+ */
+@Composable
+fun MorpheAlertDialog(
+    onDismiss: () -> Unit,
+    confirmButton: @Composable RowScope.() -> Unit,
+    modifier: Modifier = Modifier,
+    dismissButton: (@Composable RowScope.() -> Unit)? = null,
+    icon: (@Composable () -> Unit)? = null,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    minWidth: Dp = MorpheDialogMinWidth,
+    maxWidth: Dp = MorpheDialogMaxWidth,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        MorpheDialogSurface(
+            modifier = modifier.widthIn(min = minWidth, max = maxWidth),
+            horizontalAlignment = horizontalAlignment,
+        ) {
+            icon?.invoke()
+            title?.invoke()
+            text?.invoke()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                dismissButton?.invoke(this)
+                confirmButton(this)
+            }
+        }
     }
 }
 
@@ -134,16 +188,23 @@ fun RowScope.MorpheDialogButton(
             .weight(1f)
             .clip(RoundedCornerShape(corner))
             .then(
+                // Filled is solid, and the outline is a real outline rather than a
+                // 6 percent wash behind a 35 percent edge. At those alphas the
+                // accent was barely present and the button read as disabled.
                 if (filled) {
-                    Modifier.background(color.copy(alpha = if (isHovered) 1f else 0.85f))
+                    Modifier.background(if (isHovered) color.shiftLightness(0.06f) else color)
                 } else {
                     Modifier
-                        .border(1.dp, color.copy(alpha = if (isHovered) 0.6f else 0.35f), RoundedCornerShape(corner))
-                        .background(color.copy(alpha = if (isHovered) 0.12f else 0.06f))
+                        .border(
+                            1.dp,
+                            color.copy(alpha = if (isHovered) 1f else 0.7f),
+                            RoundedCornerShape(corner),
+                        )
+                        .background(if (isHovered) color.copy(alpha = 0.12f) else Color.Transparent)
                 }
             )
             .hoverable(hover)
-            .pointerHoverIcon(PointerIcon.Hand)
+            .handCursor()
             .clickable(onClick = onClick)
             .padding(vertical = 9.dp),
         contentAlignment = Alignment.Center,
@@ -153,7 +214,7 @@ fun RowScope.MorpheDialogButton(
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = if (filled) MaterialTheme.colorScheme.surface else color,
+            color = if (filled) color.contrastingForeground() else color,
         )
     }
 }

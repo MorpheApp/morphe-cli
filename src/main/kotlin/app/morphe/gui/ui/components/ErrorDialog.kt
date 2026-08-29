@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
 
@@ -40,6 +41,7 @@ fun ErrorDialog(
     retryText: String = "Retry"
 ) {
     val font = LocalMorpheFont.current
+    val corners = LocalMorpheCorners.current
     val icon = when (errorType) {
         ErrorType.NETWORK -> MorpheIcons.WifiOff
         ErrorType.FILE -> MorpheIcons.Error
@@ -47,9 +49,9 @@ fun ErrorDialog(
         ErrorType.GENERIC -> MorpheIcons.Warning
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
+    MorpheAlertDialog(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        onDismiss = onDismiss,
         icon = {
             Icon(
                 imageVector = icon,
@@ -82,7 +84,7 @@ fun ErrorDialog(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MorpheColors.Blue
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(retryText, fontFamily = font)
                 }
@@ -92,7 +94,7 @@ fun ErrorDialog(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MorpheColors.Blue
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(corners.small)
                 ) {
                     Text(dismissText, fontFamily = font)
                 }

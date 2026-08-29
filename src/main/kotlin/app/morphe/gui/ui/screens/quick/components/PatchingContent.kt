@@ -130,7 +130,7 @@ internal fun PatchingContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(corners.small))
                         .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {

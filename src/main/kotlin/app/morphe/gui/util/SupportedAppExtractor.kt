@@ -26,20 +26,31 @@ object  SupportedAppExtractor {
         val packageExperimentalMap = mutableMapOf<String, MutableSet<String>>()
         val packageDisplayNames = mutableMapOf<String, String>()
         val packageIconColors = mutableMapOf<String, String>()
+        // version -> every build code any patch allows for it, unioned across the set.
+        val packageBuildCodes = mutableMapOf<String, MutableMap<String, MutableSet<Int>>>()
 
-        for ((_, _, compatiblePackages) in patches) {
-            for ((packageName, displayName, versions, experimentalVersions, appIconColor) in compatiblePackages) {
+        for (patch in patches) {
+            // Named rather than destructured. Positional destructuring silently
+            // binds the wrong fields the moment the data class gains one.
+            for (pkg in patch.compatiblePackages) {
+                val packageName = pkg.name
                 if (packageName.isNotBlank()) {
                     packageVersionsMap.getOrPut(packageName) { mutableSetOf() }
-                        .addAll(versions)
+                        .addAll(pkg.versions)
                     packageExperimentalMap.getOrPut(packageName) { mutableSetOf() }
-                        .addAll(experimentalVersions)
-                    displayName
+                        .addAll(pkg.experimentalVersions)
+                    pkg.displayName
                         ?.takeIf { it.isNotBlank() }
                         ?.let { packageDisplayNames.putIfAbsent(packageName, it) }
-                    appIconColor
+                    pkg.appIconColor
                         ?.takeIf { it.isNotBlank() }
                         ?.let { packageIconColors.putIfAbsent(packageName, it) }
+                    if (pkg.versionBuildCodes.isNotEmpty()) {
+                        val perVersion = packageBuildCodes.getOrPut(packageName) { mutableMapOf() }
+                        pkg.versionBuildCodes.forEach { (version, codes) ->
+                            perVersion.getOrPut(version) { mutableSetOf() }.addAll(codes)
+                        }
+                    }
                 }
             }
         }
@@ -63,7 +74,10 @@ object  SupportedAppExtractor {
                 recommendedVersion = recommendedVersion,
                 apkDownloadUrl = SupportedApp.getDownloadUrl(packageName, recommendedVersion ?: "any"),
                 experimentalDownloadUrl = SupportedApp.getDownloadUrl(packageName, latestExperimental),
-                appIconColor = packageIconColors[packageName]
+                appIconColor = packageIconColors[packageName],
+                versionBuildCodes = packageBuildCodes[packageName]
+                    ?.mapValues { (_, codes) -> codes.toSet() }
+                    .orEmpty()
             )
         }.sortedBy { it.displayName }
     }

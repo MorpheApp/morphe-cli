@@ -1195,6 +1195,7 @@ class HomeViewModel(
 
             val packageName = manifest.packageName
             val versionName = manifest.versionName ?: "Unknown"
+            val versionCode = manifest.versionCode
             val minSdk = manifest.minSdkVersion
 
             // Check if package is supported. First check dynamic, then fall back to hardcoded.
@@ -1216,7 +1217,7 @@ class HomeViewModel(
                 ?: SupportedApp.resolveDisplayName(packageName, manifest.applicationLabel)
 
             val versionResolution = if (dynamicSupportedApp != null) {
-                resolveVersionStatus(versionName, dynamicSupportedApp)
+                resolveVersionStatus(versionName, dynamicSupportedApp, versionCode)
             } else {
                 VersionResolution(VersionStatus.UNKNOWN, null)
             }
@@ -1230,7 +1231,11 @@ class HomeViewModel(
             // TODO: Re-enable when checksums are provided via .mpp files
             val checksumStatus = ChecksumStatus.NotConfigured
 
-            Logger.info("Parsed APK: $packageName v$versionName (recommended=$suggestedVersion, minSdk=$minSdk, archs=$architectures)")
+            Logger.info(
+                "Parsed APK: $packageName v$versionName" +
+                    (versionCode?.let { " build $it" } ?: "") +
+                    " (recommended=$suggestedVersion, minSdk=$minSdk, archs=$architectures)"
+            )
 
             ApkInfo(
                 fileName = file.name,
@@ -1240,6 +1245,7 @@ class HomeViewModel(
                 appName = appName,
                 packageName = packageName,
                 versionName = versionName,
+                versionCode = versionCode,
                 architectures = architectures,
                 minSdk = minSdk,
                 suggestedVersion = suggestedVersion,
@@ -1596,6 +1602,8 @@ data class ApkInfo(
     val appName: String,
     val packageName: String,
     val versionName: String,
+    /** The APK's build code, or null when the manifest omits it or parsing fell back. */
+    val versionCode: Int? = null,
     val architectures: List<String> = emptyList(),
     val minSdk: Int? = null,
     val suggestedVersion: String? = null,

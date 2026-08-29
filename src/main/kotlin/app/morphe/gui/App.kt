@@ -16,6 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.morphe.gui.ui.components.CardFillHost
+import app.morphe.gui.data.model.MorpheFill
 import app.morphe.gui.data.repository.ActiveMode
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -127,6 +129,7 @@ private fun appContent(
     var autoStartAdb by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
+    var cardFills by remember { mutableStateOf(emptyMap<String, MorpheFill>()) }
 
     // Initialize PatchSourceManager and load config on startup
     LaunchedEffect(Unit) {
@@ -140,6 +143,7 @@ private fun appContent(
             BackgroundType.CIRCLES
         }
         enableParallaxState.value = config.enableParallax
+        cardFills = config.cardFills
 
         autoStartAdb = config.autoStartAdb
         // Publish the initial active mode BEFORE the VMs subscribe so their
@@ -169,8 +173,8 @@ private fun appContent(
     val onModeChange: (Boolean) -> Unit = { simplified ->
         isSimplifiedMode = simplified
         // Update the manager immediately so the now-visible mode's VM
-        // starts reacting to source changes and the now-hidden one stops —
-        // prevents duplicate parallel loads and the cancellation cascade
+        // starts reacting to source changes and the now-hidden one stops.
+        // That prevents duplicate parallel loads and the cancellation cascade
         // that comes with them.
         patchSourceManager.setActiveMode(
             if (simplified) ActiveMode.QUICK else ActiveMode.EXPERT
@@ -183,7 +187,7 @@ private fun appContent(
 
     // Callback for the auto-start ADB toggle. Persists the preference AND
     // applies the change immediately: ON spins up DeviceMonitor (which
-    // explicitly start-server's adb and records ownership); OFF cancels
+    // explicitly start-server's adb and records ownership). OFF cancels
     // polling and kill-server's the daemon if Morphe owns it.
     val onAutoStartAdbChange: (Boolean) -> Unit = { enabled ->
         autoStartAdb = enabled
@@ -246,6 +250,16 @@ private fun appContent(
             LocalParallaxState provides parallaxState,
             LocalCustomAccentColor provides customAccentColorState
         ) {
+          CardFillHost(
+            fills = cardFills,
+            onChange = { pkg, fill ->
+                // Update in place so every card repaints, then persist.
+                cardFills = cardFills.toMutableMap().apply {
+                    if (fill == null) remove(pkg) else put(pkg, fill)
+                }
+                scope.launch { configRepository.setCardFill(pkg, fill) }
+            },
+          ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic
             // light contrast) to match the active theme's surface color.
             val titleBarColor = MaterialTheme.colorScheme.surface
@@ -309,6 +323,7 @@ private fun appContent(
                     }
                 }
             }
+          }
         }
     }
 }
