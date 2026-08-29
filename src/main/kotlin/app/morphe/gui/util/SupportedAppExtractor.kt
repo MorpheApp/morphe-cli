@@ -48,7 +48,15 @@ object  SupportedAppExtractor {
                     if (pkg.versionBuildCodes.isNotEmpty()) {
                         val perVersion = packageBuildCodes.getOrPut(packageName) { mutableMapOf() }
                         pkg.versionBuildCodes.forEach { (version, codes) ->
-                            perVersion.getOrPut(version) { mutableSetOf() }.addAll(codes)
+                            val existing = perVersion[version]
+                            when {
+                                // Empty means "any build". Once one patch says that,
+                                // no other patch's codes can narrow the version.
+                                codes.isEmpty() -> perVersion[version] = mutableSetOf()
+                                existing == null -> perVersion[version] = codes.toMutableSet()
+                                existing.isEmpty() -> Unit
+                                else -> existing.addAll(codes)
+                            }
                         }
                     }
                 }

@@ -239,14 +239,20 @@ class PatchService {
                     // The patcher keys build codes by ABI. Flattened to a plain
                     // set: an APK carries one versionCode, and matching it against
                     // every ABI the target names is what decides patchability.
+                    //
+                    // A target naming no codes is kept as an EMPTY set rather than
+                    // dropped, because it means "any build of this version". One such
+                    // target makes the whole version unconstrained, so dropping it
+                    // would let another target's codes wrongly narrow the version.
                     versionBuildCodes = compatibility.targets
                         .mapNotNull { target ->
                             val version = target.version ?: return@mapNotNull null
-                            val codes = target.versionCodes?.values?.toSet()?.ifEmpty { null }
-                                ?: return@mapNotNull null
-                            version to codes
+                            version to target.versionCodes?.values?.toSet().orEmpty()
                         }
-                        .toMap(),
+                        .groupBy({ it.first }, { it.second })
+                        .mapValues { (_, sets) ->
+                            if (sets.any { it.isEmpty() }) emptySet() else sets.flatten().toSet()
+                        },
                 )
             }
             ?: emptyList()

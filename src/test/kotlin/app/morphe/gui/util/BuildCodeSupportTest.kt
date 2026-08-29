@@ -85,6 +85,21 @@ class BuildCodeSupportTest {
     }
 
     @Test
+    fun oneUnconstrainedPatchOpensTheWholeVersion() {
+        // Mirrors morphe-manager's patchableAt: it passes when ANY target for the
+        // version names no build codes. An empty set carries that, so a patch that
+        // constrains the version cannot narrow it on another patch's behalf.
+        val subject = app(buildCodes = mapOf("380.0.0.29.109" to emptySet()))
+        check(subject.buildCodeSupported("380.0.0.29.109", 999)) {
+            "an unconstrained target should accept any build"
+        }
+        val resolved = resolveVersionStatus("380.0.0.29.109", subject, versionCode = 999)
+        check(resolved.status == VersionStatus.LATEST_STABLE) {
+            "unconstrained version reported as a build mismatch: ${resolved.status}"
+        }
+    }
+
+    @Test
     fun unknownVersionIsUnaffectedByBuildCodes() {
         // A version nobody targets is placed by version comparison as before.
         val subject = app(buildCodes = mapOf("380.0.0.29.109" to setOf(700)))

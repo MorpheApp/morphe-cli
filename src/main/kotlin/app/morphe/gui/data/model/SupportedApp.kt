@@ -40,6 +40,9 @@ data class SupportedApp(
         val codes = versionBuildCodes[version.removePrefix("v")]
             ?: versionBuildCodes[version]
             ?: return true
+        // Empty means at least one patch targets this version with no build
+        // constraint, so any build of it is patchable.
+        if (codes.isEmpty()) return true
         return versionCode == null || versionCode in codes
     }
 
