@@ -1,3 +1,10 @@
+# [1.15.0-dev.5](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.4...v1.15.0-dev.5) (2026-09-01)
+
+
+### Bug Fixes
+
+* Prevent NPE crash in `IoUsageSampler` on Windows ([#284](https://github.com/MorpheApp/morphe-desktop/issues/284)) ([539d96f](https://github.com/MorpheApp/morphe-desktop/commit/539d96f07722ec9b7fde28659b3c2c436ba146b2))
+
 # [1.15.0-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.3...v1.15.0-dev.4) (2026-08-29)
 
 
