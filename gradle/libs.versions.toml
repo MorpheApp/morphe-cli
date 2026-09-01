@@ -43,7 +43,7 @@ mockk = "1.14.11"
 slf4j = "2.0.18"
 
 # Libraries
-about-libraries = "15.0.4"
+about-libraries = "15.2.0"
 oshi = "6.8.0"
 
 [libraries]
