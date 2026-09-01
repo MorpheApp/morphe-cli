@@ -401,14 +401,14 @@ data class IoUsage(val readKbPerSec: Int, val writeKbPerSec: Int, val totalKbPer
  */
 class IoUsageSampler {
     private val os = SystemInfo().operatingSystem
-    private val currentProcess = os.getProcess(os.processId)
+    private val currentProcess = os.currentProcess
 
     private var previousRead = -1L
     private var previousWrite = -1L
     private var previousUptimeMs = 0L
 
     fun sample(): IoUsage? {
-        currentProcess.updateAttributes()
+        if (currentProcess == null || !currentProcess.updateAttributes()) return null
         val read = currentProcess.bytesRead
         val write = currentProcess.bytesWritten
 
