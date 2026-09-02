@@ -1,3 +1,10 @@
+# [1.15.0-dev.7](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.6...v1.15.0-dev.7) (2026-09-02)
+
+
+### Features
+
+* Port Matrix animated background from Manager ([#285](https://github.com/MorpheApp/morphe-desktop/issues/285)) ([1aa42c2](https://github.com/MorpheApp/morphe-desktop/commit/1aa42c26f48fe49b6529057d60d906898a302885))
+
 # [1.15.0-dev.6](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.5...v1.15.0-dev.6) (2026-09-01)
 
 
