@@ -13,7 +13,6 @@ import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.morphe.gui.ui.components.CardFillHost
@@ -38,7 +37,6 @@ import app.morphe.gui.ui.theme.desktopScreenEnter
 import app.morphe.gui.ui.theme.desktopScreenExit
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.Logger
-import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.applyTitleBarTint
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.ScreenTransition
@@ -79,6 +77,10 @@ val LocalEnableParallax = compositionLocalOf<MutableState<Boolean>> {
 
 val LocalCustomAccentColor = compositionLocalOf<MutableState<Int?>> {
     error("No LocalCustomAccentColor provided") 
+}
+
+val LocalSharpCorners = compositionLocalOf<MutableState<Boolean>> {
+    error("No LocalSharpCorners provided")
 }
 
 /**
@@ -130,6 +132,7 @@ private fun appContent(
     var isLoading by remember { mutableStateOf(true) }
     val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
     var cardFills by remember { mutableStateOf(emptyMap<String, MorpheFill>()) }
+    val sharpCornersState = remember { mutableStateOf(false) }
 
     // Initialize PatchSourceManager and load config on startup
     LaunchedEffect(Unit) {
@@ -144,6 +147,7 @@ private fun appContent(
         }
         enableParallaxState.value = config.enableParallax
         cardFills = config.cardFills
+        sharpCornersState.value = config.useSharpCorners
 
         autoStartAdb = config.autoStartAdb
         // Publish the initial active mode BEFORE the VMs subscribe so their
@@ -238,7 +242,11 @@ private fun appContent(
     val settingsDialogVisible = remember { mutableStateOf(false) }
     val isPatchingState = remember { mutableStateOf(false) }
 
-    MorpheTheme(themePreference = themePreference, customAccentColorArgb = customAccentColorState.value) {
+    MorpheTheme(
+        themePreference = themePreference,
+        customAccentColorArgb = customAccentColorState.value,
+        useSharpCorners = sharpCornersState.value
+    ) {
         CompositionLocalProvider(
             LocalThemeState provides themeState,
             LocalModeState provides modeState,
@@ -248,12 +256,12 @@ private fun appContent(
             LocalBackgroundType provides backgroundTypeState,
             LocalEnableParallax provides enableParallaxState,
             LocalParallaxState provides parallaxState,
-            LocalCustomAccentColor provides customAccentColorState
+            LocalCustomAccentColor provides customAccentColorState,
+            LocalSharpCorners provides sharpCornersState
         ) {
           CardFillHost(
             fills = cardFills,
             onChange = { pkg, fill ->
-                // Update in place so every card repaints, then persist.
                 cardFills = cardFills.toMutableMap().apply {
                     if (fill == null) remove(pkg) else put(pkg, fill)
                 }

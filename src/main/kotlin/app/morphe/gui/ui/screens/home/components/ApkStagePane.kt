@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -190,8 +189,6 @@ internal fun ApkSelectedSection(
                 contentColor = warningColor.contrastingForeground()
             )
         }
-        // Solid. A translucent button on a translucent card leaves nothing for
-        // the eye to land on, and this is the screen's primary action.
         else -> ButtonDefaults.outlinedButtonColors(
             containerColor = accents.primary,
             contentColor = accents.primary.contrastingForeground()

@@ -109,9 +109,7 @@ fun SourceManagementSheet(
     sourceErrors: Map<String, String> = emptyMap(),
     /** Selection semantics. Defaults to multi-toggle (Expert mode). */
     mode: SourceSheetMode = SourceSheetMode.MULTI_TOGGLE,
-    /** sourceId of the currently picked source, used only when [mode] is SINGLE_SELECT. */
     activeSourceId: String? = null,
-    /** Called when the user picks a source, used only when [mode] is SINGLE_SELECT. */
     onSelectSingle: (sourceId: String) -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
@@ -172,7 +170,6 @@ fun SourceManagementSheet(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                 )
-                // Reload sources, which re-resolves a folder source to its newest .mpp.
                 IconButton(onClick = onRefresh, enabled = enabled, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = MorpheIcons.Refresh,
@@ -589,7 +586,6 @@ private fun SourceRow(
                 }
             }
 
-            // Precise fallback to dragging, nudging one slot at a time.
             if (canReorder) {
                 ReorderArrows(
                     canMoveUp = canMoveUp,
@@ -653,7 +649,6 @@ private fun SourceRow(
         }
     }
 }
-
 
 /**
  * Compact vertical up/down nudge control, a keyboard-free precise fallback to
@@ -735,40 +730,6 @@ private fun ChannelBadge(
             fontFamily = font,
             fontWeight = FontWeight.Medium,
             color = color,
-        )
-    }
-}
-
-/**
- * Tiny status LED on the left of each source row. Solid glow when the source is
- * enabled, dim ring when off. Brightens on hover for the click-to-open affordance.
- */
-@Composable
-private fun LedIndicator(isOn: Boolean, isHot: Boolean, accentColor: Color) {
-    val color by animateColorAsState(
-        targetValue = when {
-            isOn && isHot -> accentColor
-            isOn -> accentColor.copy(alpha = 0.85f)
-            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
-        },
-        animationSpec = tween(200)
-    )
-    val haloAlpha by animateColorAsState(
-        targetValue = if (isOn) accentColor.copy(alpha = if (isHot) 0.35f else 0.18f) else Color.Transparent,
-        animationSpec = tween(200)
-    )
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(14.dp)) {
-        // Soft halo ring
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .background(haloAlpha, shape = CircleShape)
-        )
-        // Core dot
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .background(color, shape = CircleShape)
         )
     }
 }
@@ -915,18 +876,6 @@ private fun ExcludedPatternsEditor(
             }
         }
     }
-}
-
-@Composable
-private fun StatusCirclePlaceholder(
-    modifier: Modifier = Modifier,
-    size: Dp = 24.dp
-) {
-    Spacer(
-        modifier = modifier
-            .size(size)
-            .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-    )
 }
 
 @Composable

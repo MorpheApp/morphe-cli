@@ -31,10 +31,6 @@ class ConfigRepository {
         prettyPrint = true
         ignoreUnknownKeys = true
         encodeDefaults = true
-        // Needed for the sealed [MorpheFill] in [AppConfig.cardFills]. The default
-        // discriminator is "type", which collides with Gradient's own `type`
-        // property. A "#"-prefixed key cannot be a Kotlin identifier, so it can
-        // never collide. Matches IconProjectStore, which hit this first.
         classDiscriminator = "#kind"
     }
 
@@ -94,12 +90,11 @@ class ConfigRepository {
         saveConfig(current.copy(themePreference = theme.name))
     }
 
-    /**
-     * Set the card fill for one app, or clear it by passing null.
-     *
-     * Clearing removes the key rather than storing a null, so an uncustomised app
-     * stays absent from the map and keeps falling back to its bundle colour.
-     */
+    suspend fun setUseSharpCorners(enabled: Boolean) {
+        val current = loadConfig()
+        saveConfig(current.copy(useSharpCorners = enabled))
+    }
+
     suspend fun setCardFill(packageName: String, fill: MorpheFill?) {
         val current = loadConfig()
         val updated = current.cardFills.toMutableMap().apply {
@@ -107,7 +102,6 @@ class ConfigRepository {
         }
         saveConfig(current.copy(cardFills = updated))
     }
-
 
     /**
      * Update background type.
@@ -176,8 +170,6 @@ class ConfigRepository {
         val current = loadConfig()
         if (current.sourceVersionPrefs.isNotEmpty()) return current.sourceVersionPrefs
 
-        // Legacy tags, either the per-source map or the single field mapped onto
-        // the default source.
         val legacyTags: Map<String, String> = when {
             current.lastPatchesVersionBySource.isNotEmpty() -> current.lastPatchesVersionBySource
             current.lastPatchesVersion != null -> mapOf(DEFAULT_PATCH_SOURCE.id to current.lastPatchesVersion)
@@ -193,26 +185,7 @@ class ConfigRepository {
         return migrated
     }
 
-    /**
-     * One-time seeding of [PatchSource.usePreRelease] from each source's follow
-     * track. Call once at startup, before anything resolves a source.
-     *
-     * `usePreRelease` decides dev-versus-stable for every source since the Material 3
-     * overhaul, but it was added after [AppConfig.sourceVersionPrefs] and decodes as
-     * `false` in every config written before it existed. Without this, an existing
-     * dev follower would quietly resolve to stable on first launch while the UI
-     * still said dev.
-     *
-     * A source pinned to a dev tag counts as a dev follower. The flag is inert while
-     * a pin is in force, and it MUST be right for the moment the user unpins.
-     *
-     * Guarded by [AppConfig.sourceChannelFlagsSeeded] rather than by "every flag is
-     * false", because that state is also what a user who deliberately turned dev off
-     * everywhere looks like. Re-running would fight them on every launch.
-     */
     suspend fun migrateSourceChannelFlags() {
-        // Reads through the legacy migration, so a config coming straight from a
-        // legacy dev tag is seeded as a dev follower too.
         val prefs = getSourceVersionPrefs()
         val config = loadConfig()
         if (config.sourceChannelFlagsSeeded) return
@@ -465,7 +438,6 @@ class ConfigRepository {
         saveConfig(current.copy(homeAppListFilter = value))
     }
 
-
     /**
      * Toggle enablement of a patch source. Safety net: if disabling would leave zero
      * enabled sources, the default source is force-enabled (mirrors morphe-manager
@@ -521,14 +493,6 @@ class ConfigRepository {
     }
 }
 
-/**
- * Whether a version preference means "follow pre-releases".
- *
- * A pin to a dev tag counts. The pin decides which release loads while it is in
- * force, so the channel only matters for the moment the user unpins, and it MUST
- * put them back on the track they were actually on. A missing preference is an
- * untouched source, which follows stable.
- */
 internal fun SourceVersionPref?.followsPreRelease(): Boolean = when (this?.mode) {
     FollowMode.FOLLOW_DEV -> true
     FollowMode.PINNED -> pinnedTag.isDevTag()

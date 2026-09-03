@@ -1,6 +1,5 @@
 package app.morphe.gui.icon
 
-import app.morphe.gui.data.model.GradientType
 import app.morphe.gui.data.model.MorpheFill
 import kotlin.test.Test
 

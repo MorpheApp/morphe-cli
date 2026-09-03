@@ -81,24 +81,9 @@ data class AppConfig(
      * [ConfigRepository.getSourceVersionPrefs] / [setSourceVersionPref].
      */
     val sourceVersionPrefs: Map<String, SourceVersionPref> = emptyMap(),
-    /**
-     * Whether [PatchSource.usePreRelease] has been seeded from [sourceVersionPrefs].
-     *
-     * That flag is newer than [sourceVersionPrefs], so a config written before it
-     * existed decodes it as `false` and a dev follower would silently drop to
-     * stable. The seeding therefore MUST run exactly once. After it, the flag is
-     * the authority and the user MAY turn it back off.
-     * See [ConfigRepository.getSourceVersionPrefs].
-     */
     val sourceChannelFlagsSeeded: Boolean = false,
-    /**
-     * Per-app card fill, keyed by package name, for apps the user has recoloured.
-     *
-     * Absent means "not customised", which falls back to the bundle's
-     * `appIconColor` and then to the built-in default. Only user overrides live
-     * here, so a bundle changing its own colour still shows through.
-     */
     val cardFills: Map<String, MorpheFill> = emptyMap(),
+    val useSharpCorners: Boolean = false,
     val preferredPatchChannel: String = PatchChannel.STABLE.name,
     val defaultOutputDirectory: String? = null,
     val autoCleanupTempFiles: Boolean = true,  // Default ON
@@ -119,9 +104,6 @@ data class AppConfig(
     // Latest CLI version the user dismissed the update banner for. The banner stays
     // hidden while the available update equals this. Reappears when a newer version drops.
     val dismissedUpdateVersion: String? = null,
-    // Which release channel the user wants update checks to follow. Null = not yet
-    // set. Resolved at first read to STABLE/DEV from the running build's version, so
-    // an existing dev user upgrading isn't silently flipped to stable.
     val updateChannelPreference: String? = null,
     // Whether the user explicitly picked the update channel via Settings. When false,
     // the channel is re-derived from the running build's version on each read so a
@@ -170,22 +152,11 @@ data class AppConfig(
         }
     }
     fun getThemePreference(): ThemePreference {
-        // PURE_BLACK was the name #259 gave the manager palette on true black.
-        // It is MANAGER_AMOLED now, so map the stored name rather than let it
-        // fail the parse and silently reset the user to SYSTEM.
-        if (themePreference == "PURE_BLACK") return ThemePreference.MANAGER_AMOLED
+        if (themePreference == "PURE_BLACK") return ThemePreference.AMOLED
         return try {
             ThemePreference.valueOf(themePreference)
         } catch (e: Exception) {
             ThemePreference.SYSTEM
-        }
-    }
-
-    fun getPatchChannel(): PatchChannel {
-        return try {
-            PatchChannel.valueOf(preferredPatchChannel)
-        } catch (e: Exception) {
-            PatchChannel.STABLE
         }
     }
 
@@ -237,9 +208,7 @@ enum class PatchChannel {
  * on the running build's version, then persisted as a concrete choice.
  */
 enum class UpdateChannelPreference {
-    /** Probe the `main` branch. Only stable releases trigger the banner. */
     STABLE,
-    /** Probe the `dev` branch. Both newer dev and newer stable releases trigger the banner. */
     DEV,
     /** No update check, no banner. Re-enable from Settings. */
     OFF,

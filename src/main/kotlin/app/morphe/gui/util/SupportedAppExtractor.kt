@@ -8,7 +8,6 @@ package app.morphe.gui.util
 import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.SupportedApp
 
-
 /**
  * Extracts supported apps from parsed patch data.
  * This allows the app to dynamically determine which apps are supported
@@ -26,12 +25,9 @@ object  SupportedAppExtractor {
         val packageExperimentalMap = mutableMapOf<String, MutableSet<String>>()
         val packageDisplayNames = mutableMapOf<String, String>()
         val packageIconColors = mutableMapOf<String, String>()
-        // version -> every build code any patch allows for it, unioned across the set.
         val packageBuildCodes = mutableMapOf<String, MutableMap<String, MutableSet<Int>>>()
 
         for (patch in patches) {
-            // Named rather than destructured. Positional destructuring silently
-            // binds the wrong fields the moment the data class gains one.
             for (pkg in patch.compatiblePackages) {
                 val packageName = pkg.name
                 if (packageName.isNotBlank()) {
@@ -50,8 +46,6 @@ object  SupportedAppExtractor {
                         pkg.versionBuildCodes.forEach { (version, codes) ->
                             val existing = perVersion[version]
                             when {
-                                // Empty means "any build". Once one patch says that,
-                                // no other patch's codes can narrow the version.
                                 codes.isEmpty() -> perVersion[version] = mutableSetOf()
                                 existing == null -> perVersion[version] = codes.toMutableSet()
                                 existing.isEmpty() -> Unit
@@ -95,15 +89,6 @@ object  SupportedAppExtractor {
      */
     fun getSupportedApp(patches: List<Patch>, packageName: String): SupportedApp? {
         return extractSupportedApps(patches).find { it.packageName == packageName }
-    }
-
-    /**
-     * Check if a package is supported by the patches.
-     */
-    fun isPackageSupported(patches: List<Patch>, packageName: String): Boolean {
-        return patches.any { patch ->
-            patch.compatiblePackages.any { it.name == packageName }
-        }
     }
 
     /**

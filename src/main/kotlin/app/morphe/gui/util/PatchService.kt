@@ -236,14 +236,6 @@ class PatchService {
                     experimentalVersions = experimental.mapNotNull { it.version },
                     appIconColor = compatibility.appIconColor
                         ?.let { "#%06X".format(it and 0xFFFFFF) },
-                    // The patcher keys build codes by ABI. Flattened to a plain
-                    // set: an APK carries one versionCode, and matching it against
-                    // every ABI the target names is what decides patchability.
-                    //
-                    // A target naming no codes is kept as an EMPTY set rather than
-                    // dropped, because it means "any build of this version". One such
-                    // target makes the whole version unconstrained, so dropping it
-                    // would let another target's codes wrongly narrow the version.
                     versionBuildCodes = compatibility.targets
                         .mapNotNull { target ->
                             val version = target.version ?: return@mapNotNull null

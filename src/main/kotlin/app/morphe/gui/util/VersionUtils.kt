@@ -34,15 +34,6 @@ enum class VersionStatus {
     /** Between supported versions but not in either list. */
     UNSUPPORTED_BETWEEN,
 
-    /**
-     * The version name is supported, but this APK's build code is not one the
-     * patches target.
-     *
-     * Apps that ship many builds under a single version name (Instagram being the
-     * usual case) can hand you an APK whose version reads as supported while the
-     * build it actually is was never targeted. Matching on the name alone reports
-     * that APK as fine and it fails at patch time instead.
-     */
     BUILD_UNSUPPORTED,
 
     /** No patch metadata, can't determine. */
@@ -95,7 +86,6 @@ fun compareVersions(v1: String?, v2: String?): Int {
         return if (match != null) {
             VersionParts(match.groupValues[1], match.groupValues[2])
         } else {
-            // A non-numeric suffix counts as pre-release even without a keyword.
             val numMatch = """^([\d.]+)(.*)$""".toRegex().find(version)
             if (numMatch != null && numMatch.groupValues[2].isNotEmpty()) {
                 VersionParts(numMatch.groupValues[1], numMatch.groupValues[2])
@@ -124,7 +114,6 @@ fun compareVersions(v1: String?, v2: String?): Int {
         parts1.preRelease == null && parts2.preRelease != null -> 1  // stable beats pre-release
         parts1.preRelease != null && parts2.preRelease == null -> -1
         else -> {
-            // Both pre-release. Trailing ordinal compares numerically.
             val num1 = version1.substringAfterLast('.').toLongOrNull()
             val num2 = version2.substringAfterLast('.').toLongOrNull()
             if (num1 != null && num2 != null) num1.compareTo(num2) else version1.compareTo(version2)
@@ -132,13 +121,6 @@ fun compareVersions(v1: String?, v2: String?): Int {
     }
 }
 
-/**
- * True when [current] is strictly newer than [baseline]. Blank or "unknown" on
- * either side MUST NOT report an update.
- *
- * Argument order is the reverse of morphe-manager's same-named helper, which
- * reads (old, new).
- */
 fun isNewerVersion(current: String?, baseline: String?): Boolean {
     if (current.isNullOrBlank() || baseline.isNullOrBlank()) return false
     if (current.equals("unknown", true) || baseline.equals("unknown", true)) return false
@@ -152,7 +134,6 @@ fun isNewerVersion(current: String?, baseline: String?): Boolean {
 fun resolveVersionStatus(
     currentVersion: String,
     app: SupportedApp,
-    /** The APK's build code, when it could be read. Null skips the build check. */
     versionCode: Int? = null,
 ): VersionResolution {
     val stableList = app.supportedVersions
@@ -166,8 +147,6 @@ fun resolveVersionStatus(
         return VersionResolution(VersionStatus.UNKNOWN, null)
     }
 
-    // A known version whose build is not targeted is unsupported, whichever list
-    // it appears in, so this is checked before the per-list buckets below.
     val versionIsKnown = currentVersion in stableList || currentVersion in experimentalList
     if (versionIsKnown && !app.buildCodeSupported(currentVersion, versionCode)) {
         return VersionResolution(VersionStatus.BUILD_UNSUPPORTED, currentVersion)
@@ -187,7 +166,6 @@ fun resolveVersionStatus(
         return VersionResolution(VersionStatus.OLDER_EXPERIMENTAL, latestExperimental)
     }
 
-    // In neither list. Place it relative to the known range.
     val newestKnown = when {
         latestStable == null -> latestExperimental
         latestExperimental == null -> latestStable
@@ -208,14 +186,6 @@ fun resolveVersionStatus(
     )
 }
 
-// =============================================================================
-// RELEASE CHANNEL
-// =============================================================================
-
-/**
- * True when a release tag names a pre-release. Mirrors [Release.isDevRelease]'s
- * tag heuristic, for callers holding a bare tag rather than a [Release].
- */
 fun String?.isDevTag(): Boolean {
     val tag = this ?: return false
     return tag.contains("dev", ignoreCase = true) ||
@@ -223,17 +193,6 @@ fun String?.isDevTag(): Boolean {
         tag.contains("beta", ignoreCase = true)
 }
 
-/**
- * The release a pre-release follower belongs on, given the latest of each channel.
- *
- * NOT `dev ?: stable`. A repo can tag a stable without bumping its dev manifest,
- * which strands a dev follower on an older pre-release indefinitely. Compare the
- * two and take whichever is genuinely newer. A tie goes to [dev], the channel the
- * user asked to track.
- *
- * Mirrors morphe-manager's `JsonPatchBundle.getLatestInfo`. Both projects MUST
- * resolve a pre-release follower to the same release.
- */
 fun newerRelease(dev: Release?, stable: Release?): Release? = when {
     dev == null -> stable
     stable == null -> dev

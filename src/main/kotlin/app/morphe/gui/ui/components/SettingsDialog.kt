@@ -6,9 +6,8 @@
 package app.morphe.gui.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -24,7 +23,6 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.VerticalScrollbar
@@ -61,13 +59,14 @@ import app.morphe.engine.PatchEngine.Config.Companion.DEFAULT_KEYSTORE_PASSWORD
 import app.morphe.engine.util.KeystoreImporter
 import app.morphe.engine.util.PortablePaths
 import app.morphe.gui.LocalBackgroundType
+import app.morphe.gui.LocalSharpCorners
 import app.morphe.gui.LocalEnableParallax
 import app.morphe.gui.data.constants.AppConstants
-import app.morphe.gui.data.model.PatchSource
-import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.model.UpdateChannelPreference
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.ui.components.ChangelogDialog
+import app.morphe.gui.ui.components.color.CustomSwatches
+import androidx.compose.foundation.shape.CircleShape
 import app.morphe.gui.ui.components.MorpheColorPickerCard
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.THEME_PRESET_COLORS
@@ -96,7 +95,6 @@ import java.security.cert.X509Certificate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
@@ -142,8 +140,6 @@ fun SettingsDialog(
     val accents = LocalMorpheAccents.current
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     var selectedCategory by remember { mutableStateOf("Appearance") }
-    // Keyed on the category so switching tabs starts at the top rather than
-    // stranding the user mid-way down a section they just left.
     val contentScroll = remember(selectedCategory) { ScrollState(0) }
     var showCustomColorDialog by remember { mutableStateOf(false) }
     var showChangelogDialog by remember { mutableStateOf(false) }
@@ -161,10 +157,6 @@ fun SettingsDialog(
         )
     }
 
-    // Material's AlertDialog caps its content at 560dp wide whatever the window
-    // does, which is why this two-pane body was always cramped. Build on the house
-    // surface instead and size it here. Width is the axis that needed the room, so
-    // height stays close to what it was and only creeps up on a tall display.
     val windowSize = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current
     val dialogWidth = with(density) { (windowSize.width * 0.86f).toDp() }
@@ -247,11 +239,14 @@ fun SettingsDialog(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(contentScroll)
-                            .padding(end = 12.dp),
+                            .padding(end = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
                         when (selectedCategory) {
                             "Appearance" -> {
+                                val scope = rememberCoroutineScope()
+                                val configRepo: ConfigRepository = koinInject()
+
                                 SectionLabel("Theme", font, icon = MorpheIcons.Palette)
                                 Spacer(Modifier.height(8.dp))
                                 FlowRow(
@@ -260,7 +255,6 @@ fun SettingsDialog(
                                 ) {
                                     ThemePreference.entries.forEach { theme ->
                                         val isSelected = currentTheme == theme
-                                        val themeAccent = theme.accentColor()
                                         val hoverInteraction = remember { MutableInteractionSource() }
                                         val isHovered by hoverInteraction.collectIsHoveredAsState()
                                         Row(
@@ -332,7 +326,18 @@ fun SettingsDialog(
                                         )
                                     }
 
-                                    val isCustomNonPreset = customAccentColorArgb != null && THEME_PRESET_COLORS.none { it.toArgb() == customAccentColorArgb }
+                                    CustomSwatches.colors.forEach { saved ->
+                                        AccentSwatch(
+                                            selected = customAccentColorArgb == saved,
+                                            fill = Color(saved),
+                                            onClick = { onCustomAccentColorChange(saved) },
+                                            onDelete = { CustomSwatches.remove(saved) },
+                                        )
+                                    }
+
+                                    val isCustomNonPreset = customAccentColorArgb != null &&
+                                        THEME_PRESET_COLORS.none { it.toArgb() == customAccentColorArgb } &&
+                                        CustomSwatches.colors.none { it == customAccentColorArgb }
                                     Box {
                                         val yOff = with(LocalDensity.current) { 46.dp.roundToPx() }
                                         AccentSwatch(
@@ -358,7 +363,7 @@ fun SettingsDialog(
                                                     argb = customAccentColorArgb ?: 0xFFF44336.toInt(),
                                                     accents = accents,
                                                     font = font,
-                                                    showAlphaAndSaved = false,
+                                                    showAlpha = false,
                                                     onPick = { onCustomAccentColorChange(it) }
                                                 )
                                             }
@@ -373,8 +378,6 @@ fun SettingsDialog(
 
                                 val bgState = LocalBackgroundType.current
                                 val parallaxState = LocalEnableParallax.current
-                                val scope = rememberCoroutineScope()
-                                val configRepo: ConfigRepository = koinInject()
 
                                 val onBgChange: (BackgroundType) -> Unit = { newBg ->
                                     bgState.value = newBg
@@ -443,6 +446,22 @@ fun SettingsDialog(
                                     accentColor = accents.primary,
                                     font = font,
                                     icon = MorpheIcons.Mouse
+                                )
+
+                                Spacer(Modifier.height(14.dp))
+
+                                val sharpCornersState = LocalSharpCorners.current
+                                SettingToggleRow(
+                                    label = "Sharp corners",
+                                    description = "Square off cards, dialogs and buttons",
+                                    checked = sharpCornersState.value,
+                                    onCheckedChange = { enabled ->
+                                        sharpCornersState.value = enabled
+                                        scope.launch { configRepo.setUseSharpCorners(enabled) }
+                                    },
+                                    accentColor = accents.primary,
+                                    font = font,
+                                    icon = MorpheIcons.RoundedCorner
                                 )
                             }
                             "Advanced" -> {
@@ -647,7 +666,10 @@ fun SettingsDialog(
                         }
                     }
                     VerticalScrollbar(
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .offset(x = 8.dp)
+                            .fillMaxHeight(),
                         adapter = rememberScrollbarAdapter(contentScroll),
                         style = morpheScrollbarStyle(),
                     )
@@ -678,15 +700,12 @@ fun SettingsDialog(
 
 // ── Shared building blocks ──
 
-/**
- * One 42dp accent chip. Selection draws a solid ring, hover draws a muted one and
- * lifts the chip slightly, so an unselected swatch still reacts to the pointer.
- */
 @Composable
 private fun AccentSwatch(
     selected: Boolean,
     fill: Color,
     onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null,
     content: @Composable () -> Unit = {},
 ) {
     val corners = LocalMorpheCorners.current
@@ -696,11 +715,17 @@ private fun AccentSwatch(
         targetValue = if (isHovered) 1.08f else 1f,
         label = "accentSwatchScale",
     )
+    // Not primary: picking an accent makes primary that same colour, so the ring
+    // vanished into the swatch it was marking.
     val ring = when {
-        selected -> MaterialTheme.colorScheme.primary
+        selected -> MaterialTheme.colorScheme.onSurface
         isHovered -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
         else -> Color.Transparent
     }
+    val inset by animateDpAsState(
+        targetValue = if (selected) 5.dp else 0.dp,
+        label = "accentSwatchInset",
+    )
     Box(
         modifier = Modifier
             .size(42.dp)
@@ -708,23 +733,54 @@ private fun AccentSwatch(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(corners.small))
-            .background(fill)
-            .border(2.dp, ring, RoundedCornerShape(corners.small))
-            .hoverable(hoverInteraction)
-            .handCursor()
-            .clickable(onClick = onClick),
+            .hoverable(hoverInteraction),
         contentAlignment = Alignment.Center,
     ) {
-        content()
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(corners.small))
+                .border(2.dp, ring, RoundedCornerShape(corners.small))
+                .handCursor()
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(inset)
+                    .clip(RoundedCornerShape((corners.small - inset).coerceAtLeast(0.dp)))
+                    .background(fill)
+            )
+            content()
+        }
+
+        // Sibling of the clipped swatch, so the rounded corner cannot cut it.
+        // Stays inside the 42dp bounds: a child overhanging its parent is drawn
+        // but never hit-tested.
+        if (onDelete != null && isHovered) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    .handCursor()
+                    .clickable(onClick = onDelete),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = MorpheIcons.Close,
+                    contentDescription = "Remove saved color",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(10.dp),
+                )
+            }
+        }
     }
 }
 
-/**
- * One row in the About list: a leading visual, a title and subtitle, and a
- * chevron. The whole row is the click target. The chevron used to be the only
- * one, which made a full-width action depend on hitting a 32dp icon.
- */
 @Composable
 private fun AboutRow(
     title: String,
@@ -1166,7 +1222,6 @@ private fun OutputFolderSection(
         }
     }
 }
-
 
 // ── Strip Libs Section ──
 
@@ -1998,7 +2053,6 @@ private fun readKeystoreInfo(
             )
         }
     } catch (_: Exception) {
-        // BC not on classpath, so BKS keystores are unreadable. JKS and PKCS12 still work
     }
 
     // Try multiple keystore types: BKS (what Morphe generates), then JKS, then PKCS12
@@ -2075,14 +2129,6 @@ private fun ThemePreference.toDisplayName(): String {
         ThemePreference.LIGHT -> "Light"
         ThemePreference.DARK -> "Dark"
         ThemePreference.AMOLED -> "Amoled"
-        ThemePreference.MANAGER_LIGHT -> "Manager light"
-        ThemePreference.MANAGER_DARK -> "Manager dark"
-        ThemePreference.MANAGER_AMOLED -> "Manager amoled"
-        ThemePreference.NORD -> "Nord"
-        ThemePreference.CATPPUCCIN -> "Catppuccin"
-        ThemePreference.SAKURA -> "Sakura"
-        ThemePreference.MATCHA -> "Matcha"
-        ThemePreference.DEEPSPACE -> "Deep space"
         ThemePreference.SYSTEM -> "System"
     }
 }
@@ -2092,32 +2138,7 @@ private fun ThemePreference.icon(): ImageVector {
         ThemePreference.LIGHT -> MorpheIcons.LightMode
         ThemePreference.DARK -> MorpheIcons.DarkMode
         ThemePreference.AMOLED -> MorpheIcons.Contrast
-        ThemePreference.MANAGER_LIGHT -> MorpheIcons.PhoneAndroid
-        ThemePreference.MANAGER_DARK -> MorpheIcons.PhoneAndroid
-        ThemePreference.MANAGER_AMOLED -> MorpheIcons.PhoneAndroid
-        ThemePreference.NORD -> MorpheIcons.AcUnit
-        ThemePreference.CATPPUCCIN -> MorpheIcons.Palette
-        ThemePreference.SAKURA -> MorpheIcons.AutoAwesome
-        ThemePreference.MATCHA -> MorpheIcons.BubbleChart
-        ThemePreference.DEEPSPACE -> MorpheIcons.Terminal
         ThemePreference.SYSTEM -> MorpheIcons.Settings
-    }
-}
-
-private fun ThemePreference.accentColor(): Color {
-    return when (this) {
-        ThemePreference.LIGHT -> MorpheColors.Blue
-        ThemePreference.DARK -> MorpheColors.Blue
-        ThemePreference.AMOLED -> Color(0xFF5B9AFF)
-        ThemePreference.MANAGER_LIGHT -> Color(0xFF005FAC)
-        ThemePreference.MANAGER_DARK -> Color(0xFFA4C9FF)
-        ThemePreference.MANAGER_AMOLED -> Color(0xFFA4C9FF)
-        ThemePreference.NORD -> Color(0xFF88C0D0)
-        ThemePreference.CATPPUCCIN -> Color(0xFFCBA6F7)
-        ThemePreference.SAKURA -> Color(0xFFD44B76)
-        ThemePreference.MATCHA -> Color(0xFF4C7A35)
-        ThemePreference.DEEPSPACE -> Color(0xFF00D9FF)
-        ThemePreference.SYSTEM -> Color(0xFFA4C9FF)
     }
 }
 

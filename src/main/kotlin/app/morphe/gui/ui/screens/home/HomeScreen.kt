@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
 import app.morphe.gui.ui.screens.home.components.PatchedAppDetailDialog
+import app.morphe.gui.ui.components.MorpheBanners
 import app.morphe.gui.ui.components.UpdateBanner
 import app.morphe.gui.ui.screens.home.components.ForgetConfirmDialog
 import app.morphe.gui.ui.screens.home.components.HeaderBar
@@ -77,9 +78,6 @@ fun HomeScreenContent(
     val patchSourceManager: PatchSourceManager = koinInject()
     val allSources by patchSourceManager.allSources.collectAsState()
 
-    // pendingReopenSheet reopens the sheet after a row click navigates away and
-    // the user pops back. Both MUST be rememberSaveable to survive Voyager's
-    // push/pop teardown. Declared here because the detail sheet also opens it.
     var showSourceManagementSheet by rememberSaveable { mutableStateOf(false) }
     var pendingReopenSheet by rememberSaveable { mutableStateOf(false) }
 
@@ -173,12 +171,10 @@ fun HomeScreenContent(
     // Phase 7. Tap a "Your apps" row to see the full recall breakdown.
     var detailRecord by remember { mutableStateOf<PatchedAppRecord?>(null) }
     val onShowDetail: (PatchedAppRecord) -> Unit = { detailRecord = it }
-    // Loaded on sheet open, not up front.
     var bundleVersionsBySource by remember { mutableStateOf(emptyMap<String, List<BundleRelease>>()) }
     var showAddSourceDialog by remember { mutableStateOf(false) }
     var preparingPatch by remember { mutableStateOf(false) }
     var patchPrepProgress by remember { mutableStateOf<Pair<String, Float>?>(null) }
-    // Keyed off the enabled set too, so enabling a source pulls its releases.
     val activeSources = viewModel.activePatchSources()
     LaunchedEffect(detailRecord?.packageName, activeSources.map { it.name }) {
         if (detailRecord == null) return@LaunchedEffect
@@ -272,7 +268,6 @@ fun HomeScreenContent(
             uninstalling = uiState.uninstallingPackage == record.packageName,
         )
     }
-
 
     // Re-show the sheet after the pop animation finishes, NOT immediately on
     // re-entry. Without the delay the sheet flashes in mid-transition.
@@ -468,38 +463,32 @@ fun HomeScreenContent(
                     // ── Body: drop zone / APK info on one side, supported-apps
                     // list on the other. The list pane owns its own scroll. ──
                     Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            if (uiState.showUpdateBanner) {
-                                UpdateBanner(
-                                    info = uiState.updateInfo!!,
-                                    onDismissForSession = { viewModel.dismissUpdateForSession() },
-                                    onDismissForVersion = { viewModel.dismissUpdateForVersion() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = padding, end = padding, top = 8.dp),
-                                )
+                            if (uiState.showUpdateBanner ||
+                                uiState.showMultiSourceHint ||
+                                uiState.showSourcesFailedBanner
+                            ) {
+                                MorpheBanners {
+                                    if (uiState.showUpdateBanner) {
+                                        UpdateBanner(
+                                            info = uiState.updateInfo!!,
+                                            onDismissForSession = { viewModel.dismissUpdateForSession() },
+                                            onDismissForVersion = { viewModel.dismissUpdateForVersion() },
+                                        )
+                                    }
+                                    if (uiState.showMultiSourceHint) {
+                                        MultiSourceHintBanner(
+                                            onDismiss = { viewModel.dismissMultiSourceHint() },
+                                        )
+                                    }
+                                    if (uiState.showSourcesFailedBanner) {
+                                        SourcesFailedBanner(
+                                            count = uiState.failedSourcesCount,
+                                            onManageSources = { showSourceManagementSheet = true },
+                                            onDismiss = { viewModel.dismissSourcesFailedBanner() },
+                                        )
+                                    }
+                                }
                             }
-                            if (uiState.showMultiSourceHint) {
-                                MultiSourceHintBanner(
-                                    onDismiss = { viewModel.dismissMultiSourceHint() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = padding, end = padding, top = 8.dp),
-                                )
-                            }
-                            if (uiState.showSourcesFailedBanner) {
-                                SourcesFailedBanner(
-                                    count = uiState.failedSourcesCount,
-                                    onManageSources = { showSourceManagementSheet = true },
-                                    onDismiss = { viewModel.dismissSourcesFailedBanner() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = padding, end = padding, top = 8.dp),
-                                )
-                            }
-                            // The pair is centred as one unit, and the two panes are
-                            // top-aligned to each other inside it. Centring each pane
-                            // separately, which is what this used to do, lines their
-                            // tops up only when both happen to be the same height.
                             BoxWithConstraints(
                                 modifier = Modifier
                                     .weight(1f)
@@ -549,18 +538,8 @@ fun HomeScreenContent(
                                 Column(
                                     modifier = Modifier
                                         .weight(1f)
-                                        // Centred within the Row rather than pinned to its
-                                        // top. The Row is as tall as the taller pane, so a
-                                        // long app list would otherwise strand this card at
-                                        // the very top of a tall column.
                                         .align(Alignment.CenterVertically)
-                                        // Wraps its content so the Row is only as tall as
-                                        // the taller pane, and caps at the viewport so a
-                                        // long card scrolls rather than overflowing.
                                         .heightIn(max = bodyViewport)
-                                        // Sits a little below the list's first row, so
-                                        // the card reads as the second step rather than
-                                        // as a second column heading.
                                         .padding(top = 16.dp)
                                         .verticalScroll(rememberScrollState()),
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -592,7 +571,6 @@ fun HomeScreenContent(
                             .padding(horizontal = 24.dp, vertical = 20.dp)
                     )
                 }
-
 
             }
         }

@@ -7,22 +7,16 @@ package app.morphe.gui.icon
 
 import app.morphe.gui.ui.components.color.MorpheGradientEditor
 import app.morphe.gui.ui.components.color.MorpheSwatchRow
-import app.morphe.gui.ui.components.color.MorpheColorChip
-import app.morphe.gui.ui.components.MorpheNumberField
 import app.morphe.gui.ui.components.MorpheChoiceChip
 import app.morphe.gui.ui.components.MorpheAdjustRow
-import app.morphe.gui.ui.components.color.MORPHE_SWATCHES
-import app.morphe.gui.ui.components.color.CustomSwatches
 import app.morphe.gui.data.model.GradientType
 import app.morphe.gui.data.model.MorpheFill
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
@@ -38,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
@@ -61,12 +54,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import app.morphe.gui.ui.components.MorpheButton
 import app.morphe.gui.ui.components.MorpheButtonVariant
-import app.morphe.gui.ui.components.MorpheColorPickerCard
 import app.morphe.gui.ui.components.MorpheDropdown
 import app.morphe.gui.ui.components.MorpheDropdownItem
 import app.morphe.gui.ui.components.morpheScrollbarStyle
@@ -76,17 +66,10 @@ import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheAccentColors
 import app.morphe.gui.util.MorpheFilePicker
-import java.awt.Color.HSBtoRGB
-import java.awt.Color.RGBtoHSB
 import java.awt.GraphicsEnvironment
 import java.io.File
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.hypot
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -312,7 +295,6 @@ fun IconStudioDialog(
                     // ── Previews: adaptive + monochrome side by side, mask gallery, status bar ──
                     Column(Modifier.width(previewColWidth), horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // Adaptive icon, the full-colour result. Drag the selected layer.
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Label("Adaptive", font)
                                 Canvas(
@@ -344,7 +326,6 @@ fun IconStudioDialog(
                                     }
                                 }
                             }
-                            // Monochrome or themed icon. Android 13+ launchers tint the silhouette.
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Label("Monochrome", font)
                                 Canvas(Modifier.size(previewDp).clip(MASKS[selectedMask].second).background(Color(0xFF15171E))) {
@@ -617,8 +598,6 @@ private fun BackgroundControls(project: IconProject, accents: MorpheAccentColors
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Label("Background", font)
             Spacer(Modifier.weight(1f))
-            // Image is a studio-only fill, which is why the type row lives here
-            // rather than inside the shared editor.
             Toggle("Solid", bg is MorpheFill.Solid, accents, font) {
                 onChange(project.copy(background = MorpheFill.Solid(0xFFFFFFFF.toInt())))
             }
@@ -653,16 +632,10 @@ private fun BackgroundControls(project: IconProject, accents: MorpheAccentColors
 }
 
 /** A single colour swatch that opens the full picker popup, for gradient stops. */
-/** Studio wrapper over the house [MorpheColorChip]. */
-@Composable
-private fun ColorChip(argb: Int, onChange: (Int) -> Unit) = MorpheColorChip(argb, onPick = onChange)
 
-/** Studio wrapper over the house [MorpheSwatchRow]. */
 @Composable
 private fun SwatchRow(selected: Int, onPick: (Int) -> Unit) = MorpheSwatchRow(selected, onPick = onPick)
 
-
-/** Studio wrapper over the house [MorpheAdjustRow]. */
 @Composable
 private fun AdjustRow(
     label: String,
@@ -673,17 +646,6 @@ private fun AdjustRow(
     accents: MorpheAccentColors,
     onChange: (Float) -> Unit,
 ) = MorpheAdjustRow(label = label, value = value, range = range, font = font, decimals = decimals, onChange = onChange)
-
-/** Studio wrapper over the house [MorpheNumberField]. */
-@Composable
-private fun NumberField(
-    value: Float,
-    decimals: Int,
-    range: ClosedFloatingPointRange<Float>,
-    font: FontFamily,
-    accents: MorpheAccentColors,
-    onValue: (Float) -> Unit,
-) = MorpheNumberField(value = value, range = range, font = font, decimals = decimals, onValue = onValue)
 
 @Composable
 private fun TextInput(value: String, font: FontFamily, accents: MorpheAccentColors, placeholder: String = "", onValue: (String) -> Unit) {
@@ -707,7 +669,6 @@ private fun SymBtn(icon: ImageVector, accents: MorpheAccentColors, onClick: () -
     }
 }
 
-/** Studio wrapper over the house [MorpheChoiceChip], kept for call-site brevity. */
 @Composable
 private fun Toggle(
     text: String,
@@ -751,10 +712,6 @@ private fun StatusBarPreview(silhouette: ImageBitmap?, font: FontFamily) {
         }
     }
 }
-
-// ============================================================================
-// Templates, the starting points the user then adds to or edits
-// ============================================================================
 
 private fun templateGradient() = IconProject(
     background = MorpheFill.Gradient(

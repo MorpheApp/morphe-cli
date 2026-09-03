@@ -105,9 +105,6 @@ internal fun SupportedAppsListPane(
         }
     }
 
-    // Wraps its height so the parent Row is only as tall as the taller pane, which
-    // is what lets the pair be centred together instead of each pane centring
-    // itself. The incoming max still bounds the list below.
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
       val paneMaxHeight = maxHeight
       Column(

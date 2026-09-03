@@ -21,7 +21,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class PatchedAppRecord(
-    /** Original (pre-patch) package name. The primary key, matching the supported-apps list. */
     val packageName: String,
     /**
      * Post-patch package as it installs on a device, differing from [packageName]
@@ -35,13 +34,6 @@ data class PatchedAppRecord(
     val displayName: String,
     /** APK version at patch time. */
     val apkVersion: String,
-    /**
-     * The APK's build code at patch time, or null for records written before this
-     * was recorded and for APKs whose manifest omits it.
-     *
-     * A version name alone does not identify a build. Apps that ship many builds
-     * under one version need this to say which one was actually patched.
-     */
     val apkVersionCode: Int? = null,
 
     /** Input APK path used. May no longer exist on disk. */
@@ -72,7 +64,6 @@ data class PatchedAppRecord(
 
     /** Epoch millis of when the patch completed. */
     val patchedAt: Long,
-    /** The Morphe (CLI/GUI) version that produced the patch, handy for debugging. */
     val patchedWithMorpheVersion: String,
 ) {
     /** Package actually installed on a device (post-rename if applicable). */

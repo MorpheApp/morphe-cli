@@ -19,7 +19,6 @@ class VersionUtilsTest {
         assertTrue(compareVersions("20.40.45", "21.01.23") < 0)
         assertTrue(compareVersions("21.01.23", "20.40.45") > 0)
         assertEquals(0, compareVersions("19.47.53", "19.47.53"))
-        // Segment count differs, missing segments read as 0.
         assertTrue(compareVersions("1.2", "1.2.1") < 0)
         assertEquals(0, compareVersions("1.2", "1.2.0"))
     }
@@ -39,7 +38,6 @@ class VersionUtilsTest {
         assertTrue(isNewerVersion("1.39.0", "1.39.0-dev.5"))
     }
 
-    /** The regression that motivated the port: the old comparator cored both to 1.39.0. */
     @Test
     fun `pre-release ordinals compare numerically not lexically`() {
         assertTrue(compareVersions("1.39.0-dev.4", "1.39.0-dev.10") < 0)
@@ -79,16 +77,10 @@ class VersionUtilsTest {
         assertTrue(compareVersions("2.0.0-alpha.1", "2.0.0-alpha.2") < 0)
     }
 
-    // =========================================================================
-    // RELEASE CHANNEL
-    // =========================================================================
-
     private fun release(tag: String) = Release(tagName = tag, isPrerelease = tag.isDevTag())
 
     @Test
     fun `dev follower takes the newer stable when the dev manifest is stale`() {
-        // The case morphe-manager documents: a repo tags a stable without bumping
-        // its dev branch, so plain dev-first would strand the follower.
         val picked = newerRelease(release("v1.38.0-dev.3"), release("v1.39.0"))
         assertEquals("v1.39.0", picked?.tagName)
     }
@@ -101,15 +93,12 @@ class VersionUtilsTest {
 
     @Test
     fun `a stable cut from the tracked dev line wins`() {
-        // 1.39.0 is the release of the 1.39.0-dev series, so it outranks it.
         val picked = newerRelease(release("v1.39.0-dev.7"), release("v1.39.0"))
         assertEquals("v1.39.0", picked?.tagName)
     }
 
     @Test
     fun `equal versions resolve to the tracked dev channel`() {
-        // Same version, different tag text. The dev channel is what the user asked
-        // to follow, so a tie MUST NOT bounce them onto stable.
         val picked = newerRelease(release("v1.39.0"), release("1.39.0"))
         assertEquals("v1.39.0", picked?.tagName)
     }

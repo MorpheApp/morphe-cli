@@ -30,10 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
@@ -56,7 +53,6 @@ import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheAccentColors
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 
 /**
@@ -76,7 +72,6 @@ fun SupportedAppListRow(
     /** Source display names whose patches target [app.packageName]. Rendered as
      *  the FROM chips inside the expanded body. Empty hides the FROM section. */
     patchSourceNames: List<String> = emptyList(),
-    /** Recall state. Renders a badge in the header for PATCHED / APK_MISSING. */
     patchedState: PatchedAppState = PatchedAppState.NEVER_PATCHED,
     /** Optional device-layer info (installed? + version). Null = no device / not patched.
      *  Recall ACTIONS (Re-patch/Forget) live on the "Your apps" card, not here. */
@@ -88,7 +83,6 @@ fun SupportedAppListRow(
     val accents = LocalMorpheAccents.current
 
     val initial = app.displayName.firstOrNull()?.uppercase() ?: "?"
-    val hasStable = app.recommendedVersion != null
     val hasExperimental = app.experimentalVersions.isNotEmpty()
     val latestExperimental = app.experimentalVersions.firstOrNull()
 
@@ -99,7 +93,6 @@ fun SupportedAppListRow(
         cornerRadius = corners.medium,
         appIconColorHex = app.appIconColor,
         fill = cardFills[app.packageName],
-        isExpanded = isExpanded,
         onClick = onClick,
         onCustomise = {
             cardFills.requestEdit(app.packageName, app.displayName, app.appIconColor)
@@ -133,7 +126,7 @@ fun SupportedAppListRow(
             Text(
                 text = app.displayName,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Bold,
                 fontFamily = font,
                 color = Color.White,
                 maxLines = 1,
@@ -207,7 +200,6 @@ fun SupportedAppListRow(
 }
 }
 
-
 /** Optional device-layer line: whether the app is installed on the connected device. */
 @Composable
 private fun DeviceInfoLine(info: DeviceAppInfo, font: FontFamily) {
@@ -279,22 +271,22 @@ private fun VersionChip(
     font: FontFamily,
     cornerSmall: Dp,
 ) {
-    // A chip is a clickable download link whenever the URL is present, even if
-    // the version is null ("Any" label still routes to the app's general page).
     val isLink = downloadUrl != null
     val uriHandler = LocalUriHandler.current
     val hoverInteraction = remember(channelLabel) { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
-    // Stable and experimental are told apart by colour. Painting the chip white
-    // threw away the [color] this is handed and made the two identical.
     val chipColor = color.onCardGradient()
-    val chipInk = chipColor.contrastingForeground()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
             .clip(RoundedCornerShape(cornerSmall))
-            .background(if (isHovered && isLink) chipColor.shiftLightness(0.08f) else chipColor)
+            .background(Color.Black.copy(alpha = if (isHovered && isLink) 0.34f else 0.22f))
+            .border(
+                1.dp,
+                Color.White.copy(alpha = if (isHovered && isLink) 0.85f else 0.55f),
+                RoundedCornerShape(cornerSmall),
+            )
             .hoverable(hoverInteraction)
             .then(
                 if (isLink) Modifier
@@ -311,27 +303,27 @@ private fun VersionChip(
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = chipInk
+            color = chipColor
         )
         Text(
             text = "·",
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = chipInk.copy(alpha = 0.6f)
+            color = chipColor.copy(alpha = 0.6f)
         )
         Text(
             text = version?.let { if (it.startsWith("v")) it else "v$it" } ?: nullLabel,
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
-            color = chipInk
+            color = chipColor
         )
         if (isLink) {
             Icon(
                 imageVector = MorpheIcons.OpenInNew,
                 contentDescription = "Download $channelLabel",
-                tint = chipInk,
+                tint = chipColor,
                 modifier = Modifier.size(10.dp),
             )
         }
@@ -447,11 +439,6 @@ private fun ExpandedBody(
 internal fun SectionLabel(
     text: String,
     font: FontFamily,
-    /**
-     * The label's colour. Defaults to the surface foreground rather than white,
-     * because this is used on plain sheets as well as on app cards, and a
-     * hardcoded white is invisible on a light theme.
-     */
     color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     Text(
@@ -463,19 +450,12 @@ internal fun SectionLabel(
     )
 }
 
-
 @Composable
 internal fun Pill(
     text: String,
     color: Color,
     font: FontFamily,
     cornerSmall: Dp,
-    /**
-     * True for pills sitting on an [AppCard], where the gradient behind them
-     * carries the colour and the pill MUST stay white to stay legible. False
-     * tints the pill with [color], which is what a plain surface needs. Getting
-     * this wrong is why the sheet's pills all rendered grey.
-     */
     onGradient: Boolean = false,
     backgroundAlpha: Float = if (onGradient) 0.2f else 0.14f,
     // When non-null, the pill becomes a tappable download link: gets a hand
@@ -490,8 +470,6 @@ internal fun Pill(
     val hoveredLift = if (isInteractive && isHovered) 0.20f else 0f
     val effectiveBackgroundAlpha = (backgroundAlpha + hoveredLift / 2f).coerceAtMost(0.30f)
     val pillColor = if (onGradient) color.onCardGradient() else color
-    // Solid on a card. A translucent chip borrows the gradient underneath it and
-    // stops looking like its own colour, which is the whole point of the chip.
     val pillInk = if (onGradient) pillColor.contrastingForeground() else pillColor
 
     Box(

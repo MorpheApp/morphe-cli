@@ -41,14 +41,10 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import app.morphe.gui.ui.theme.LocalThemeState
-import app.morphe.gui.ui.components.MANAGER_END
-import app.morphe.gui.ui.components.MANAGER_MID
 import app.morphe.gui.data.model.PatchConfig
 import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.components.morpheScrollbarStyle
@@ -270,9 +266,6 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                             font = font
                         )
 
-
-                        // Log output. Bounded by its border, not filled: an elevated
-                        // panel behind monospace text is just a grey slab.
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -325,7 +318,6 @@ fun PatchingScreenContent(viewModel: PatchingViewModel) {
                                                 strokeWidth = 1f
                                             )
                                         }
-                                        // Unfilled, like the log panel above it.
                                         .padding(14.dp),
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
@@ -655,7 +647,6 @@ fun LogFileViewerDialog(
                     }
                 }
 
-                // Log content, read-only, selectable, monospace.
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.fillMaxSize()) {
                     SelectionContainer(
@@ -687,17 +678,8 @@ fun LogFileViewerDialog(
     }
 }
 
-/**
- * The two stops the progress gradient runs between.
- *
- * These were hardcoded to the manager's blue and teal, so every theme's progress
- * bar was the manager's regardless of its accents. The Manager themes still get
- * that exact pair, since it is the palette they are built from, and every other
- * theme runs from its own primary to its own secondary.
- */
 @Composable
 private fun progressGradient(): Pair<Color, Color> {
-    if (LocalThemeState.current.current.isManager()) return MANAGER_MID to MANAGER_END
     val accents = LocalMorpheAccents.current
     return accents.primary to accents.secondary
 }
@@ -769,7 +751,6 @@ private fun ExpertProgressHeader(
 
             if (uiState.totalPatches > 0) {
                 Surface(
-                    // The theme's geometry, not a fixed pill. Sharp themes are sharp.
                     shape = RoundedCornerShape(LocalMorpheCorners.current.small),
                     color = if (uiState.status == PatchingStatus.COMPLETED) {
                         progressGradient().second.copy(alpha = 0.18f)
@@ -822,7 +803,6 @@ private fun ExpertProgressHeader(
 @Composable
 private fun PercentageBadge(progress: Float, status: PatchingStatus) {
     val font = LocalMorpheFont.current
-    val isCompleted = status == PatchingStatus.COMPLETED
     Surface(
         shape = RoundedCornerShape(LocalMorpheCorners.current.small),
         color = MaterialTheme.colorScheme.primary
@@ -1180,7 +1160,6 @@ private fun PatcherInfoCard(
         CardVariant.Start -> MaterialTheme.colorScheme.primary
         CardVariant.Success -> progressGradient().second
     }
-    // Unfilled, like every other card. The border carries the accent.
     Surface(
         modifier = Modifier.fillMaxWidth().border(1.dp, accentColor.copy(alpha = 0.55f), RoundedCornerShape(corners.medium)),
         shape = RoundedCornerShape(corners.medium),
@@ -1721,8 +1700,6 @@ private fun ExpertFailureContent(
                     .widthIn(max = 480.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(corners.small))
-                    // Transparent. The border is enough to bound a passive note, and
-                    // a tinted panel reads as something needing attention.
                     .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
                     .padding(12.dp)
             ) {

@@ -8,13 +8,8 @@ package app.morphe.gui.data.model
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 
-/**
- * [AppConfig.cardFills] holds a sealed [MorpheFill], the first polymorphic value
- * to live in `config.json`. These pin the two things that would break it.
- */
 class AppConfigCardFillTest {
 
-    /** MUST mirror the Json in ConfigRepository, especially the discriminator. */
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
@@ -24,9 +19,6 @@ class AppConfigCardFillTest {
 
     @Test
     fun gradientSurvivesItsOwnTypeProperty() {
-        // The default discriminator is "type", which is also Gradient's property
-        // name. With the default this either throws or silently eats the gradient
-        // type, so this is the regression that matters.
         val config = AppConfig(
             cardFills = mapOf(
                 "com.google.android.youtube" to MorpheFill.Gradient(
@@ -52,8 +44,6 @@ class AppConfigCardFillTest {
 
     @Test
     fun configWrittenBeforeCardFillsExistedStillLoads() {
-        // An older config has no cardFills key at all. It must decode to an empty
-        // map rather than failing and resetting every setting the user has.
         val legacy = """
             {
                 "themePreference": "DARK",
@@ -67,8 +57,6 @@ class AppConfigCardFillTest {
 
     @Test
     fun uncustomisedAppsStayAbsentFromTheMap() {
-        // Clearing MUST remove the key, not store a null, so the fallback chain
-        // (user override -> bundle colour -> built-in) still reaches the bundle.
         val withFill = AppConfig(cardFills = mapOf("a" to MorpheFill.Solid(1), "b" to MorpheFill.Solid(2)))
         val cleared = withFill.copy(cardFills = withFill.cardFills - "a")
         check("a" !in cleared.cardFills) { "cleared app is still present" }

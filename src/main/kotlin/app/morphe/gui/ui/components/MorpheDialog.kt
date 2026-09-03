@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -79,20 +78,9 @@ fun MorpheDialogSurface(
     }
 }
 
-/** Material's own AlertDialog width bounds, so a converted dialog does not move. */
 val MorpheDialogMinWidth = 280.dp
 val MorpheDialogMaxWidth = 560.dp
 
-/**
- * Slot-for-slot house replacement for Material's `AlertDialog`.
- *
- * Same call shape (title/text/confirmButton/dismissButton/icon) so converting a
- * stock dialog is a rename plus dropping `shape` and `containerColor`, which the
- * house surface already supplies. Width defaults to Material's own bounds, but
- * unlike `AlertDialog` those are a default rather than a hard ceiling: pass
- * [maxWidth] when a dialog genuinely needs the room. That ceiling is exactly why
- * the settings dialog had to stop being an `AlertDialog`.
- */
 @Composable
 fun MorpheAlertDialog(
     onDismiss: () -> Unit,
@@ -137,7 +125,6 @@ fun MorpheAlertDialog(
 fun MorpheDialogCard(
     onDismiss: () -> Unit,
     title: String,
-    /** Ceiling on the card's width. */
     maxWidth: Dp = 440.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -188,9 +175,6 @@ fun RowScope.MorpheDialogButton(
             .weight(1f)
             .clip(RoundedCornerShape(corner))
             .then(
-                // Filled is solid, and the outline is a real outline rather than a
-                // 6 percent wash behind a 35 percent edge. At those alphas the
-                // accent was barely present and the button read as disabled.
                 if (filled) {
                     Modifier.background(if (isHovered) color.shiftLightness(0.06f) else color)
                 } else {

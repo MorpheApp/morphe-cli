@@ -15,11 +15,9 @@ import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -68,12 +66,10 @@ import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.screens.patching.PatchingScreen
 import app.morphe.gui.ui.theme.contrastingForeground
-import app.morphe.gui.ui.theme.themedAccent
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheMono
-import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.MorpheFilePicker
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -81,14 +77,12 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
-import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
-/** Height shared by the patch search field and the Selected chip beside it. */
 private val FILTER_BAR_HEIGHT = 32.dp
 
 /**
@@ -191,7 +185,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
     var showRunInfo by remember { mutableStateOf(false) }
 
     if (showRunInfo) {
-        // Read once per open. The inputs cannot change while this screen is up.
         val info = remember(uiState.bundles) { viewModel.runInfo() }
         RunInfoDialog(info = info, onDismiss = { showRunInfo = false })
     }
@@ -270,9 +263,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             if (!uiState.isLoading && uiState.bundles.isNotEmpty()) {
                 val cmdHover = remember { MutableInteractionSource() }
                 val cmdActive = showCommandPreview
-                // #259 flattened this toggle to a neutral token. Right for the
-                // Manager themes, colourless everywhere else.
-                val cmdAccent = themedAccent(accents.secondary, MaterialTheme.colorScheme.onSurface)
+                val cmdAccent = MaterialTheme.colorScheme.onSurface
                 val cmdBorder by animateColorAsState(
                     if (cmdActive) cmdAccent.copy(alpha = 0.5f)
                     else baseBorderColor,
@@ -401,7 +392,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
             }
         }
 
-        // Command preview. Collapsible
         if (!uiState.isLoading && uiState.bundles.isNotEmpty()) {
             val commandPreview = remember(uiState.selectedByBundle, uiState.stripLibsStatus, cleanMode, continueOnError, keystorePath) {
                 viewModel.getCommandPreview(cleanMode, continueOnError, keystorePath, keystorePassword, keystoreAlias, keystoreEntryPassword)
@@ -554,8 +544,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
-                            // The search row above already pads below itself, so a
-                            // full 8dp here stacked into an oversized gap.
                             .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -656,8 +644,6 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(42.dp),
-                        // Solid, like the other screens' primary actions. This is the
-                        // one thing to click on the screen.
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = accents.primary,
                             contentColor = accents.primary.contrastingForeground()
@@ -841,9 +827,6 @@ private fun PatchListItem(
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     val colors = MaterialTheme.colorScheme
-    // Transparent unless selected. Selection is the only thing this list has to
-    // communicate, so it is the only thing that gets a fill, and the fill is the
-    // accent rather than another shade of grey.
     val containerColor = when {
         isSelected -> accents.primary.copy(alpha = 0.22f)
         isHovered -> accents.primary.copy(alpha = 0.06f)
@@ -869,7 +852,6 @@ private fun PatchListItem(
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
             .hoverable(interactionSource)
     ) {
-        // Header. Clicking toggles patch
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -878,9 +860,6 @@ private fun PatchListItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Custom checkbox. Unselected is an empty outlined box, not a grey
-            // filled one: a filled box reads as a third state somewhere between
-            // on and off, and the only states here are on and off.
             val boxShape = RoundedCornerShape(corners.small)
             Box(
                 modifier = Modifier
@@ -925,9 +904,6 @@ private fun PatchListItem(
                     )
 
                     if (sourceName != null) {
-                        // Accent only once the patch is selected. Every row carrying
-                        // a tinted badge made the accent meaningless: colour reads as
-                        // state, and on an unselected row there is no state to report.
                         val badgeColor = if (isSelected) {
                             accents.primary
                         } else {
@@ -1018,7 +994,6 @@ private fun PatchListItem(
                     animationSpec = tween(150)
                 )
 
-                // Wrapper box. No clip, allows badge to overflow
                 Box(
                     modifier = Modifier.size(48.dp),
                     contentAlignment = Alignment.Center
@@ -1045,7 +1020,6 @@ private fun PatchListItem(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                    // Options count badge. Outside clip
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -1127,7 +1101,6 @@ private fun IconStudioOption(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Edit/design first (accent-filled), then import, then delete. All on the left.
         IconActionPill(MorpheIcons.Edit, if (hasIcon) "Edit icon" else "Design icon", accents.primary, filled = true, shape = shape, font = font) { showStudio = true }
         // Import an already-prepared folder (e.g. one made in the Manager).
         IconActionPill(MorpheIcons.FolderOpen, "Import folder", accents.primary.copy(alpha = 0.8f), filled = false, shape = shape, font = font) {
@@ -1536,8 +1509,6 @@ private fun SelectionModeChip(
         },
         animationSpec = tween(150)
     )
-    // Solid when active, transparent otherwise. A chip that is merely tinted
-    // reads as half-on, and these are one-of-four states where exactly one is.
     val bgColor by animateColorAsState(
         when {
             !enabled -> Color.Transparent
@@ -1781,7 +1752,6 @@ private fun StripLibsStatusBanner(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.small))
-            // Bounded by its border, not filled. See the patch rows above it.
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(corners.small))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1949,8 +1919,6 @@ private fun BundleBox(
     val totalCount = bundle.patches.size
 
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
-    // No fill. The border bounds the bundle, and an elevated grey panel behind a
-    // list of transparent rows just puts a slab under them.
     val bgColor = Color.Transparent
 
     Column(
@@ -2060,12 +2028,6 @@ private fun BundleBox(
     }
 }
 
-
-// ============================================================================
-// RUN INFO
-// ============================================================================
-
-/** The run's inputs. Left aligned, so it takes the surface not the card. */
 @Composable
 private fun RunInfoDialog(info: RunInfo, onDismiss: () -> Unit) {
     val font = LocalMorpheFont.current
@@ -2142,7 +2104,6 @@ private fun RunInfoGroup(
     }
 }
 
-/** Name left, version right. Matches the recall sheet. */
 @Composable
 private fun RunInfoHeadline(name: String, version: String?, accent: Color, font: FontFamily) {
     Row(

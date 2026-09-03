@@ -85,10 +85,8 @@ class PatchSelectionViewModel(
     // Actual path to use for the primary file. May differ from patchesFilePath
     // if we had to re-download (cache cleared, etc.)
     private var actualPatchesFilePath: String = patchesFilePath
-    // All resolved file paths. Drives multi-source patching when invoking the engine.
     private var actualPatchesFilePaths: List<String> = patchesFilePaths
 
-    // User-configured output folder. Null means save next to the input APK.
     private var defaultOutputDirectory: String? = null
 
     private val _uiState = MutableStateFlow(
@@ -127,7 +125,6 @@ class PatchSelectionViewModel(
     }
 
     fun getApkPath(): String = apkPath
-    fun getPatchesFilePath(): String = actualPatchesFilePath
     fun getApkName(): String = apkName
 
     // ── Loading ──────────────────────────────────────────────────────────────
@@ -329,29 +326,10 @@ class PatchSelectionViewModel(
         )
     }
 
-    @Deprecated("Per-bundle UI: use applyPatchDefaultsInBundle")
-    fun applyPatchDefaults() {
-        val state = _uiState.value
-        _uiState.value = state.copy(
-            selectedByBundle = state.bundles.associate { bundle ->
-                bundle.bundleId to bundle.patches.filter { it.isEnabled }
-                    .map { it.uniqueId }.toSet()
-            }
-        )
-    }
-
     @Deprecated("Per-bundle UI: use applySavedDefaultsInBundle")
     fun applySavedDefaults() {
         val saved = _uiState.value.savedSelectedByBundle ?: return
         _uiState.value = _uiState.value.copy(selectedByBundle = saved)
-    }
-
-    @Deprecated("Per-bundle UI: sourceName is implicit from the bundle context")
-    fun getSourceNameFor(patchId: String): String? {
-        val bundles = _uiState.value.bundles
-        if (bundles.size <= 1) return null
-        return bundles.firstOrNull { it.patches.any { p -> p.uniqueId == patchId } }
-            ?.bundleName
     }
 
     // ── Per-bundle selection methods ────────────────────────────────────────
@@ -463,13 +441,8 @@ class PatchSelectionViewModel(
         return _uiState.value.patchOptionValues[key] ?: default ?: ""
     }
 
-    /** Target app package being patched. Used to key per-app storage (e.g. Icon Studio output). */
     fun targetPackage(): String = packageName
 
-    /**
-     * The run's inputs. Reads [actualPatchesFilePaths], not the constructor
-     * paths, so a mid-flight re-download is reflected.
-     */
     fun runInfo(): RunInfo = RunInfo(
         appName = apkName,
         appVersion = apkVersion.takeIf { it.isNotBlank() }
@@ -486,10 +459,6 @@ class PatchSelectionViewModel(
             )
         },
     )
-
-    /** Total count of patches across all bundles that ship disabled by default. */
-    fun getDefaultDisabledCount(): Int =
-        _uiState.value.bundles.sumOf { bundle -> bundle.patches.count { !it.isEnabled } }
 
     // ── Persistence ─────────────────────────────────────────────────────────
 
@@ -767,10 +736,8 @@ class PatchSelectionViewModel(
 
 // ── State / supporting types ────────────────────────────────────────────────
 
-/** The inputs of a patch run, for the header's info popover. */
 data class RunInfo(
     val appName: String,
-    /** Blank when neither the manifest nor the filename gave one up. */
     val appVersion: String,
     val apkFileName: String,
     val apkPath: String,
@@ -779,7 +746,6 @@ data class RunInfo(
 ) {
     data class Bundle(
         val name: String,
-        /** Null when the filename carries no recognisable version. */
         val version: String?,
         val fileName: String,
     )
@@ -787,7 +753,6 @@ data class RunInfo(
 
 data class PatchSelectionUiState(
     val isLoading: Boolean = false,
-    /** Per-bundle patches. Each bundle is one source's contribution. NO cross-bundle dedup. */
     val bundles: List<BundlePatches> = emptyList(),
     /** Same shape as [bundles] but each bundle's patches list is post-filter. A bundle with
      *  zero matches stays in the list with `patches = emptyList()` so the UI can render
@@ -829,30 +794,6 @@ data class PatchSelectionUiState(
     @Deprecated("Use filteredBundles directly", ReplaceWith("filteredBundles"))
     val filteredPatches: List<Patch> get() = filteredBundles.flatMap { it.patches }
 
-    @Deprecated("Use selectedByBundle directly", ReplaceWith("selectedByBundle"))
-    val selectedPatches: Set<String>
-        get() = selectedByBundle.values.flatten().toSet()
-
-    /** Snapshot of saved selection as a flat uniqueId set, for the legacy chip. Null when no bundle has saved state. */
-    @Deprecated("Use savedSelectedByBundle directly", ReplaceWith("savedSelectedByBundle"))
-    val savedSelectedIds: Set<String>?
-        get() = savedSelectedByBundle?.values?.flatten()?.toSet()
-
-    /**
-     * Legacy global selection mode. Collapsed from per-bundle modes. Used
-     * only by the temporary flat-rendering path. Returns:
-     *   - SAVED if EVERY bundle is in SAVED mode
-     *   - DEFAULTS if EVERY bundle is in DEFAULTS mode
-     *   - ALL / NONE similarly
-     *   - CUSTOM otherwise (bundles disagree)
-     */
-    @Deprecated("Per-bundle UI: use selectionModeFor(bundleId)")
-    val activeSelectionMode: SelectionMode get() {
-        if (bundles.isEmpty()) return SelectionMode.CUSTOM
-        val modes = bundles.map { selectionModeFor(it.bundleId) }.distinct()
-        return if (modes.size == 1) modes.single() else SelectionMode.CUSTOM
-    }
-
     /** Which preset (if any) the SPECIFIED bundle's selection matches. Each box renders
      *  its own chip highlighting independently. */
     fun selectionModeFor(bundleId: String): SelectionMode {
@@ -879,10 +820,8 @@ enum class SelectionMode { ALL, DEFAULTS, SAVED, NONE, CUSTOM }
  * user's global keep-list preference. Computed by `computeStripLibsStatus`.
  */
 sealed class StripLibsStatus {
-    /** APK ships no native libraries. Stripping is meaningless. */
     data object NoNativeLibs : StripLibsStatus()
 
-    /** APK ships a single `universal` native lib folder. Stripping does not apply. */
     data object Universal : StripLibsStatus()
 
     /**
@@ -892,7 +831,6 @@ sealed class StripLibsStatus {
      */
     data class KeepAll(val notInApk: List<String>) : StripLibsStatus()
 
-    /** User's keep-list doesn't overlap with the APK's arches. Skip stripping as a safety fallback. */
     data class Fallback(val apkArches: List<String>) : StripLibsStatus()
 
     /**

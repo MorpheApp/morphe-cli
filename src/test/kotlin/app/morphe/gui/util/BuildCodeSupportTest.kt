@@ -8,11 +8,6 @@ package app.morphe.gui.util
 import app.morphe.gui.data.model.SupportedApp
 import kotlin.test.Test
 
-/**
- * A version name does not identify a build. Apps like Instagram ship many builds
- * under one version, and the patches target only some of them, so matching on the
- * name alone reports an APK as supported that will fail at patch time.
- */
 class BuildCodeSupportTest {
 
     private fun app(
@@ -44,8 +39,6 @@ class BuildCodeSupportTest {
 
     @Test
     fun unreadableBuildPasses() {
-        // Refusing an APK because its build could not be read would be worse than
-        // letting the patch itself decide.
         val subject = app(buildCodes = mapOf("380.0.0.29.109" to setOf(700)))
         check(subject.buildCodeSupported("380.0.0.29.109", null)) { "a null build was rejected" }
     }
@@ -60,7 +53,6 @@ class BuildCodeSupportTest {
     @Test
     fun statusReportsBuildMismatchRatherThanClaimingSupport() {
         val subject = app(buildCodes = mapOf("380.0.0.29.109" to setOf(700)))
-        // The version is the latest stable, so name-only matching says LATEST_STABLE.
         val wrongBuild = resolveVersionStatus("380.0.0.29.109", subject, versionCode = 999)
         check(wrongBuild.status == VersionStatus.BUILD_UNSUPPORTED) {
             "expected BUILD_UNSUPPORTED, got ${wrongBuild.status}"
@@ -86,9 +78,6 @@ class BuildCodeSupportTest {
 
     @Test
     fun oneUnconstrainedPatchOpensTheWholeVersion() {
-        // Mirrors morphe-manager's patchableAt: it passes when ANY target for the
-        // version names no build codes. An empty set carries that, so a patch that
-        // constrains the version cannot narrow it on another patch's behalf.
         val subject = app(buildCodes = mapOf("380.0.0.29.109" to emptySet()))
         check(subject.buildCodeSupported("380.0.0.29.109", 999)) {
             "an unconstrained target should accept any build"
@@ -101,7 +90,6 @@ class BuildCodeSupportTest {
 
     @Test
     fun unknownVersionIsUnaffectedByBuildCodes() {
-        // A version nobody targets is placed by version comparison as before.
         val subject = app(buildCodes = mapOf("380.0.0.29.109" to setOf(700)))
         val resolved = resolveVersionStatus("999.0.0.0.0", subject, versionCode = 1)
         check(resolved.status == VersionStatus.TOO_NEW) { "expected TOO_NEW, got ${resolved.status}" }

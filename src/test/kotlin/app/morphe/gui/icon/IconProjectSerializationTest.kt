@@ -28,13 +28,6 @@ class IconProjectSerializationTest {
         println("ROUNDTRIP_OK")
     }
 
-    /**
-     * The fill model moved out of [IconProject] into `data.model`, so its subtypes
-     * carry pinned [kotlinx.serialization.SerialName]s. Without them the serial
-     * name would follow the new package and every `project.json` already on a
-     * user's disk would fail to decode, which [IconProjectStore.load] swallows
-     * into a null.
-     */
     @Test
     fun decodesProjectsWrittenBeforeTheFillModelMoved() {
         val legacy = """

@@ -40,7 +40,6 @@ class ChangelogParserTest {
     fun `parses every heading style newest first`() {
         assertEquals(listOf("1.39.0", "1.38.0", "1.37.0"), entries.map { it.version })
         assertEquals("2026-08-05", entries.first().date)
-        // The bare-version heading with no compare URL still parses.
         assertEquals("2026-07-20", entries.last().date)
     }
 
@@ -48,40 +47,33 @@ class ChangelogParserTest {
     fun `scoped bullets are grouped by scope`() {
         val newest = entries.first().scopedBullets
         assertEquals(setOf("YouTube - Hide ads", "Reddit"), newest.keys)
-        // The commit link is stripped from the entry content.
         assertFalse(entries.first().content.contains("commit/abc1234"))
     }
 
     @Test
     fun `unscoped bullets are ignored`() {
-        // "Bump some dependency" has no bold scope, so it attributes to nobody.
         assertEquals(setOf("YouTube Music"), entries[1].scopedBullets.keys)
     }
 
     @Test
     fun `sub-scope matches its parent app`() {
-        // "YouTube - Hide ads" must count as a YouTube change.
         assertTrue(ChangelogParser.hasChangesFor(entries, "1.38.0", listOf("YouTube")))
     }
 
     @Test
     fun `only newer entries count`() {
-        // Reddit changed in 1.39.0 but not after it.
         assertTrue(ChangelogParser.hasChangesFor(entries, "1.38.0", listOf("Reddit")))
         assertFalse(ChangelogParser.hasChangesFor(entries, "1.39.0", listOf("Reddit")))
     }
 
     @Test
     fun `an app untouched by newer entries gets no badge`() {
-        // YouTube Music changed in 1.38.0 only, so from 1.38.0 onward there is nothing new.
         assertFalse(ChangelogParser.hasChangesFor(entries, "1.38.0", listOf("YouTube Music")))
         assertTrue(ChangelogParser.hasChangesFor(entries, "1.37.0", listOf("YouTube Music")))
     }
 
-    /** manager #622: an experimental-support bullet alone must not badge. */
     @Test
     fun `experimental support additions alone do not count`() {
-        // 1.37.0's only YouTube bullet is "Add experimental support for ...".
         val onlyExperimental = entries.filter { it.version == "1.37.0" }
         assertFalse(ChangelogParser.hasChangesFor(onlyExperimental, "1.36.0", listOf("YouTube")))
     }

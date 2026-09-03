@@ -71,7 +71,6 @@ object EnabledSourcesLoader {
         val guiPatchesBySource: Map<String, List<Patch>>,
     ) {
         val anyLoaded: Boolean get() = loaded.allPatches.isNotEmpty()
-        val anyFailed: Boolean get() = resolved.any { it.error != null } || loaded.hasErrors
     }
 
     /**
@@ -80,10 +79,6 @@ object EnabledSourcesLoader {
      * @param enabled list of (source, repository) pairs from
      *                [app.morphe.gui.data.repository.PatchSourceManager.getEnabledRepositories].
      *                Repository is null for LOCAL sources.
-     */
-    /**
-     * @param onDownloadProgress (source name, 0f..1f) while a bundle is fetched.
-     *   A fully cached run reports nothing.
      */
     suspend fun loadAll(
         enabled: List<Pair<PatchSource, PatchRepository?>>,
@@ -271,16 +266,11 @@ object EnabledSourcesLoader {
             latestStableTag = latestStable?.tagName
             latestDevTag = releases.firstOrNull { it.isDevRelease() }?.tagName
         } else {
-            // Both channels are needed whichever one is followed, since the resolved
-            // release is classified against both latest tags below. Fetch in parallel.
             val (stable, dev) = coroutineScope {
                 val stableAsync = async { repo.getLatestStableRelease().getOrNull() }
                 val devAsync = async { repo.getLatestDevRelease().getOrNull() }
                 stableAsync.await() to devAsync.await()
             }
-            // A dev follower takes whichever channel is actually newer. See
-            // [newerRelease]. A stable follower MUST NOT be moved onto a
-            // pre-release, so it only falls back when there is no stable at all.
             release = if (source.usePreRelease) newerRelease(dev, stable) else (stable ?: dev)
             latestStableTag = stable?.tagName
             latestDevTag = dev?.tagName
@@ -311,7 +301,6 @@ object EnabledSourcesLoader {
             source = source,
             patchFile = patchFile,
             resolvedVersion = release.tagName,
-            // Latest in the resolved channel. What an "update" would move to.
             latestAvailableVersion = if (release.isDevRelease()) latestDevTag else latestStableTag,
             isOffline = false,
             channel = channel,

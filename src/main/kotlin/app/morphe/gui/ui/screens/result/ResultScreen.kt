@@ -15,11 +15,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -45,7 +43,6 @@ import app.morphe.gui.ui.components.TopBarRow
 import app.morphe.gui.ui.components.morpheScrollbarStyle
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.contrastingForeground
-import app.morphe.gui.ui.theme.themedAccent
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -285,8 +282,7 @@ fun ResultScreenContent(outputPath: String) {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = font,
-                    // #259 dropped the success accent here for a neutral token.
-                    color = themedAccent(accents.secondary, MaterialTheme.colorScheme.onSurface)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(Modifier.weight(1f))
@@ -294,7 +290,6 @@ fun ResultScreenContent(outputPath: String) {
                 TopBarRow(allowCacheClear = false)
         }
 
-        // Content, vertically centered when it fits and scrollable when it overflows
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -801,7 +796,6 @@ private fun LinkHandlingSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // Optional OFF half, only when a rename was used so stock and patched coexist.
             if (stockPackage != null) {
                 Spacer(Modifier.height(12.dp))
                 val stockName = SupportedApp.getDisplayName(stockPackage)
@@ -1158,8 +1152,6 @@ private fun OutputFileCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(corners.medium))
             .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            // No fill and no accent stripe, matching the APK info card. The border
-            // bounds the card and the window background carries through it.
     ) {
 
         Column(
@@ -1276,8 +1268,6 @@ private fun PatchAnotherButton(
             .fillMaxWidth()
             .height(42.dp),
         shape = RoundedCornerShape(corners.small),
-        // Solid. With the card behind it transparent, a tinted button leaves the
-        // screen with nothing to land on.
         border = BorderStroke(1.dp, accents.primary),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = accents.primary,

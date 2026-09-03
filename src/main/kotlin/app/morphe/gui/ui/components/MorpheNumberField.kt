@@ -43,13 +43,6 @@ import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 
-/**
- * Numeric entry with stepper arrows, clamped to [range].
- *
- * [decimals] sets both the display format and the step: whole numbers step by 1,
- * one decimal by 0.1, and so on. Typing is applied live, so a partial entry that
- * does not parse simply leaves the value alone until it does.
- */
 @Composable
 fun MorpheNumberField(
     value: Float,
@@ -125,7 +118,6 @@ fun MorpheNumberField(
     }
 }
 
-/** A labelled slider paired with a [MorpheNumberField] for exact entry. */
 @Composable
 fun MorpheAdjustRow(
     label: String,

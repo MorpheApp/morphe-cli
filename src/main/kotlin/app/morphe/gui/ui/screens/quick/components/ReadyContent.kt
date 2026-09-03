@@ -108,7 +108,6 @@ internal fun ReadyContent(
                 .padding(end = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ── APK info card, bordered box with accent stripe ──
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,14 +126,12 @@ internal fun ReadyContent(
                         .fillMaxWidth()
                         .padding(start = 3.dp)
                 ) {
-                    // Header: app identity + dismiss
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // App initial
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
@@ -165,8 +162,6 @@ internal fun ReadyContent(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                // Build included where known, since one version name
-                                // can cover many builds and only some are patchable.
                                 text = buildString {
                                     append("v${apkInfo.versionName}")
                                     apkInfo.versionCode?.let { append(" (build $it)") }
@@ -179,7 +174,6 @@ internal fun ReadyContent(
                             )
                         }
 
-                        // Dismiss button
                         val closeHover = remember { MutableInteractionSource() }
                         val isCloseHovered by closeHover.collectIsHoveredAsState()
                         val closeBg by animateColorAsState(
@@ -207,7 +201,6 @@ internal fun ReadyContent(
                         }
                     }
 
-                    // Status bar
                     val statusDisplay = resolveVersionStatusDisplay(
                         apkInfo.versionStatus, apkInfo.checksumStatus, apkInfo.suggestedVersion
                     )
@@ -215,12 +208,6 @@ internal fun ReadyContent(
                     val statusDetail = statusDisplay?.detail
 
                     if (statusText != null) {
-                        // Modifier order matters: putting the outer padding BEFORE
-                        // background insets the tinted strip 20dp from each card
-                        // edge, lining up with the divider stroke above. We then
-                        // clip the background to a small rounded shape and apply
-                        // inner padding so the dot + text sit nicely inset from
-                        // the strip's edges.
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -268,7 +255,6 @@ internal fun ReadyContent(
                         }
                     }
 
-                    // ── Architectures row ──
                     if (apkInfo.architectures.isNotEmpty()) {
                         Row(
                             modifier = Modifier
@@ -328,7 +314,6 @@ internal fun ReadyContent(
                         }
                     }
 
-                    // ── Min SDK row ──
                     if (apkInfo.minSdk != null) {
                         Row(
                             modifier = Modifier
@@ -365,10 +350,6 @@ internal fun ReadyContent(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Patches card. Collapsed by default, header alone, intrinsic
-            // height. When expanded, gains a bounded body so the chip flow
-            // doesn't dominate a short window. The body's own scroll handles
-            // long patch lists. ──
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -397,9 +378,6 @@ internal fun ReadyContent(
                             )
                         }
                     } else {
-                        // Header, clickable to toggle the patch chip body. Tap
-                        // anywhere on the row to expand/collapse. A chevron at
-                        // the trailing edge indicates the current state.
                         val chevronRotation by animateFloatAsState(
                             targetValue = if (patchesExpanded) 180f else 0f,
                             animationSpec = tween(200),
@@ -457,15 +435,9 @@ internal fun ReadyContent(
 
                         AnimatedVisibility(
                             visible = patchesExpanded,
-                            // Weight here threads the bounded patches-card height
-                            // down to the body's verticalScroll. Without it, the
-                            // inner Column → AnimatedVisibility chain measures
-                            // unbounded vertically and verticalScroll throws
-                            // "scrollable measured with infinity".
                             modifier = Modifier.weight(1f),
                         ) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                // Divider
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -473,7 +445,6 @@ internal fun ReadyContent(
                                         .background(borderColor)
                                 )
 
-                                // Body: search + chips, scrollable
                                 Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                                     Column(
                                         modifier = Modifier

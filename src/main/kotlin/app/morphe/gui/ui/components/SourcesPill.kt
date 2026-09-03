@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -148,7 +147,6 @@ fun sourceLedState(
         EnabledSourcesLoader.Channel.DEV_LATEST -> SourceLedState.DEV_LATEST
         EnabledSourcesLoader.Channel.DEV_OLDER -> SourceLedState.DEV_OLDER
         EnabledSourcesLoader.Channel.LOCAL -> SourceLedState.LOCAL
-        // No load yet, so assume latest until we know otherwise.
         null, EnabledSourcesLoader.Channel.UNKNOWN -> SourceLedState.STABLE_LATEST
     }
 }

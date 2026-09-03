@@ -23,9 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -91,7 +88,6 @@ internal fun CompletedContent(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Output file card
             Box(
                 modifier = Modifier
                     .widthIn(max = 480.dp)
@@ -147,7 +143,6 @@ internal fun CompletedContent(
                         }
                     }
 
-                    // Open folder link
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -195,9 +190,6 @@ internal fun CompletedContent(
                 }
             }
 
-            // ADB install, when the user has the toggle off, render a compact
-            // "ADB OFF" hint with an inline enable button rather than hiding the
-            // affordance entirely (otherwise users wonder where install went).
             if (isAdbDisabledByUser) {
                 Spacer(modifier = Modifier.height(12.dp))
                 val enableHover = remember { MutableInteractionSource() }
@@ -306,7 +298,6 @@ internal fun CompletedContent(
                                         result.fold(
                                             onSuccess = {
                                                 installSuccess = true
-                                                // Parity with ResultScreen: auto-route links when opted in.
                                                 val config = configRepository.loadConfig()
                                                 if (config.autoRouteLinksAfterInstall) {
                                                     val record = PatchedAppStore.shared.getAll()
@@ -363,7 +354,6 @@ internal fun CompletedContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Patch another button
             OutlinedButton(
                 onClick = onPatchAnother,
                 modifier = Modifier

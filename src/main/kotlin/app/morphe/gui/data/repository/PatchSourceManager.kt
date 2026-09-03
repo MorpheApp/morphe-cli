@@ -44,10 +44,6 @@ class PatchSourceManager(
     private val _sourceVersion = MutableStateFlow(0)
     val sourceVersion: StateFlow<Int> = _sourceVersion.asStateFlow()
 
-    // Observable list of enabled sources for UI
-    private val _enabledSources = MutableStateFlow<List<PatchSource>>(emptyList())
-    val enabledSources: StateFlow<List<PatchSource>> = _enabledSources.asStateFlow()
-
     // Observable list of ALL sources (enabled + disabled). Drives the
     // SourceManagementSheet which needs to render every source with a toggle.
     private val _allSources = MutableStateFlow<List<PatchSource>>(emptyList())
@@ -77,8 +73,6 @@ class PatchSourceManager(
      * Call once at app startup (from a LaunchedEffect).
      */
     suspend fun initialize() {
-        // MUST run before any source is read. Quick mode resolves sources without
-        // ever touching the version prefs, so this is the only shared choke point.
         configRepository.migrateSourceChannelFlags()
         val source = configRepository.getActivePatchSource()
         cachedActiveSource = source
@@ -208,13 +202,6 @@ class PatchSourceManager(
     }
 
     /**
-     * Clear all cached repository instances (e.g. after source list changes).
-     */
-    fun clearAll() {
-        repositories.clear()
-    }
-
-    /**
      * Notify that cached patch files were deleted (e.g. via "Clear Cache" in settings).
      * Clears cached repo state and bumps [sourceVersion] so ViewModels reload.
      */
@@ -294,7 +281,6 @@ class PatchSourceManager(
         val all = configRepository.loadConfig().patchSource
         val enabled = all.filter { it.enabled }
         cachedEnabledSources = enabled
-        _enabledSources.value = enabled
         _allSources.value = all
     }
 }

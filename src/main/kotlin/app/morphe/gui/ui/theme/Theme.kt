@@ -21,12 +21,6 @@ import androidx.compose.ui.unit.dp
 object MorpheColors {
     val Blue = Color(0xFF3B7BF7)
     val Teal = Color(0xFF00D1B2)
-    val Cyan = Color(0xFF62E1FF)
-    val DeepBlack = Color(0xFF121212)
-    val SurfaceDark = Color(0xFF1E1E1E)
-    val SurfaceLight = Color(0xFFF5F5F5)
-    val TextLight = Color(0xFFE3E3E3)
-    val TextDark = Color(0xFF1C1C1C)
 }
 
 // Morphe Preset Colors
@@ -66,78 +60,18 @@ data class MorpheAccentColors(
 
 val LocalMorpheAccents = compositionLocalOf { MorpheAccentColors(MorpheColors.Blue, MorpheColors.Teal) }
 
-/** Morphe Dark. Brand blue and teal on dark grey. */
-private val MorpheDarkAccents = MorpheAccentColors(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
-)
-
-/** Morphe Amoled. Brighter accents so they still pop on pure black. */
-private val MorpheAmoledAccents = MorpheAccentColors(
-    primary = Color(0xFF5B9AFF),   // Punchy blue for pure black
-    secondary = Color(0xFF00E8C6), // Vivid teal for pure black
-)
-
-/** Morphe Light. The brand colors work as they are on light backgrounds. */
-private val MorpheLightAccents = MorpheAccentColors(
-    primary = MorpheColors.Blue,
-    secondary = MorpheColors.Teal,
-)
-
-/** Manager Dark. The manager's Material 3 palette on dark charcoal. */
-private val ManagerDarkAccents = MorpheAccentColors(
+private val DarkAccents = MorpheAccentColors(
     primary = Color(0xFFA4C9FF),   // Morphe dark primary, light blue
     secondary = Color(0xFF9CCC65), // Success green for dark surfaces
     tertiary = Color(0xFFD9BDE3),  // Morphe dark tertiary
     warning = Color(0xFFE0A030),   // Amber
 )
 
-/** Manager Light. The manager's Material 3 blue accent on light neutrals. */
-private val ManagerLightAccents = MorpheAccentColors(
+private val LightAccents = MorpheAccentColors(
     primary = Color(0xFF005FAC),   // Morphe Material blue (buttons, links, selections)
     secondary = Color(0xFF386A20), // Success green (manager uses green for installed states)
     tertiary = Color(0xFF6D5677),  // Morphe tertiary, muted purple
     warning = Color(0xFFB26A00),   // Amber
-)
-
-/** Nord. Arctic frost and aurora, taken from the native Nord palette. */
-private val NordAccents = MorpheAccentColors(
-    primary = Color(0xFF5EC4DB),   // Frost, saturated
-    secondary = Color(0xFF8FD46E), // Aurora green, vivid
-    tertiary = Color(0xFF6AA3D9),  // Frost blue, punchy
-    warning = Color(0xFFE8BF5A),   // Aurora yellow
-)
-
-/** Catppuccin Mocha. Mauve and teal from the native Catppuccin palette. */
-private val CatppuccinAccents = MorpheAccentColors(
-    primary = Color(0xFFB47BFF),   // Mauve, saturated rather than pastel
-    secondary = Color(0xFF4EECD5), // Teal, vivid
-    tertiary = Color(0xFF6A9FFF),  // Blue, punchy
-    warning = Color(0xFFFF9A5C),   // Peach
-)
-
-/** Sakura. Triadic cherry blossom pink, spring sage, wisteria dusk. */
-private val SakuraAccents = MorpheAccentColors(
-    primary = Color(0xFFD44B76),   // Cherry blossom pink
-    secondary = Color(0xFF5B8A72), // Spring leaf sage, the complementary green
-    tertiary = Color(0xFF8B6B99),  // Wisteria dusk, a purple structural accent
-    warning = Color(0xFFD89A2B),   // Golden stamen amber
-)
-
-/** Matcha. Forest green and sage. */
-private val MatchaAccents = MorpheAccentColors(
-    primary = Color(0xFF4C7A35),   // Tea leaf green
-    secondary = Color(0xFF4C7871), // Muted jade
-    tertiary = Color(0xFF7D6A9B),  // Soft plum contrast
-    warning = Color(0xFFB77833),   // Toasted ochre
-)
-
-/** Deepspace. High saturation cyan on near black, the cyberdeck look. */
-private val DeepspaceAccents = MorpheAccentColors(
-    primary = Color(0xFF00D9FF),   // Electric cyan
-    secondary = Color(0xFF79E3A5), // Mint green, stable and success states
-    tertiary = Color(0xFF7AB7FF),  // Cool blue, structural
-    warning = Color(0xFFFFB347),   // Warm amber, older and warning states
 )
 
 // ════════════════════════════════════════════════════════════════════
@@ -173,117 +107,15 @@ data class MorpheDimens(
 
 val LocalMorpheDimens = compositionLocalOf { MorpheDimens() }
 
-/**
- * Sharp corners, the Morphe default. A theme uses these unless it opts into
- * [SoftCorners] or [ManagerCorners]. See [ThemePreference.isSoft] and
- * [ThemePreference.isManager].
- */
 private val SharpCorners = MorpheCornerStyle(small = 2.dp, medium = 2.dp, large = 2.dp)
 
-/** Soft rounded corners for the warm themes. */
-private val SoftCorners = MorpheCornerStyle(small = 10.dp, medium = 14.dp, large = 18.dp)
-
-/** Material 3 rounding from #259: 12dp cards, 16dp sheets, 24dp dialogs. */
-private val ManagerCorners = MorpheCornerStyle(small = 12.dp, medium = 16.dp, large = 24.dp)
+private val RoundedCorners = MorpheCornerStyle(small = 12.dp, medium = 16.dp, large = 24.dp)
 
 // ════════════════════════════════════════════════════════════════════
 //  COLOR SCHEMES
 // ════════════════════════════════════════════════════════════════════
 
-/**
- * Morphe Dark. Brand blue, teal and cyan on dark grey, the original desktop look.
- *
- * Container and outline tokens are set here but were absent from the pre-#259
- * palette, which predates the app reading them. Leaving them unset now falls
- * back to the Material baseline, which is purple and wrong for every theme here.
- */
 private val MorpheDarkColorScheme = darkColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFFE3E3E3),
-    primary = MorpheColors.Blue,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF16305F),
-    onPrimaryContainer = Color(0xFFD6E3FF),
-    secondary = MorpheColors.Teal,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFF05433A),
-    onSecondaryContainer = Color(0xFF9DF2E2),
-    tertiary = MorpheColors.Cyan,
-    onTertiary = Color.Black,
-    background = Color(0xFF121212),
-    onBackground = MorpheColors.TextLight,
-    surface = Color(0xFF1E1E1E),
-    onSurface = MorpheColors.TextLight,
-    surfaceVariant = Color(0xFF2A2A2A),
-    onSurfaceVariant = Color(0xFFB0B0B0),
-    outline = Color(0xFF5A5A5A),
-    outlineVariant = Color(0xFF2F2F2F),
-    error = Color(0xFFCF6679),
-    onError = Color.Black,
-)
-
-/** Morphe Amoled. The dark palette dropped onto true black for OLED panels. */
-private val MorpheAmoledColorScheme = darkColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFFE3E3E3),
-    primary = MorpheColors.Blue,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF122A52),
-    onPrimaryContainer = Color(0xFFDCE7FF),
-    secondary = MorpheColors.Teal,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFF04372F),
-    onSecondaryContainer = Color(0xFFA8F5E7),
-    tertiary = MorpheColors.Cyan,
-    onTertiary = Color.Black,
-    background = Color.Black,
-    onBackground = MorpheColors.TextLight,
-    surface = Color(0xFF0A0A0A),
-    onSurface = MorpheColors.TextLight,
-    surfaceVariant = Color(0xFF1A1A1A),
-    onSurfaceVariant = Color(0xFFB0B0B0),
-    outline = Color(0xFF4A4A4A),
-    outlineVariant = Color(0xFF1F1F1F),
-    error = Color(0xFFCF6679),
-    onError = Color.Black,
-)
-
-/** Morphe Light. The same brand palette on light neutrals. */
-private val MorpheLightColorScheme = lightColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFF1C1C1C),
-    primary = MorpheColors.Blue,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFD9E5FF),
-    onPrimaryContainer = Color(0xFF06214F),
-    secondary = MorpheColors.Teal,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFB9F2E8),
-    onSecondaryContainer = Color(0xFF00312A),
-    tertiary = MorpheColors.Cyan,
-    onTertiary = Color.Black,
-    background = Color(0xFFFAFAFA),
-    onBackground = MorpheColors.TextDark,
-    surface = MorpheColors.SurfaceLight,
-    onSurface = MorpheColors.TextDark,
-    surfaceVariant = Color(0xFFE8E8E8),
-    onSurfaceVariant = Color(0xFF505050),
-    outline = Color(0xFF767676),
-    outlineVariant = Color(0xFFD0D0D0),
-    error = Color(0xFFB00020),
-    onError = Color.White,
-)
-
-private val ManagerDarkColorScheme = darkColorScheme(
     primary = Color(0xFFA4C9FF),
     onPrimary = Color(0xFF00315D),
     primaryContainer = Color(0xFF004884),
@@ -305,28 +137,14 @@ private val ManagerDarkColorScheme = darkColorScheme(
     onError = Color(0xFF690005),
 )
 
-private val ManagerAmoledColorScheme = darkColorScheme(
-    primary = Color(0xFFA4C9FF),
-    onPrimary = Color(0xFF00315D),
-    primaryContainer = Color(0xFF004884),
-    onPrimaryContainer = Color(0xFFD4E3FF),
-    secondary = Color(0xFFBCC7DB),
-    onSecondary = Color(0xFF263141),
-    secondaryContainer = Color(0xFF3D4758),
-    onSecondaryContainer = Color(0xFFD8E3F8),
-    tertiary = Color(0xFFD9BDE3),
-    onTertiary = Color(0xFF3D2946),
+private val MorpheAmoledColorScheme = MorpheDarkColorScheme.copy(
     background = Color.Black,
     surface = Color.Black,
     surfaceVariant = Color.Black,
-    onBackground = MorpheColors.TextLight,
-    onSurface = MorpheColors.TextLight,
     onSurfaceVariant = Color(0xFFB0B0B0),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005)
 )
 
-private val ManagerLightColorScheme = lightColorScheme(
+private val MorpheLightColorScheme = lightColorScheme(
     primary = Color(0xFF005FAC),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFD4E3FF),
@@ -348,156 +166,6 @@ private val ManagerLightColorScheme = lightColorScheme(
     onError = Color(0xFFFFFFFF),
 )
 
-/**
- * Nord. Arctic and cool toned, after nordtheme.com.
- *
- * Container and outline tokens are set explicitly. Leaving them out falls back
- * to the Material baseline, which is purple and wrong for every theme here.
- */
-private val NordColorScheme = darkColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFFECEFF4),
-    primary = Color(0xFF88C0D0),          // Frost
-    onPrimary = Color(0xFF2E3440),
-    primaryContainer = Color(0xFF3C5A66),
-    onPrimaryContainer = Color(0xFFD8EEF4),
-    secondary = Color(0xFFA3BE8C),        // Aurora green
-    onSecondary = Color(0xFF2E3440),
-    secondaryContainer = Color(0xFF4A5A42),
-    onSecondaryContainer = Color(0xFFE2EDD8),
-    tertiary = Color(0xFF81A1C1),         // Frost blue
-    onTertiary = Color(0xFF2E3440),
-    background = Color(0xFF2E3440),       // Polar Night
-    onBackground = Color(0xFFECEFF4),     // Snow Storm
-    surface = Color(0xFF3B4252),
-    onSurface = Color(0xFFECEFF4),
-    surfaceVariant = Color(0xFF434C5E),
-    onSurfaceVariant = Color(0xFFD8DEE9),
-    outline = Color(0xFF7B88A1),
-    outlineVariant = Color(0xFF4C566A),
-    error = Color(0xFFBF616A),            // Aurora red
-    onError = Color(0xFFECEFF4),
-)
-
-/** Catppuccin Mocha. Warm pastel dark, after the Mocha flavour. */
-private val CatppuccinMochaColorScheme = darkColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFFCDD6F4),
-    primary = Color(0xFFCBA6F7),          // Mauve
-    onPrimary = Color(0xFF1E1E2E),
-    primaryContainer = Color(0xFF4B3A63),
-    onPrimaryContainer = Color(0xFFEBDDFC),
-    secondary = Color(0xFFF5C2E7),        // Pink
-    onSecondary = Color(0xFF1E1E2E),
-    secondaryContainer = Color(0xFF5C3F55),
-    onSecondaryContainer = Color(0xFFFBDCF2),
-    tertiary = Color(0xFF89B4FA),         // Blue
-    onTertiary = Color(0xFF1E1E2E),
-    background = Color(0xFF1E1E2E),       // Base
-    onBackground = Color(0xFFCDD6F4),     // Text
-    surface = Color(0xFF313244),          // Surface0
-    onSurface = Color(0xFFCDD6F4),
-    surfaceVariant = Color(0xFF45475A),   // Surface1
-    onSurfaceVariant = Color(0xFFBAC2DE), // Subtext1
-    outline = Color(0xFF7F849C),          // Overlay1
-    outlineVariant = Color(0xFF45475A),
-    error = Color(0xFFF38BA8),            // Red
-    onError = Color(0xFF1E1E2E),
-)
-
-/** Sakura. Cherry blossom pink, sage and wisteria on warm petal surfaces. */
-private val SakuraColorScheme = lightColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFF3D2832),
-    primary = Color(0xFFD44B76),          // Cherry blossom pink
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFD9E2),
-    onPrimaryContainer = Color(0xFF3F0819),
-    secondary = Color(0xFF5B8A72),        // Spring leaf sage
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFD3E8DA),
-    onSecondaryContainer = Color(0xFF10281B),
-    tertiary = Color(0xFF8B6B99),         // Wisteria dusk
-    onTertiary = Color.White,
-    background = Color(0xFFFFF0EA),       // Warm blossom paper
-    onBackground = Color(0xFF3D2832),     // Plum tinted ink, not pure black
-    surface = Color(0xFFFFE4DC),          // Pink petal surface
-    onSurface = Color(0xFF3D2832),
-    surfaceVariant = Color(0xFFF5D5CC),   // Deeper blush for emphasis
-    onSurfaceVariant = Color(0xFF7A5562), // Plum brown, a sakura bark tone
-    outline = Color(0xFFA88592),
-    outlineVariant = Color(0xFFEBC9C0),
-    error = Color(0xFFC03048),
-    onError = Color.White,
-)
-
-/** Matcha. Pista green, a fresh light theme. */
-private val MatchaColorScheme = lightColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFF21321B),
-    primary = Color(0xFF4C7A35),          // Tea leaf green
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFCDEDB6),
-    onPrimaryContainer = Color(0xFF0F2900),
-    secondary = Color(0xFF5E8554),        // Deep herb
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFD6E8CE),
-    onSecondaryContainer = Color(0xFF16240F),
-    tertiary = Color(0xFF92B887),         // Soft matcha
-    onTertiary = Color(0xFF21321B),
-    background = Color(0xFFF6F8F1),       // Green tinted white
-    onBackground = Color(0xFF21321B),     // Deep forest
-    surface = Color(0xFFEAF1E1),          // Pale leaf
-    onSurface = Color(0xFF21321B),
-    surfaceVariant = Color(0xFFD6E2C9),
-    onSurfaceVariant = Color(0xFF476042),
-    outline = Color(0xFF74806C),
-    outlineVariant = Color(0xFFC6D2BC),
-    error = Color(0xFFAA3A3A),
-    onError = Color.White,
-)
-
-/** Deepspace. Electric cyan and mint on near black blue, the cyberdeck look. */
-private val DeepspaceColorScheme = darkColorScheme(
-    // Neutral, so elevation lifts a surface without tinting it. Material
-    // defaults surfaceTint to primary, which is why every elevated surface in
-    // the app was washed with the accent. The Manager schemes keep the default
-    // on purpose, since that tint is part of the look #259 designed.
-    surfaceTint = Color(0xFFD6DEEB),
-    primary = Color(0xFF00D9FF),          // Electric cyan
-    onPrimary = Color(0xFF001A22),
-    primaryContainer = Color(0xFF00404F),
-    onPrimaryContainer = Color(0xFFB4EEFF),
-    secondary = Color(0xFF79E3A5),        // Mint green
-    onSecondary = Color(0xFF0A2317),
-    secondaryContainer = Color(0xFF12402A),
-    onSecondaryContainer = Color(0xFFA6F3C6),
-    tertiary = Color(0xFF7AB7FF),         // Cool blue
-    onTertiary = Color(0xFF051628),
-    background = Color(0xFF0D1117),       // Near black blue
-    onBackground = Color(0xFFD6DEEB),
-    surface = Color(0xFF14191F),          // Slightly raised
-    onSurface = Color(0xFFD6DEEB),
-    surfaceVariant = Color(0xFF1B2128),   // Card surfaces
-    onSurfaceVariant = Color(0xFF8E97A6), // Muted text
-    outline = Color(0xFF5A6675),
-    outlineVariant = Color(0xFF2A323C),
-    error = Color(0xFFFF6B6B),
-    onError = Color(0xFF1E0707),
-)
-
 // ════════════════════════════════════════════════════════════════════
 //  THEME PREFERENCE
 // ════════════════════════════════════════════════════════════════════
@@ -506,36 +174,13 @@ enum class ThemePreference {
     LIGHT,
     DARK,
     AMOLED,
-    MANAGER_LIGHT,
-    MANAGER_DARK,
-    MANAGER_AMOLED,
-    NORD,
-    CATPPUCCIN,
-    SAKURA,
-    MATCHA,
-    DEEPSPACE,
     SYSTEM;
 
     /** Whether this theme uses dark color scheme (for resource qualifiers). */
     fun isDark(): Boolean = when (this) {
-        DARK, AMOLED, MANAGER_DARK, MANAGER_AMOLED, NORD, CATPPUCCIN, DEEPSPACE -> true
-        LIGHT, MANAGER_LIGHT, SAKURA, MATCHA -> false
+        DARK, AMOLED -> true
+        LIGHT -> false
         SYSTEM -> false // caller should check isSystemInDarkTheme()
-    }
-
-    /** Whether this theme swaps the sharp default for [SoftCorners]. */
-    fun isSoft(): Boolean = when (this) {
-        SAKURA, MATCHA -> true
-        else -> false
-    }
-
-    /**
-     * Whether this theme is one of the morphe-manager look-alikes added by #259.
-     * These keep the manager's Material 3 palette, [ManagerCorners] and Roboto.
-     */
-    fun isManager(): Boolean = when (this) {
-        MANAGER_LIGHT, MANAGER_DARK, MANAGER_AMOLED -> true
-        else -> false
     }
 }
 
@@ -547,20 +192,13 @@ enum class ThemePreference {
 fun MorpheTheme(
     themePreference: ThemePreference = ThemePreference.SYSTEM,
     customAccentColorArgb: Int? = null,
+    useSharpCorners: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val baseColorScheme = when (themePreference) {
         ThemePreference.DARK -> MorpheDarkColorScheme
         ThemePreference.AMOLED -> MorpheAmoledColorScheme
         ThemePreference.LIGHT -> MorpheLightColorScheme
-        ThemePreference.MANAGER_DARK -> ManagerDarkColorScheme
-        ThemePreference.MANAGER_AMOLED -> ManagerAmoledColorScheme
-        ThemePreference.MANAGER_LIGHT -> ManagerLightColorScheme
-        ThemePreference.NORD -> NordColorScheme
-        ThemePreference.CATPPUCCIN -> CatppuccinMochaColorScheme
-        ThemePreference.SAKURA -> SakuraColorScheme
-        ThemePreference.MATCHA -> MatchaColorScheme
-        ThemePreference.DEEPSPACE -> DeepspaceColorScheme
         ThemePreference.SYSTEM -> {
             if (isSystemInDarkTheme()) MorpheDarkColorScheme else MorpheLightColorScheme
         }
@@ -592,38 +230,13 @@ fun MorpheTheme(
         baseColorScheme
     }
 
-    val corners = when {
-        themePreference.isManager() -> ManagerCorners
-        themePreference.isSoft() -> SoftCorners
-        else -> SharpCorners
-    }
-    // Each family belongs to its theme group. The soft themes are built on
-    // Nunito's rounded terminals, the Manager themes ship Roboto like the app
-    // they mimic, and everything else is built around JetBrains Mono. Only the
-    // sharp themes double up, since JetBrains Mono is already a monospace face.
-    val font = when {
-        themePreference.isManager() -> Roboto
-        themePreference.isSoft() -> Nunito
-        else -> JetBrainsMono
-    }
-    val monoFont = if (themePreference.isManager() || themePreference.isSoft()) {
-        RobotoMono
-    } else {
-        JetBrainsMono
-    }
+    val corners = if (useSharpCorners) SharpCorners else RoundedCorners
+    val font = Roboto
+    val monoFont = RobotoMono
     val baseAccents = when (themePreference) {
-        ThemePreference.DARK -> MorpheDarkAccents
-        ThemePreference.AMOLED -> MorpheAmoledAccents
-        ThemePreference.LIGHT -> MorpheLightAccents
-        ThemePreference.MANAGER_DARK -> ManagerDarkAccents
-        ThemePreference.MANAGER_AMOLED -> ManagerDarkAccents
-        ThemePreference.MANAGER_LIGHT -> ManagerLightAccents
-        ThemePreference.NORD -> NordAccents
-        ThemePreference.CATPPUCCIN -> CatppuccinAccents
-        ThemePreference.SAKURA -> SakuraAccents
-        ThemePreference.MATCHA -> MatchaAccents
-        ThemePreference.DEEPSPACE -> DeepspaceAccents
-        ThemePreference.SYSTEM -> if (isSystemInDarkTheme()) MorpheDarkAccents else MorpheLightAccents
+        ThemePreference.DARK, ThemePreference.AMOLED -> DarkAccents
+        ThemePreference.LIGHT -> LightAccents
+        ThemePreference.SYSTEM -> if (isSystemInDarkTheme()) DarkAccents else LightAccents
     }
 
     val accents = if (customPrimary != null) {
@@ -653,18 +266,6 @@ fun MorpheTheme(
         )
     }
 }
-
-/**
- * An accent on our own themes, and [managerNeutral] on the Manager ones.
- *
- * #259 replaced a number of accent colours with neutral `colorScheme` tokens,
- * which is right for the Manager themes it was designed around and drains the
- * colour out of every other theme. This keeps both: the Manager themes render
- * exactly as they do today, and the rest get their accent back.
- */
-@Composable
-fun themedAccent(accent: Color, managerNeutral: Color): Color =
-    if (LocalThemeState.current.current.isManager()) managerNeutral else accent
 
 fun Color.shiftLightness(delta: Float): Color {
     val hsl = FloatArray(3)

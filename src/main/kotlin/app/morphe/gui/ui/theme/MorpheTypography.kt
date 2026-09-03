@@ -8,11 +8,9 @@ package app.morphe.gui.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
-import androidx.compose.ui.unit.sp
 
 /**
  * Roboto - the standard sans-serif font used for the main UI.
@@ -41,40 +39,6 @@ val RobotoMono: FontFamily
         Font(resource = "fonts/RobotoMono-Bold.ttf", weight = FontWeight.Bold),
     )
 
-/**
- * JetBrains Mono, the face the sharp Morphe themes are built around. Serves as
- * both the UI font and the technical font for those themes: versions, package
- * names, architectures, checksums, console output.
- */
-val JetBrainsMono: FontFamily
-    @Composable
-    get() = FontFamily(
-        Font(resource = "fonts/JetBrainsMono-Light.ttf", weight = FontWeight.Light),
-        Font(resource = "fonts/JetBrainsMono-Regular.ttf", weight = FontWeight.Normal),
-        Font(resource = "fonts/JetBrainsMono-Medium.ttf", weight = FontWeight.Medium),
-        Font(resource = "fonts/JetBrainsMono-SemiBold.ttf", weight = FontWeight.SemiBold),
-        Font(resource = "fonts/JetBrainsMono-Bold.ttf", weight = FontWeight.Bold),
-    )
-
-/**
- * Nunito, the soft rounded sans for the warm themes (Sakura, Matcha). Generous
- * x-height and fully rounded terminals, which is the whole point of those two.
- */
-val Nunito: FontFamily
-    @Composable
-    get() = FontFamily(
-        Font(resource = "fonts/Nunito-Light.ttf", weight = FontWeight.Light),
-        Font(resource = "fonts/Nunito-Regular.ttf", weight = FontWeight.Normal),
-        Font(resource = "fonts/Nunito-Medium.ttf", weight = FontWeight.Medium),
-        Font(resource = "fonts/Nunito-SemiBold.ttf", weight = FontWeight.SemiBold),
-        Font(resource = "fonts/Nunito-Bold.ttf", weight = FontWeight.Bold),
-    )
-
-/**
- * Theme-aware font provider. The Manager themes take Roboto, the soft themes take
- * [Nunito], every other theme takes [JetBrainsMono]. See [ThemePreference.isManager]
- * and [ThemePreference.isSoft].
- */
 val LocalMorpheFont = compositionLocalOf<FontFamily> { FontFamily.Default }
 val LocalMorpheMono = compositionLocalOf<FontFamily> { FontFamily.Monospace }
 

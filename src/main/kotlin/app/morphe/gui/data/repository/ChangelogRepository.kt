@@ -19,13 +19,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/**
- * Fetches and caches each patch source's CHANGELOG.md, so a bundle bump can be
- * attributed to an app instead of badging every patched app.
- *
- * Every failure path returns null. Callers MUST treat null as "cannot tell" and
- * show the update, matching morphe-manager.
- */
 class ChangelogRepository(
     httpClient: HttpClient,
 ) {
@@ -33,13 +26,6 @@ class ChangelogRepository(
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, List<ChangelogEntry>>()
 
-    /**
-     * Parsed changelog entries for [source] on the branch matching its release
-     * channel, or null when the source has no reachable changelog.
-     *
-     * @param prerelease true when the source resolved to a dev release, which
-     *   reads the `dev` branch instead of `main`.
-     */
     suspend fun entriesFor(source: PatchSource, prerelease: Boolean): List<ChangelogEntry>? =
         withContext(Dispatchers.IO) {
             val url = changelogUrl(source, prerelease) ?: return@withContext null
@@ -60,13 +46,8 @@ class ChangelogRepository(
             }
         }
 
-    /** Drops cached changelogs so the next read re-fetches. */
     suspend fun clearCache() = mutex.withLock { cache.clear() }
 
-    /**
-     * Raw-content URL for a source's CHANGELOG.md, or null for local sources and
-     * anything whose URL will not parse into a provider plus repo path.
-     */
     private fun changelogUrl(source: PatchSource, prerelease: Boolean): String? {
         if (source.type == PatchSourceType.LOCAL) return null
         val url = source.url?.takeIf { it.isNotBlank() } ?: return null

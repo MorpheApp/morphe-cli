@@ -34,7 +34,6 @@ import app.morphe.gui.ui.screens.home.ApkInfo
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.util.ChecksumStatus
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.resolveStatusColorType
 import app.morphe.gui.util.resolveVersionStatusDisplay
@@ -72,11 +71,6 @@ fun ApkInfoCard(
             .fillMaxWidth()
             .clip(cardShape)
             .border(1.dp, borderColor, cardShape)
-            // No fill. The border alone describes the card, so the window's
-            // background carries straight through it and it sits in the same
-            // material as the app cards on the left rather than on top of them.
-            // The status still reads from the version label and the app initial,
-            // so nothing is lost by dropping the accent stripe that was here.
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -88,7 +82,6 @@ fun ApkInfoCard(
                     .padding(start = 23.dp, end = 20.dp, top = 16.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // App initial, monospace, bold, in accent
                 Box(
                     modifier = Modifier
                         .size(44.dp)
@@ -263,8 +256,6 @@ fun ApkInfoCard(
                     font = font,
                     modifier = Modifier.weight(1f)
                 )
-                // Apps like Instagram ship many builds under one version name, so
-                // the build is what actually identifies an APK to someone comparing.
                 if (apkInfo.versionCode != null) {
                     TechDataCell(
                         label = "Build",
@@ -289,7 +280,6 @@ fun ApkInfoCard(
                 }
             }
 
-            // Architectures, shown as individual tags with the device arch highlighted.
             if (apkInfo.architectures.isNotEmpty()) {
                 val deviceState by DeviceMonitor.state.collectAsState()
                 val deviceArch = deviceState.selectedDevice?.architecture

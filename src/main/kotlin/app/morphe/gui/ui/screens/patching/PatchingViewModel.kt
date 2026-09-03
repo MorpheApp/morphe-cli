@@ -23,7 +23,6 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import java.io.File
 import java.lang.management.ManagementFactory
-import java.util.logging.Level
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -354,7 +353,6 @@ data class PatchingUiState(
     val outputPath: String? = null,
     val error: String? = null,
     val progress: Float = 0f,
-    val currentPatch: String? = null,
     val patchedCount: Int = 0,
     val totalPatches: Int = 0,
     val currentStepName: String = "",
@@ -389,9 +387,6 @@ data class PatchingUiState(
     val canCancel: Boolean
         get() = isInProgress
 
-    // Only show determinate progress if we've actually received progress updates from CLI
-    val hasProgress: Boolean
-        get() = hasReceivedProgressUpdate && progress > 0f
 }
 
 data class IoUsage(val readKbPerSec: Int, val writeKbPerSec: Int, val totalKbPerSec: Int = readKbPerSec + writeKbPerSec)

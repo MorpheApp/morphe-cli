@@ -11,11 +11,6 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * The rule that decides each source's channel flag when a config predating
- * `PatchSource.usePreRelease` is seeded. Getting it wrong silently drops an
- * existing dev follower onto stable.
- */
 class SourceChannelSeedingTest {
 
     @Test

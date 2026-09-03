@@ -24,13 +24,6 @@ import androidx.compose.ui.unit.sp
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 
-/**
- * Compact on/off chip for picking one option out of a small set, such as a
- * gradient type or a background mode.
- *
- * The house version of a control that had been copied privately into both the
- * Icon Studio and the colour picker. Set [dense] for a tighter row.
- */
 @Composable
 fun MorpheChoiceChip(
     text: String,

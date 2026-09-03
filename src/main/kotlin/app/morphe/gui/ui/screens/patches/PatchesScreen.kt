@@ -39,6 +39,7 @@ import app.morphe.engine.model.Release
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.FormattedReleaseNotes
+import app.morphe.gui.ui.components.MorpheBanners
 import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.components.SettingsButton
 import app.morphe.gui.ui.components.ToolsButton
@@ -50,7 +51,6 @@ import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.MorpheFilePicker
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -249,12 +249,10 @@ fun PatchesScreenContent(viewModel: PatchesViewModel) {
                     )
                 }
 
-                // Offline banner
                 if (uiState.isOffline && uiState.currentReleases.isNotEmpty()) {
-                    OfflineBanner(
-                        onRetry = { viewModel.loadReleases() },
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp)
-                    )
+                    MorpheBanners(inset = 16.dp) {
+                        OfflineBanner(onRetry = { viewModel.loadReleases() })
+                    }
                 }
             }
 
@@ -532,9 +530,6 @@ private fun ReleaseCard(
         animationSpec = tween(150)
     )
 
-    // The selected card carries a full-strength 2dp ring. Tint and stripe alone
-    // read as "downloaded" at a glance, so selection needs a weight difference
-    // and not just a hue difference.
     val borderWidth by animateDpAsState(
         targetValue = if (isSelected) 2.dp else 1.dp,
         animationSpec = tween(150)

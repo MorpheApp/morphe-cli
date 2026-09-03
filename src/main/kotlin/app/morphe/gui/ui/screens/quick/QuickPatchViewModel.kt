@@ -15,7 +15,6 @@ import app.morphe.engine.util.ApkOutputNaming
 import app.morphe.engine.util.FileChecksum
 import app.morphe.gui.data.constants.AppConstants
 import app.morphe.gui.data.model.Patch
-import app.morphe.gui.data.model.PatchConfig
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.SupportedApp
 import app.morphe.gui.data.repository.ActiveMode
@@ -41,9 +40,6 @@ import app.morphe.gui.util.resolveVersionStatus
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import java.io.File
-import java.util.logging.Handler
-import java.util.logging.LogRecord
-import java.util.logging.Logger as JVLogger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -100,7 +96,6 @@ class QuickPatchViewModel(
     private var cachedSourcesResult: EnabledSourcesLoader.Result? = null
 
     init {
-        // Background CLI update check, non-blocking and banner only.
         screenModelScope.launch {
             val info = updateCheckRepository.getUpdateInfo()
             val dismissed = configRepository.loadConfig().dismissedUpdateVersion
@@ -323,7 +318,6 @@ class QuickPatchViewModel(
 
             val result = analyzeApk(file)
             if (result != null) {
-                // Filter patches compatible with this package (version ignored, the patcher attempts all)
                 val compatible = cachedPatches.filter {
                     it.isCompatibleWith(result.packageName)
                 }
@@ -363,8 +357,6 @@ class QuickPatchViewModel(
         }
 
         try {
-            // ARSCLib manifest reader (engine), replacing apk-parser. The same
-            // library morphe-patcher uses, and it handles split APKs cleanly.
             val manifest = ApkManifestReader.read(apkToParse)
                 ?: throw IllegalStateException("ARSCLib couldn't read manifest")
 
@@ -447,7 +439,6 @@ class QuickPatchViewModel(
             // TODO: Re-enable when checksums are provided via .mpp files
             val checksumStatus = ChecksumStatus.NotConfigured
 
-            // Extract architectures by scanning the original file (bundles have splits with native libs)
             val architectures = FileUtils.extractArchitectures(if (isBundleFormat) file else apkToParse)
             val minSdk = manifest.minSdkVersion
 
@@ -799,7 +790,6 @@ data class QuickApkInfo(
     val fileName: String,
     val packageName: String,
     val versionName: String,
-    /** The APK's build code, or null when the manifest omits it. */
     val versionCode: Int? = null,
     val fileSize: Long,
     val displayName: String,
@@ -849,7 +839,6 @@ data class QuickPatchUiState(
     val compatiblePatches: List<Patch> = emptyList(),
     val updateInfo: UpdateInfo? = null,
     val dismissedUpdateVersion: String? = null,
-    /** Session-only dismiss, cleared on next app start. Not persisted. */
     val updateBannerSessionDismissed: Boolean = false,
     val useExperimentalVersions: Boolean = false,
 ) {

@@ -66,7 +66,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,11 +78,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -301,7 +298,7 @@ fun YourAppRow(
                 Text(
                     text = record.displayName,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = font,
                     color = Color.White,
                     maxLines = 1,
@@ -338,8 +335,6 @@ fun YourAppRow(
                 suffix = if (more > 0) "  +$more" else null,
             )
         }
-        // Support status only. Which version to move to is the APK section's job,
-        // and naming one here just duplicated that list in prose.
         val cardAdvice = updateInfo?.let { appAdvice(it) }
         if (cardAdvice != null) {
             Text(
@@ -378,9 +373,6 @@ fun YourAppRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Only the one action the card cannot defer: a patched APK waiting to go
-        // onto the device. Repatch and everything else live in the sheet, which
-        // tapping the card opens, so the card stays a card.
         if (deviceInfo?.installPending == true) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -410,44 +402,23 @@ fun PatchedAppDetailDialog(
     state: PatchedAppState,
     deviceInfo: DeviceAppInfo?,
     updateInfo: app.morphe.gui.ui.screens.home.RecallUpdateInfo?,
-    /** Patch metadata for this package, for the APK version list. Null when unknown. */
     supportedApp: SupportedApp? = null,
-    /** Sources a patch run will use right now. Not the record's history. */
     activeSources: List<ActivePatchSource> = emptyList(),
-    /** Every configured source, on or off, so the list can show both. */
     allSources: List<PatchSource> = emptyList(),
-    /** source name to the releases it can be pinned to, newest first. */
     bundleVersionsBySource: Map<String, List<BundleRelease>> = emptyMap(),
-    /** Turn a source on or off by id. Global, so it affects every app. */
     onSetSourceEnabled: (String, Boolean) -> Unit = { _, _ -> },
-    /** Register a brand new source. Global, so it affects every app. */
     onAddSource: () -> Unit = {},
-    /** Register a local `.mpp` on disk as a source. Global, like the others. */
     onAddLocalBundle: (String) -> Unit = {},
-    /** versionName of an APK on disk, so a picked file can name its own version. */
     onResolveApkVersion: suspend (String) -> String? = { null },
-    /** Whether a source's `.mpp` for a given tag is already cached on disk. */
     onIsBundleCached: suspend (sourceName: String, tag: String) -> Boolean = { _, _ -> true },
-    /** App versions the chosen bundle set supports. See [BundleSupport]. */
     onSupportedAppFor: suspend (packageName: String, overrides: Map<String, BundleChoice>) -> BundleSupport? =
         { _, _ -> null },
-    /** Fetch a bundle into the cache, reporting 0f..1f. */
     onDownloadBundle: suspend (sourceName: String, tag: String, onProgress: (Float) -> Unit) -> Result<Unit> =
         { _, _, _ -> Result.success(Unit) },
-    /**
-     * Non-null while a chosen bundle is downloading, as (source name, 0f..1f).
-     * A version the user has never fetched is downloaded when PATCH is pressed,
-     * so the sheet stays open and reports it rather than appearing to hang.
-     */
     patchPrepProgress: Pair<String, Float>? = null,
     preparingPatch: Boolean = false,
     onDismiss: () -> Unit,
     onRepatch: () -> Unit,
-    /**
-     * Run a patch with an explicitly chosen APK and per-source bundle overrides.
-     * An empty [overrides] means "resolve normally", the same thing plain
-     * Repatch used to do.
-     */
     onPatchWith: (apkPath: String, overrides: Map<String, BundleChoice>) -> Unit = { _, _ -> },
     onForget: () -> Unit,
     onOpenFolder: () -> Unit,
@@ -461,8 +432,6 @@ fun PatchedAppDetailDialog(
     val corners = LocalMorpheCorners.current
     val cardFills = LocalCardFills.current
     val patchCount = record.patchSelectionByBundle.values.sumOf { it.size }
-    // Keyed off patchesChanged, not sources.any { outdated }, so this matches
-    // the list badge.
     val hasUpdate = updateInfo != null && (updateInfo.appOutdated || updateInfo.patchesChanged)
     val installPending = deviceInfo?.installPending == true
 
@@ -481,7 +450,6 @@ fun PatchedAppDetailDialog(
         // can use a tall screen like Settings does, instead of the old fixed
         // 560dp cap, while still wrapping shorter content.
         val maxDialogHeight = maxHeight * 0.9f
-        // Floor keeps it usable on a small window, ceiling stops it sprawling.
         val maxDialogWidth = (maxWidth * 0.7f).coerceIn(480.dp, 860.dp)
 
         var selectedApkPath by remember(record.packageName) {
@@ -493,7 +461,6 @@ fun PatchedAppDetailDialog(
         var apkExpanded by remember(record.packageName) { mutableStateOf(false) }
         var patchExpanded by remember(record.packageName) { mutableStateOf(false) }
 
-        // Known outright for the recorded input, read off the manifest otherwise.
         var selectedApkVersion by remember(record.packageName) {
             mutableStateOf<String?>(record.apkVersion)
         }
@@ -512,8 +479,6 @@ fun PatchedAppDetailDialog(
             src.name to label
         }
 
-        // A hand-supplied file is on disk already, and an unresolved source has
-        // no tag to look up. Both drop out of the cache check.
         val bundleTags = activeSources.mapNotNull { src ->
             when (val c = bundleChoices[src.name]) {
                 is BundleChoice.Version -> src.name to c.tag
@@ -521,7 +486,6 @@ fun PatchedAppDetailDialog(
                 null -> src.resolvedVersion?.let { src.name to it }
             }
         }
-        // Null until the first check completes. Empty means everything is cached.
         var pendingDownloads by remember(record.packageName) { mutableStateOf<List<String>?>(null) }
         LaunchedEffect(bundleTags) {
             pendingDownloads = bundleTags
@@ -529,13 +493,10 @@ fun PatchedAppDetailDialog(
                 .map { (name, tag) -> "$name v${tag.removePrefix("v")}" }
         }
 
-        // Supported APK versions belong to the bundle, so a pin invalidates them.
         val scope = rememberCoroutineScope()
         var bundleSupport by remember(record.packageName) { mutableStateOf<BundleSupport?>(null) }
         var supportEpoch by remember(record.packageName) { mutableStateOf(0) }
         var bundleDownload by remember(record.packageName) { mutableStateOf<Float?>(null) }
-        // Reading a `.mpp` off disk is not instant the first time. Say so, rather
-        // than leaving the previous bundle's versions up with nothing to explain them.
         var supportLoading by remember(record.packageName) { mutableStateOf(false) }
         var bundleDownloadError by remember(record.packageName) { mutableStateOf<String?>(null) }
         LaunchedEffect(bundleChoices, activeSources, supportEpoch) {
@@ -544,7 +505,6 @@ fun PatchedAppDetailDialog(
             supportLoading = false
         }
 
-        // What the version lists describe, versus what a run would actually use.
         val loadedLabel = activeSources.joinToString(", ") { src ->
             "${src.name} ${src.resolvedVersion?.let { "v${it.removePrefix("v")}" } ?: "latest"}"
         }.ifBlank { "the loaded bundle" }
@@ -557,11 +517,6 @@ fun PatchedAppDetailDialog(
         val support = bundleSupport
         val stagedVersion = selectedApkVersion
         val effectiveApp = support?.takeIf { it.missing.isEmpty() }?.app ?: supportedApp
-        // Deliberately NOT gated on [BundleSupport.isCurrent]. That flag only says
-        // whether `app` came from the already-loaded set or a freshly read bundle,
-        // and both carry the same version lists. Skipping the check for the
-        // resolved bundle meant the default selection never warned, which is the
-        // one selection every user starts on.
         val versionUnsupported = support != null &&
             support.missing.isEmpty() &&
             effectiveApp != null &&
@@ -571,8 +526,6 @@ fun PatchedAppDetailDialog(
                 .map { it.removePrefix("v") }
         val apkNeedsAttention = support?.missing?.isNotEmpty() == true || versionUnsupported
 
-        // The version each row is leaving behind, so a change reads as a change
-        // rather than as a number that quietly differs from the record above.
         val apkPrevious = record.apkVersion
             .takeIf { stagedVersion != null && it.removePrefix("v") != stagedVersion.removePrefix("v") }
             ?.let { "v${it.removePrefix("v")}" }
@@ -593,7 +546,6 @@ fun PatchedAppDetailDialog(
                 .heightIn(max = maxDialogHeight)
                 .verticalScroll(sheetScroll),
             horizontalAlignment = Alignment.Start,
-            // Full bleed: each band paints edge to edge and pads itself.
             contentPadding = PaddingValues(0.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
@@ -627,7 +579,6 @@ fun PatchedAppDetailDialog(
                             onToggle = { apkExpanded = !apkExpanded },
                         ) {
                             ApkSourceSection(
-                                // The chosen bundle's list wins once it is known.
                                 app = effectiveApp,
                                 recordedApkPath = record.inputApkPath,
                                 recordedVersion = record.apkVersion,
@@ -643,8 +594,6 @@ fun PatchedAppDetailDialog(
                                     val targets = bundleSupport?.missing.orEmpty()
                                     scope.launch {
                                         bundleDownloadError = null
-                                        // One bar across the whole set, so two
-                                        // bundles do not reset it to zero midway.
                                         targets.forEachIndexed { i, (name, tag) ->
                                             bundleDownload = i.toFloat() / targets.size
                                             val result = onDownloadBundle(name, tag) { pct ->
@@ -669,8 +618,6 @@ fun PatchedAppDetailDialog(
                         RowDivider()
                         AssemblyRow(
                             label = "Patch bundle",
-                            // Several sources cannot share one headline version,
-                            // so the count leads and the pairs go in the sub-line.
                             primary = when (bundleParts.size) {
                                 0 -> "No sources enabled"
                                 1 -> bundleParts[0].first
@@ -688,8 +635,6 @@ fun PatchedAppDetailDialog(
                             font = font,
                             onToggle = { patchExpanded = !patchExpanded },
                         ) {
-                            // Disabled sources stay listed so toggling one greys it
-                            // in place rather than making it disappear.
                             allSources.forEach { src ->
                                 val active = activeSources.firstOrNull { it.name == src.name }
                                 PatchSourceSection(
@@ -716,8 +661,6 @@ fun PatchedAppDetailDialog(
                         }
                     }
 
-                    // A pending install outranks patching, so it takes the solid
-                    // treatment and the patch bar steps back to outlined.
                     if (installPending) {
                         ActionBar(
                             label = if (installing) "Installing…" else "Install to device",
@@ -735,21 +678,13 @@ fun PatchedAppDetailDialog(
                         )
                     }
 
-                    // Held while preparing too, so the bar does not change height
-                    // mid-run.
                     val downloads = pendingDownloads
-                    // One bundle per line. Comma-joining them ran off the bar as
-                    // soon as a second source was enabled.
                     val patchSubs = when {
                         patchPrepProgress != null -> listOf("downloading ${patchPrepProgress.first}")
                         preparingPatch -> listOf("resolving patch files")
-                        // Nothing to say when there is nothing to fetch.
                         downloads.isNullOrEmpty() -> emptyList()
                         else -> downloads.map { "↓  $it" }
                     }
-                    // This app is already patched, so neither label may imply a
-                    // first run. Update when anything about the run differs from
-                    // the record, Repatch when it is the same inputs again.
                     val inputsChanged = selectedApkPath != record.inputApkPath ||
                         bundleChoices.isNotEmpty()
                     ActionBar(
@@ -760,8 +695,6 @@ fun PatchedAppDetailDialog(
                             hasUpdate || inputsChanged -> "Update"
                             else -> "Repatch"
                         },
-                        // No icon. The label alone carries it, and a refresh glyph
-                        // on an already-patched app read as "start over".
                         icon = null,
                         color = if (hasUpdate) app.morphe.gui.ui.theme.MorpheColors.Blue else accents.primary,
                         font = font,
@@ -769,7 +702,6 @@ fun PatchedAppDetailDialog(
                         filled = !installPending,
                         sublabels = patchSubs,
                         progress = if (preparingPatch) (patchPrepProgress?.second ?: 0f) else null,
-                        // A second press MUST NOT start a duplicate run.
                         onClick = if (preparingPatch) ({}) else ({ onPatchWith(selectedApkPath, bundleChoices) }),
                     )
 
@@ -803,8 +735,6 @@ fun PatchedAppDetailDialog(
                     onToggle = { detailsExpanded = !detailsExpanded },
                 )
                 if (detailsExpanded) {
-                // Inset to 18dp total, matching the bands above, while the
-                // headers keep their own padding inside the hover box.
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -919,8 +849,6 @@ fun PatchedAppDetailDialog(
                 }
                 }
         }
-        // matchParentSize, not fillMaxHeight. A scrollbar sized off the incoming
-        // constraint takes the whole window height and drags the sheet up with it.
         Box(Modifier.matchParentSize()) {
             VerticalScrollbar(
                 adapter = rememberScrollbarAdapter(sheetScroll),
@@ -936,11 +864,6 @@ fun PatchedAppDetailDialog(
     }
 }
 
-// ============================================================================
-// DETAIL SHEET BANDS
-// ============================================================================
-
-/** Identity band: app, state, and any advice worth stating unprompted. */
 @Composable
 private fun IdentityBand(
     record: PatchedAppRecord,
@@ -985,7 +908,6 @@ private fun IdentityBand(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // Post-rename package. The original stays in the detail rows.
                 Text(
                     text = record.installedPackageName,
                     fontSize = 9.sp,
@@ -1007,13 +929,11 @@ private fun IdentityBand(
         if (advice != null) {
             UpdateHint(advice.first, font, recommended = advice.second)
         } else if (updateInfo != null && updateInfo.sources.any { it.outdated }) {
-            // Bundle is newer but its app versions are not resolved yet.
             InfoNote("A newer patch bundle is available. Update to take it.", font)
         }
     }
 }
 
-/** Full-bleed hairline between the sheet's bands. */
 @Composable
 private fun BandDivider() {
     Box(
@@ -1024,7 +944,6 @@ private fun BandDivider() {
     )
 }
 
-/** Hairline between the two rows inside the assembly card. */
 @Composable
 private fun RowDivider() {
     Box(
@@ -1035,20 +954,16 @@ private fun RowDivider() {
     )
 }
 
-/** One input in the patch recipe. Collapsed it states the current selection. */
 @Composable
 private fun AssemblyRow(
     label: String,
     primary: String,
-    /** Headline value, right aligned. Null when there is no single one to show. */
     version: String?,
-    /** What [version] is replacing, shown small beside it. Null when unchanged. */
     previousVersion: String? = null,
     sub: String?,
     expanded: Boolean,
     accent: Color,
     font: FontFamily,
-    /** Flags the row's content as needing attention, without expanding it. */
     warning: Boolean = false,
     onToggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
@@ -1145,7 +1060,6 @@ private fun AssemblyRow(
     }
 }
 
-/** The sheet's disclosure marker. Every one of them MUST use this. */
 @Composable
 private fun Chevron(expanded: Boolean, color: Color, alpha: Float = 0.7f) {
     Text(
@@ -1157,20 +1071,14 @@ private fun Chevron(expanded: Boolean, color: Color, alpha: Float = 0.7f) {
     )
 }
 
-/**
- * A committing action. [progress] paints the fill itself, so a running action
- * needs no separate indicator.
- */
 @Composable
 private fun ActionBar(
     label: String,
-    /** Null for a label-only bar. */
     icon: androidx.compose.ui.graphics.vector.ImageVector?,
     color: Color,
     font: FontFamily,
     corner: Dp,
     filled: Boolean,
-    /** Centred lines under the label, one per line, stating what this will cost. */
     sublabels: List<String> = emptyList(),
     progress: Float? = null,
     onClick: () -> Unit,
@@ -1179,9 +1087,6 @@ private fun ActionBar(
     val isHovered by hover.collectIsHoveredAsState()
     val shape = RoundedCornerShape(corner)
     val running = progress != null
-    // Picked off the fill's luminance, not the theme surface. A bright accent
-    // (Deepspace cyan) needs dark text, a mid one (brand blue) needs white, and
-    // a fixed surface colour got one of the two wrong on every theme.
     val contentColor = when {
         running -> MaterialTheme.colorScheme.onSurface
         filled -> if (color.luminance() > 0.45f) Color(0xFF10141A) else Color.White
@@ -1190,8 +1095,6 @@ private fun ActionBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // A minimum, not a fixed height. The bar grows with however many
-            // bundles it has to name.
             .heightIn(min = if (filled) 46.dp else 38.dp)
             .clip(shape)
             .then(
@@ -1265,9 +1168,6 @@ private fun ActionBar(
                 title()
             }
 
-            // The icon sits beside the text and spans every line. The trailing
-            // spacer matches icon plus gap, so the text block still lands on the
-            // bar's centre line instead of being pushed right by the icon.
             else -> {
                 val iconSize = 26.dp
                 val iconGap = 10.dp
@@ -1291,7 +1191,6 @@ private fun ActionBar(
     }
 }
 
-/** Collapsible section header in the details band. */
 @Composable
 private fun DisclosureHeader(
     label: String,
@@ -1331,10 +1230,6 @@ private fun DisclosureHeader(
     }
 }
 
-/**
- * A long value shown in full, wrapped, with click-to-copy. Truncating a hash or
- * a path leaves the user no way to reach the rest of it.
- */
 @Composable
 private fun CopyableStat(label: String, value: String, font: FontFamily, corner: Dp) {
     val hover = remember { MutableInteractionSource() }
@@ -1382,7 +1277,6 @@ private fun CopyableStat(label: String, value: String, font: FontFamily, corner:
     }
 }
 
-/** One label-over-value pair in the details grid. */
 @Composable
 private fun RowScope.StatCell(label: String, value: String, font: FontFamily) {
     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1404,7 +1298,6 @@ private fun RowScope.StatCell(label: String, value: String, font: FontFamily) {
     }
 }
 
-/** Slim search field for filtering the applied-patches list. */
 @Composable
 private fun PatchSearchField(
     value: String,
@@ -1430,8 +1323,6 @@ private fun PatchSearchField(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    // Fixed height + centered content so the field doesn't grow/shift
-                    // when typing, and the placeholder/cursor sit at the same spot.
                     .height(32.dp)
                     .clip(RoundedCornerShape(corner))
                     .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(corner))
@@ -1472,10 +1363,6 @@ private fun UpdateHint(text: String, font: FontFamily, recommended: Boolean = fa
  * App-version advice for a patched app, or null if current. Returns (message,
  * recommended): recommended=true (amber) when the version is unsupported or a newer
  * stable is out. False (blue) for an optional experimental bump.
- */
-/**
- * The one app-version fact worth stating unprompted. Which version to move to is
- * the APK section's job.
  */
 private fun appAdvice(u: app.morphe.gui.ui.screens.home.RecallUpdateInfo): Pair<String, Boolean>? {
     if (u.appUsedSupported) return null
@@ -1523,12 +1410,9 @@ private fun MiniBadge(
     label: String,
     color: Color,
     font: FontFamily,
-    /** See [Pill]. True keeps the badge white for a coloured card behind it. */
     onGradient: Boolean = false,
 ) {
     val corner = LocalMorpheCorners.current.small
-    // Same rule as [Pill]: keep the accent, adjusting it only when it is too
-    // close to the card to read. See [onCardGradient].
     val badgeColor = if (onGradient) color.onCardGradient() else color
     val badgeInk = if (onGradient) badgeColor.contrastingForeground() else badgeColor
     Box(
@@ -1542,7 +1426,6 @@ private fun MiniBadge(
     }
 }
 
-/** Muted informational note (ⓘ). Full width, wraps. */
 @Composable
 private fun InfoNote(text: String, font: FontFamily) {
     Text(
@@ -1570,34 +1453,23 @@ private fun SectionHeader(text: String, color: Color, font: FontFamily) {
 @Composable
 private fun DetailActionPill(
     label: String,
-    /** Null for a label-only pill. */
     icon: androidx.compose.ui.graphics.vector.ImageVector?,
     color: Color,
     font: FontFamily,
     corner: androidx.compose.ui.unit.Dp,
-    /** Pass a weight to share a row equally with its siblings. */
     modifier: Modifier = Modifier,
-    /** 0f..1f while work runs. Paints the fill, matching the PATCH bar. */
     progress: Float? = null,
-    /** See [Pill]. True for pills on an app card, where white stays legible. */
     onGradient: Boolean = false,
     onClick: () -> Unit,
 ) {
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
     val shape = RoundedCornerShape(corner)
-    // Each action carries its own colour, and on a card the fill is solid. A
-    // translucent fill has to reckon with the gradient underneath, which differs
-    // at every position, so the pill never settles. An opaque fill is its own
-    // surface and reads the same wherever it lands.
     val pillColor = if (onGradient) color.onCardGradient() else color
     val pillInk = pillColor.contrastingForeground()
     Box(
         modifier = modifier
             .clip(shape)
-            // Solid on both surfaces. On a sheet this used to be an 8 percent wash
-            // behind a 35 percent edge, which left the accent barely visible and the
-            // action looking disabled.
             .background(if (isHovered) pillColor.shiftLightness(0.08f) else pillColor)
             .hoverable(hover)
             .handCursor()
@@ -1626,41 +1498,20 @@ private fun DetailActionPill(
     }
 }
 
-// ============================================================================
-// APK SOURCE PICKER
-// ============================================================================
-
-/**
- * Picks the APK a repatch runs against. Uses the same Stable and Experimental
- * split as the supported-apps list, and is the action behind
- * [PatchedAppState.NEW_APP_VERSION].
- */
 @Composable
 private fun ApkSourceSection(
     app: SupportedApp?,
     recordedApkPath: String,
     recordedVersion: String,
     selectedApkPath: String,
-    /** Version of the staged APK, for the unsupported-by-this-bundle check. */
     selectedVersion: String?,
-    /**
-     * Which app versions the CHOSEN bundle supports. Null while it is being
-     * worked out. The lists below come from the loaded bundle until this says
-     * otherwise, so a pinned bundle never silently mislabels them.
-     */
     support: BundleSupport?,
-    /** True while [support] is being worked out. */
     loading: Boolean,
-    /** "name vX" per source, as loaded right now. */
     loadedLabel: String,
-    /** "name vX" per pinned source, or null when nothing is pinned. */
     chosenLabel: String?,
-    /** True when the staged APK version is absent from the chosen bundle's lists. */
     versionUnsupported: Boolean,
-    /** Non-null while a bundle is being fetched, as 0f..1f. */
     downloadProgress: Float?,
     onDownloadMissing: () -> Unit,
-    /** Non-null when the last fetch failed. */
     downloadError: String?,
     font: FontFamily,
     corner: androidx.compose.ui.unit.Dp,
@@ -1689,7 +1540,6 @@ private fun ApkSourceSection(
             overflow = TextOverflow.Ellipsis,
         )
     }
-    // The recorded input is the only outright-selectable alternative.
     if (recordedExists && selectedApkPath != recordedApkPath) {
         ChoiceRow(
             label = "v${recordedVersion.removePrefix("v")}  ·  ${File(recordedApkPath).name}",
@@ -1700,8 +1550,6 @@ private fun ApkSourceSection(
             onClick = { onApkSelected(recordedApkPath) },
         )
     }
-    // A pinned bundle that is not on disk cannot be read, so the lists below still
-    // describe the loaded one. Say so, and offer to fetch it.
     val missing = support?.missing.orEmpty()
     val muted = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     if (loading) {
@@ -1759,8 +1607,6 @@ private fun ApkSourceSection(
                     append("⚠  ")
                 }
                 withStyle(SpanStyle(color = accents.primary, fontWeight = FontWeight.Bold)) {
-                    // Name whichever bundle is actually in force. Requiring a pinned
-                    // label here was the second reason the default never warned.
                     append(chosenLabel ?: loadedLabel)
                 }
                 withStyle(SpanStyle(color = muted)) { append(" does not support ") }
@@ -1774,7 +1620,6 @@ private fun ApkSourceSection(
             lineHeight = 15.sp,
         )
     } else if (chosenLabel != null) {
-        // The list changed under the user, so name what it now reflects.
         Text(
             text = buildAnnotatedString {
                 withStyle(SpanStyle(color = muted)) { append("Versions below are what ") }
@@ -1790,7 +1635,6 @@ private fun ApkSourceSection(
     }
 
     if (app != null) {
-        // Uncapped, unlike the list row. Hiding versions would defeat the picker.
         if (app.supportedVersions.isNotEmpty()) {
             SectionLabel(text = "Stable", font = font, color = accents.secondary)
             @OptIn(ExperimentalLayoutApi::class)
@@ -1842,14 +1686,6 @@ private fun ApkSourceSection(
     }
 }
 
-// ============================================================================
-// PATCH SOURCE PICKER
-// ============================================================================
-
-/**
- * Registers a new source. Global by design: a per-app "use just this once" would
- * leave the app-wide source list disagreeing with what actually ran.
- */
 @Composable
 private fun AddSourceControl(
     font: FontFamily,
@@ -1862,7 +1698,6 @@ private fun AddSourceControl(
         DetailActionPill("New source…", MorpheIcons.Add, accents.primary, font, corner) {
             onAddSource()
         }
-        // A local bundle is just another source.
         DetailActionPill("Local .mpp…", MorpheIcons.FolderOpen, accents.secondary, font, corner) {
             val fd = FileDialog(null as Frame?, "Select a patch bundle", FileDialog.LOAD)
             fd.isVisible = true
@@ -1877,7 +1712,6 @@ private fun PatchSourceSection(
     sourceName: String,
     enabled: Boolean,
     resolvedVersion: String?,
-    /** Null while the release list is still being fetched. */
     availableVersions: List<BundleRelease>?,
     choice: BundleChoice?,
     font: FontFamily,
@@ -1887,11 +1721,8 @@ private fun PatchSourceSection(
 ) {
     val accents = LocalMorpheAccents.current
     val dim = if (enabled) 1f else 0.38f
-    // Collapsed by default. The USING line is the answer most of the time.
     var expanded by remember(sourceName) { mutableStateOf(false) }
 
-    // The whole card is the hit target. The switch and pills inside consume
-    // their own clicks, so neither also toggles expansion.
     val cardHover = remember { MutableInteractionSource() }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -2030,8 +1861,6 @@ private fun PatchSourceSection(
                                 cornerSmall = corner,
                                 backgroundAlpha = if (isUsing) 0.20f else 0.06f,
                                 onClick = {
-                                    // Re-picking the resolved version clears the
-                                    // override rather than pinning it.
                                     onChoose(
                                         if (release.tag == resolvedVersion) null
                                         else BundleChoice.Version(release.tag)
@@ -2046,10 +1875,6 @@ private fun PatchSourceSection(
     }
 }
 
-/**
- * A selectable line in a chooser. Deliberately not a Pill: pills in this sheet
- * are download links, and these MUST NOT look like one.
- */
 @Composable
 private fun ChoiceRow(
     label: String,
@@ -2125,21 +1950,12 @@ private fun DeviceLine(info: DeviceAppInfo, font: FontFamily, mutedColor: Color,
     )
 }
 
-/**
- * The readable half of a patch's uniqueId, which is `name|packages|descHash`.
- * The package repeats on every row of one app's record and the hash is an
- * internal dedup key, so neither belongs in a list of applied patches.
- *
- * Trims from the right, so a name containing `|` survives. A record written
- * before uniqueIds carried the suffixes is returned unchanged.
- */
 private fun patchDisplayName(uniqueId: String): String =
     uniqueId.substringBeforeLast('|').substringBeforeLast('|')
 
 private fun fullDate(millis: Long): String =
     SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.US).format(Date(millis))
 
-/** "today / yesterday / 3d ago / MMM d". Compact for the list row. */
 private fun relativeOrShortDate(millis: Long): String {
     val now = System.currentTimeMillis()
     val days = ((now - millis) / 86_400_000L).toInt()

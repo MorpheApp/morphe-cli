@@ -27,17 +27,8 @@ import app.morphe.gui.ui.components.handCursor
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 
-/** A gradient needs two stops to be a gradient, so removal stops at this many. */
 private const val MIN_STOPS = 2
 
-/**
- * Editor for a [MorpheFill.Gradient]: its type, its colour stops, and its angle.
- *
- * This is the one piece both fill editors genuinely share. Everything around it
- * (which fill types are offered, whether an image is allowed, the surrounding
- * chrome) stays with the caller, so the Icon Studio and the app cards can differ
- * freely without either editing the other.
- */
 @Composable
 fun MorpheGradientEditor(
     gradient: MorpheFill.Gradient,
@@ -93,7 +84,6 @@ fun MorpheGradientEditor(
             onChange(gradient.copy(stops = gradient.stops + MorpheFill.Stop(0.5f, 0xFFFFFFFF.toInt())))
         }
 
-        // A radial gradient runs outward from the centre, so an angle means nothing.
         if (gradient.type != GradientType.RADIAL) {
             MorpheAdjustRow(
                 label = "Angle",

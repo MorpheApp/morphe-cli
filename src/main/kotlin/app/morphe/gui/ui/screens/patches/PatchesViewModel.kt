@@ -85,9 +85,6 @@ class PatchesViewModel(
                     val stableReleases = releases.filter { !it.isDevRelease() }
                     val devReleases = releases.filter { it.isDevRelease() }
 
-                    // Resolve this source's version preference to a concrete tag to
-                    // pre-select. A pin takes its tag, otherwise the channel flag picks
-                    // newest stable or newest overall.
                     val activeSource = patchSourceManager?.getActiveSource()
                     val activeSourceId = activeSource?.id
                     val pref = activeSourceId?.let { configRepository.getSourceVersionPrefs()[it] }

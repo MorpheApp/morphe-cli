@@ -5,7 +5,6 @@
 
 package app.morphe.gui.util
 
-/** One version entry from a CHANGELOG.md file. */
 data class ChangelogEntry(
     val version: String,
     val date: String?,
@@ -13,39 +12,17 @@ data class ChangelogEntry(
     val scopedBullets: Map<String, List<String>> = emptyMap(),
 )
 
-/** True when the version carries a pre-release suffix (e.g. `1.2.3-dev.4`). */
 val ChangelogEntry.isPrerelease: Boolean get() = version.contains('-')
 
-/**
- * Parses the conventional-changelog CHANGELOG.md that Morphe patch repositories
- * emit. Ported from morphe-manager.
- *
- * Unrecognised headings are skipped, not errors. Another template yields no
- * entries, and the caller MUST fall back to showing the update.
- */
 object ChangelogParser {
 
-    /**
-     * `# [1.2.3](url) (2026-01-01)`, `# app [1.2.3](url) (…)`, `# 1.2.3 (…)`.
-     * Group 1 bracketed version, group 2 bare version, exactly one per match.
-     * Group 3 date.
-     */
     private val VERSION_HEADING = Regex(
         """^#{1,3}\s+(?:\S+\s+)?(?:\[([^]]+)]\([^)]*\)|([^\s\[(]+))\s+\((\d{4}-\d{2}-\d{2})\)""",
         RegexOption.IGNORE_CASE,
     )
 
-    /**
-     * `* **YouTube - Hide ads:** text` gives group 1 `YouTube - Hide ads`. The
-     * colon sits inside the bold span. Unscoped bullets MUST be ignored, since
-     * attributing a global bullet to every app is what produces false badges.
-     */
     private val BULLET_SCOPE_RE = Regex("""^\* \*\*(.+?):\*\*""")
 
-    /**
-     * Emitted for every new experimental target even when no patch logic
-     * changed. Alone it MUST NOT count as a change (manager #622).
-     */
     private val EXPERIMENTAL_VERSION_ADDITION_RE = Regex(
         """^Add(?:ed)?\s+experimental\s+support\s+for\b""",
         RegexOption.IGNORE_CASE,
@@ -67,7 +44,6 @@ object ChangelogParser {
         return scoped
     }
 
-    /** Entries in file order, which is newest first. */
     fun parse(markdown: String): List<ChangelogEntry> {
         val entries = mutableListOf<ChangelogEntry>()
 
@@ -102,7 +78,6 @@ object ChangelogParser {
         return entries
     }
 
-    /** Strictly newer than [installedVersion]. Null returns everything. */
     fun entriesNewerThan(
         entries: List<ChangelogEntry>,
         installedVersion: String?,
@@ -115,11 +90,6 @@ object ChangelogParser {
         }
     }
 
-    /**
-     * True when a newer entry attributes a substantive bullet to this app.
-     * [appNames] takes several candidates because sources name the same app
-     * differently. Any one matching is enough.
-     */
     fun hasChangesFor(
         entries: List<ChangelogEntry>,
         installedVersion: String?,
@@ -139,7 +109,6 @@ object ChangelogParser {
         }
     }
 
-    /** Exact [version] match, ignoring a leading `v`. */
     fun findVersion(entries: List<ChangelogEntry>, version: String): ChangelogEntry? {
         val normalized = version.normalizeVersion()
         return entries.firstOrNull { it.version.normalizeVersion() == normalized }

@@ -36,23 +36,10 @@ import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 
-/**
- * Shared colour-editing primitives.
- *
- * These are deliberately standalone controls rather than a finished editor. Each
- * surface that edits a fill (the Icon Studio background, the home app cards)
- * composes its own arrangement from these, so a control added for one never
- * lands in the other. Only fixes to a primitive are shared.
- */
 private val SWATCH_SIZE = 22.dp
 
-/** Vertical offset that drops a popup clear of the control that opened it. */
 private val POPUP_DROP = 26.dp
 
-/**
- * A single colour swatch that opens the full picker on click. Use for one colour
- * that is already chosen, such as a gradient stop.
- */
 @Composable
 fun MorpheColorChip(
     argb: Int,
@@ -87,10 +74,6 @@ fun MorpheColorChip(
     }
 }
 
-/**
- * The preset palette, the user's saved swatches, and a chip that opens the full
- * picker. Use when the user is choosing a colour rather than adjusting one.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MorpheSwatchRow(

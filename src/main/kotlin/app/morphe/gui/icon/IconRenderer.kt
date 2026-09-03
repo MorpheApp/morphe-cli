@@ -10,7 +10,6 @@ import app.morphe.gui.data.model.MorpheFill
 import java.awt.AlphaComposite
 import java.awt.Color
 import java.awt.Font
-import java.awt.GradientPaint
 import java.awt.Graphics2D
 import java.awt.LinearGradientPaint
 import java.awt.Polygon
@@ -144,7 +143,6 @@ object IconRenderer {
         return out
     }
 
-    /** Background plus foreground composited, for the studio preview and mask thumbnails. */
     fun renderComposite(project: IconProject, size: Int): BufferedImage {
         val out = renderBackground(project, size)
         val g = out.createGraphics()
@@ -201,7 +199,6 @@ object IconRenderer {
         is IconProject.LayerContent.Shape -> renderShape(c)
     }
 
-    // Custom fonts are expensive to create, so cache the base font per file path.
     private val fontCache = HashMap<String, Font>()
 
     private fun baseFont(c: IconProject.LayerContent.Text): Font {
@@ -313,7 +310,6 @@ object IconRenderer {
         return out
     }
 
-    /** Conic (sweep) gradient. No AWT primitive, so sample per pixel by angle. */
     private fun drawConic(img: BufferedImage, stops: List<MorpheFill.Stop>, angleDeg: Float) {
         val size = img.width
         val cx = size / 2f; val cy = size / 2f

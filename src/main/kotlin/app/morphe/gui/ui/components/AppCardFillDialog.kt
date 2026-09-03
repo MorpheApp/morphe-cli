@@ -29,7 +29,6 @@ import app.morphe.gui.ui.components.color.MorpheGradientEditor
 import app.morphe.gui.ui.components.color.MorpheSwatchRow
 import app.morphe.gui.ui.theme.LocalMorpheFont
 
-/** Which editor the dialog is showing, derived from the working fill. */
 private enum class FillMode { DEFAULT, SOLID, GRADIENT }
 
 private val MorpheFill?.mode: FillMode
@@ -39,17 +38,6 @@ private val MorpheFill?.mode: FillMode
         else -> FillMode.DEFAULT
     }
 
-/**
- * Recolour one app's card.
- *
- * Opened from the card's own context menu and from the settings list, which is
- * why it lives beside [AppCard] rather than in either screen. Editing is live on
- * the preview above the controls, and nothing is written until Save.
- *
- * "Default" is how a card is reset: it clears the override so the card falls back
- * to the bundle's own colour, rather than storing a colour that merely looks like
- * the default today.
- */
 @Composable
 fun AppCardFillDialog(
     appName: String,
@@ -112,8 +100,6 @@ fun AppCardFillDialog(
                         working = MorpheFill.Solid(palette.base.toArgbInt())
                     }
                     MorpheChoiceChip("Gradient", working.mode == FillMode.GRADIENT, font) {
-                        // Seed from what is on screen so switching mode is a
-                        // starting point rather than a jarring reset.
                         working = MorpheFill.Gradient(
                             stops = listOf(
                                 MorpheFill.Stop(0f, palette.base.toArgbInt()),
@@ -150,7 +136,6 @@ fun AppCardFillDialog(
     )
 }
 
-/** Compose [Color] back to the packed ARGB int the fill model stores. */
 private fun Color.toArgbInt(): Int {
     fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
     return (channel(alpha) shl 24) or (channel(red) shl 16) or (channel(green) shl 8) or channel(blue)

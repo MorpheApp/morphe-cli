@@ -8,7 +8,6 @@ package app.morphe.gui.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,9 +53,6 @@ fun ChangelogDialog(
 
     val changelogScroll = rememberScrollState()
 
-    // Release notes are prose, and Material's AlertDialog caps its content at
-    // 560dp wide whatever it is given. Build on the house surface so the width
-    // is ours. See the settings dialog for the same move.
     val windowSize = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current
     val dialogWidth = with(density) { (windowSize.width * 0.72f).toDp() }

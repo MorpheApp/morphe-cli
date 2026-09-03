@@ -50,7 +50,8 @@ fun MorpheColorPickerCard(
     argb: Int,
     accents: MorpheAccentColors,
     font: FontFamily,
-    showAlphaAndSaved: Boolean = true,
+    showAlpha: Boolean = true,
+    showSaved: Boolean = true,
     onPick: (Int) -> Unit,
 ) {
     val corners = LocalMorpheCorners.current
@@ -99,7 +100,7 @@ fun MorpheColorPickerCard(
                 emit()
             }
             
-            if (showAlphaAndSaved) {
+            if (showAlpha) {
                 PickerSlider("A", a, font) {
                     a = it
                     emit()
@@ -147,7 +148,7 @@ fun MorpheColorPickerCard(
                 }
             }
             
-            if (showAlphaAndSaved) {
+            if (showSaved) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Saved",
