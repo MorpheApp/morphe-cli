@@ -369,11 +369,7 @@ class QuickPatchViewModel(
             if (dynamicAppInfo == null) {
                 // Fallback to hardcoded check if patches not loaded yet
                 val supportedPackages = if (cachedSupportedApps.isEmpty()) {
-                    listOf(
-                        AppConstants.YouTube.PACKAGE_NAME,
-                        AppConstants.YouTubeMusic.PACKAGE_NAME,
-                        AppConstants.Reddit.PACKAGE_NAME
-                    )
+                    AppConstants.FALLBACK_PACKAGES
                 } else {
                     cachedSupportedApps.map { it.packageName }
                 }
@@ -381,7 +377,7 @@ class QuickPatchViewModel(
                 if (packageName !in supportedPackages) {
                     val appName = SupportedApp.resolveDisplayName(packageName, manifest.applicationLabel)
                     val supportedNames = cachedSupportedApps.map { it.displayName }
-                        .ifEmpty { listOf("YouTube", "YouTube Music", "Reddit") }
+                        .ifEmpty { AppConstants.FALLBACK_PACKAGES.map(SupportedApp::getDisplayName) }
                         .joinToString(", ")
                     _uiState.value = _uiState.value.copy(
                         error = "$appName is not supported in Quick Patch mode. Supported apps: $supportedNames. Use Normal mode for unsupported apps",

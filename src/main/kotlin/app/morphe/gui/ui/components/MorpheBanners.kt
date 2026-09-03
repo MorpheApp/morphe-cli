@@ -144,7 +144,7 @@ fun MorpheBannerText(
 }
 
 /**
- * Outlined pill action inside a banner. At rest it is a muted outline; on hover
+ * Outlined pill action inside a banner. At rest it is a muted outline. On hover
  * both border and label move toward [hoverAccent], so intent shows only when the
  * user reaches for it.
  */

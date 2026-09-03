@@ -102,7 +102,7 @@ fun AppInfoDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
-                    IconButton(onClick = { uriHandler.openUri("https://morphe.software") }) {
+                    IconButton(onClick = { uriHandler.openUri(AppConstants.WEBSITE_URL) }) {
                         Icon(imageVector = MorpheIcons.Public, contentDescription = "Website", tint = iconTint)
                     }
                     IconButton(onClick = { uriHandler.openUri("https://morphe.software/changelog") }) {

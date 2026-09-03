@@ -649,10 +649,26 @@ fun SettingsDialog(
                                     SettingsDivider(borderColor)
 
                                     AboutRow(
+                                        title = "Documentation",
+                                        subtitle = "Guides for patching, sources and troubleshooting",
+                                        font = font,
+                                        onClick = { uriHandler.openUri(AppConstants.DOCUMENTATION_URL) },
+                                    ) {
+                                        Icon(
+                                            imageVector = MorpheIcons.MenuBook,
+                                            contentDescription = null,
+                                            tint = accents.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+
+                                    SettingsDivider(borderColor)
+
+                                    AboutRow(
                                         title = "Visit website",
                                         subtitle = "Visit the official Morphe website",
                                         font = font,
-                                        onClick = { uriHandler.openUri("https://morphe.software") },
+                                        onClick = { uriHandler.openUri(AppConstants.WEBSITE_URL) },
                                     ) {
                                         Icon(
                                             imageVector = MorpheIcons.Public,

@@ -1123,12 +1123,12 @@ class HomeViewModel(
             val versionCode = manifest.versionCode
             val minSdk = manifest.minSdkVersion
 
-            val dynamicSupportedApp = _uiState.value.supportedApps.find { it.packageName == packageName }
+            val loadedApps = _uiState.value.supportedApps
+            val dynamicSupportedApp = loadedApps.find { it.packageName == packageName }
+            // The bundle is the authority once it has loaded. Only fall back while
+            // nothing has been read yet.
             val isSupported = dynamicSupportedApp != null ||
-                packageName in listOf(
-                    AppConstants.YouTube.PACKAGE_NAME,
-                    AppConstants.YouTubeMusic.PACKAGE_NAME
-                )
+                (loadedApps.isEmpty() && packageName in AppConstants.FALLBACK_PACKAGES)
 
             if (!isSupported) {
                 Logger.warn("Unsupported package: $packageName — no compatible patches found")
