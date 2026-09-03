@@ -13,7 +13,7 @@ import app.morphe.gui.data.model.SupportedApp
  * This allows the app to dynamically determine which apps are supported
  * based on the .mpp file contents rather than hardcoding.
  */
-object  SupportedAppExtractor {
+object SupportedAppExtractor {
 
     /**
      * Extract all supported apps from a list of patches.

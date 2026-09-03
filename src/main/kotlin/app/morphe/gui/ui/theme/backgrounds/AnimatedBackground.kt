@@ -27,6 +27,7 @@ enum class BackgroundType {
     SNOW,
     GRID,
     PARTICLES,
+    MATRIX,
     NONE;
 
     companion object {
@@ -46,6 +47,7 @@ enum class BackgroundType {
             SNOW -> MorpheIcons.AcUnit
             GRID -> MorpheIcons.Apps
             PARTICLES -> MorpheIcons.BubbleChart
+            MATRIX -> MorpheIcons.Code
             NONE -> MorpheIcons.VisibilityOff
         }
 }
@@ -116,6 +118,12 @@ fun AnimatedBackground(
                 patchingCompleted = resolvedPatchingCompleted
             )
             BackgroundType.PARTICLES -> ParticlesBackground(
+                modifier = Modifier.fillMaxSize(),
+                enableParallax = enableParallax,
+                speedMultiplier = resolvedSpeed,
+                patchingCompleted = resolvedPatchingCompleted
+            )
+            BackgroundType.MATRIX -> MatrixBackground(
                 modifier = Modifier.fillMaxSize(),
                 enableParallax = enableParallax,
                 speedMultiplier = resolvedSpeed,

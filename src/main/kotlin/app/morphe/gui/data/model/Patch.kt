@@ -36,9 +36,6 @@ data class Patch(
      * Patches with no compatible packages listed are NOT shown (they're system patches).
      */
     fun isCompatibleWith(packageName: String, versionName: String? = null): Boolean {
-        // Patches without explicit package compatibility are excluded
-        if (compatiblePackages.isEmpty()) return false
-
         return compatiblePackages.any { pkg ->
             pkg.name == packageName && (
                 versionName == null ||
