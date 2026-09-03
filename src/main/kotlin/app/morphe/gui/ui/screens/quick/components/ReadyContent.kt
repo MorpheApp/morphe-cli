@@ -5,9 +5,6 @@
 
 package app.morphe.gui.ui.screens.quick.components
 
-import app.morphe.gui.ui.screens.quick.QuickApkInfo
-
-import app.morphe.gui.ui.icons.MorpheIcons
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -16,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
@@ -25,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -34,19 +33,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.model.Patch
+import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.screens.quick.QuickApkInfo
 import app.morphe.gui.ui.theme.*
+import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.StatusColorType
+import app.morphe.gui.util.VersionStatus
 import app.morphe.gui.util.resolveStatusColorType
 import app.morphe.gui.util.resolveVersionStatusDisplay
 import app.morphe.gui.util.toColor
-import app.morphe.gui.util.DeviceMonitor
 
 // ============================================================================
 // READY CONTENT (apk info + patch action)
 // ============================================================================
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 internal fun ReadyContent(
     apkInfo: QuickApkInfo,
     compatiblePatches: List<Patch>,
@@ -54,13 +55,35 @@ internal fun ReadyContent(
     onClear: () -> Unit
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     val statusColorType = resolveStatusColorType(apkInfo.versionStatus, apkInfo.checksumStatus)
-    val accentColor = if (statusColorType == StatusColorType.PRIMARY) accents.secondary
-                      else statusColorType.toColor()
+    val isWarningState = apkInfo.versionStatus != VersionStatus.LATEST_STABLE && 
+                         apkInfo.versionStatus != VersionStatus.UNKNOWN
+                          
+    val accentColor = when {
+        isWarningState -> if (statusColorType == StatusColorType.PRIMARY) accents.warning else statusColorType.toColor()
+        statusColorType == StatusColorType.PRIMARY -> accents.primary
+        else -> statusColorType.toColor()
+    }
+    
+    val showWarning = apkInfo.versionStatus != VersionStatus.LATEST_STABLE &&
+                      apkInfo.versionStatus != VersionStatus.UNKNOWN
+    val buttonColors = when {
+        showWarning -> {
+            val warningColor = statusColorType.toColor()
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = warningColor.copy(alpha = 0.15f),
+                contentColor = warningColor
+            )
+        }
+        else -> ButtonDefaults.outlinedButtonColors(
+            containerColor = accentColor.copy(alpha = 0.15f),
+            contentColor = accentColor
+        )
+    }
 
     val enabledPatches = compatiblePatches.filter { it.isEnabled }
     val disabledPatches = compatiblePatches.filter { !it.isEnabled }
@@ -83,11 +106,11 @@ internal fun ReadyContent(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(corners.medium))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
                 .drawBehind {
                     drawRect(
                         color = accentColor,
-                        size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
+                        size = Size(3.dp.toPx(), size.height)
                     )
                 }
         ) {
@@ -108,14 +131,14 @@ internal fun ReadyContent(
                         modifier = Modifier
                             .size(44.dp)
                             .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(corners.small))
-                            .background(accentColor.copy(alpha = 0.08f)),
+                            .background(accentColor.copy(alpha = 0.08f), RoundedCornerShape(corners.small)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = apkInfo.displayName.first().uppercase(),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
+                            fontFamily = font,
                             color = accentColor
                         )
                     }
@@ -127,6 +150,7 @@ internal fun ReadyContent(
                             text = apkInfo.displayName,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
+                            fontFamily = font,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -135,9 +159,9 @@ internal fun ReadyContent(
                         Text(
                             text = "v${apkInfo.versionName} · ${apkInfo.formattedSize}",
                             fontSize = 11.sp,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            letterSpacing = 0.3.sp
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -203,26 +227,28 @@ internal fun ReadyContent(
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(accentColor, RoundedCornerShape(1.dp))
+                                .background(accentColor, CircleShape)
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
                             text = statusText,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = mono,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = font,
                             color = accentColor,
-                            letterSpacing = 1.sp
+                            modifier = Modifier.alignByBaseline()
                         )
                         if (statusDetail != null) {
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = statusDetail,
-                                fontSize = 11.sp,
-                                fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                fontSize = 10.sp,
+                                fontFamily = font,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.alignByBaseline()
                             )
                         }
                     }
@@ -230,7 +256,7 @@ internal fun ReadyContent(
 
                 // ── Architectures row ──
                 if (apkInfo.architectures.isNotEmpty()) {
-                    FlowRow(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .drawBehind {
@@ -242,8 +268,7 @@ internal fun ReadyContent(
                                 )
                             }
                             .padding(horizontal = 20.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         val deviceState by DeviceMonitor.state.collectAsState()
                         val deviceArch = deviceState.selectedDevice?.architecture
@@ -251,21 +276,23 @@ internal fun ReadyContent(
                         val highlightArch = if (hasMultipleArchs && deviceArch != null) deviceArch else null
 
                         Text(
-                            text = "ARCH",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            letterSpacing = 1.5.sp
+                            text = "Arch",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        FlowRow(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                         apkInfo.architectures.forEach { arch ->
                             val isDeviceArch = highlightArch != null && arch == highlightArch
-                            val tagBorder = if (isDeviceArch) accents.primary.copy(alpha = 0.5f)
-                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                            val tagBg = if (isDeviceArch) accents.primary.copy(alpha = 0.08f)
-                                else Color.Transparent
-                            val tagColor = if (isDeviceArch) accents.primary
-                                else MaterialTheme.colorScheme.onSurface
+                            val tagBorder = accents.primary.copy(alpha = 0.5f)
+                            val tagBg = accents.primary.copy(alpha = 0.08f)
+                            val tagColor = accents.primary
                             val dimmed = highlightArch != null && !isDeviceArch
 
                             Box(
@@ -277,10 +304,11 @@ internal fun ReadyContent(
                                 Text(
                                     text = arch,
                                     fontSize = 11.sp,
-                                    fontWeight = if (isDeviceArch) FontWeight.Bold else FontWeight.Medium,
-                                    fontFamily = mono,
+                                    fontWeight = FontWeight.Normal,
+                                    fontFamily = font,
                                     color = if (dimmed) tagColor.copy(alpha = 0.35f) else tagColor
                                 )
+                            }
                             }
                         }
                     }
@@ -304,18 +332,17 @@ internal fun ReadyContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "MIN SDK",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            letterSpacing = 1.5.sp
+                            text = "Min SDK",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "${apkInfo.minSdk}",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = mono,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -338,7 +365,7 @@ internal fun ReadyContent(
                 )
                 .clip(RoundedCornerShape(corners.medium))
                 .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 if (compatiblePatches.isEmpty()) {
@@ -349,7 +376,8 @@ internal fun ReadyContent(
                         Text(
                             text = "No compatible patches for this app",
                             fontSize = 11.sp,
-                            fontFamily = mono,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             textAlign = TextAlign.Center
                         )
@@ -370,19 +398,18 @@ internal fun ReadyContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "PATCHES",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = mono,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            letterSpacing = 1.5.sp
+                            text = "Patches",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
                             text = "${enabledPatches.size} enabled",
                             fontSize = 11.sp,
-                            fontFamily = mono,
-                            fontWeight = FontWeight.Medium,
+                            fontFamily = font,
+                            fontWeight = FontWeight.Normal,
                             color = accents.primary
                         )
                         if (disabledPatches.isNotEmpty()) {
@@ -390,14 +417,16 @@ internal fun ReadyContent(
                             Text(
                                 text = "·",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                fontFamily = font,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = "${disabledPatches.size} disabled",
                                 fontSize = 11.sp,
-                                fontFamily = mono,
-                                fontWeight = FontWeight.Medium,
+                                fontFamily = font,
+                                fontWeight = FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                         }
@@ -453,8 +482,9 @@ internal fun ReadyContent(
                             singleLine = true,
                             interactionSource = searchInteraction,
                             textStyle = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = mono,
+                                fontFamily = font,
                                 fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
                             cursorBrush = SolidColor(accents.primary),
@@ -482,7 +512,8 @@ internal fun ReadyContent(
                                             Text(
                                                 "Search patches…",
                                                 fontSize = 11.sp,
-                                                fontFamily = mono,
+                                                fontFamily = font,
+                                                fontWeight = FontWeight.Normal,
                                                 color = muted.copy(alpha = 0.4f)
                                             )
                                         }
@@ -532,7 +563,7 @@ internal fun ReadyContent(
                                 val chipBg = if (isEnabled) accents.primary.copy(alpha = 0.08f)
                                     else Color.Transparent
                                 val chipTextColor = if (isEnabled) accents.primary
-                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
 
                                 Box(
                                     modifier = Modifier
@@ -543,8 +574,8 @@ internal fun ReadyContent(
                                     Text(
                                         text = patch.name,
                                         fontSize = 10.sp,
-                                        fontWeight = if (isEnabled) FontWeight.Medium else FontWeight.Normal,
-                                        fontFamily = mono,
+                                        fontWeight = FontWeight.Normal,
+                                        fontFamily = font,
                                         color = chipTextColor,
                                         maxLines = 1
                                     )
@@ -557,8 +588,9 @@ internal fun ReadyContent(
                             Text(
                                 text = "No patches matching \"$patchSearchQuery\"",
                                 fontSize = 11.sp,
-                                fontFamily = mono,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                fontWeight = FontWeight.Normal,
+                                fontFamily = font,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                         }
                             } // close body Column
@@ -570,31 +602,21 @@ internal fun ReadyContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Patch button, full width
-        val patchHover = remember { MutableInteractionSource() }
-        val isPatchHovered by patchHover.collectIsHoveredAsState()
-        val patchBg by animateColorAsState(
-            if (isPatchHovered) accents.primary.copy(alpha = 0.9f) else accents.primary,
-            animationSpec = tween(150)
-        )
-
-        Box(
+        val buttonBorderColor = if (showWarning) statusColorType.toColor() else accentColor
+        OutlinedButton(
+            onClick = onPatch,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .hoverable(patchHover)
-                .clip(RoundedCornerShape(corners.small))
-                .background(patchBg, RoundedCornerShape(corners.small))
-                .clickable(onClick = onPatch),
-            contentAlignment = Alignment.Center
+                .height(48.dp),
+            colors = buttonColors,
+            border = BorderStroke(1.dp, buttonBorderColor.copy(alpha = 0.35f)),
+            shape = RoundedCornerShape(corners.small)
         ) {
             Text(
-                text = "PATCH WITH DEFAULTS",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                color = Color.White,
-                letterSpacing = 1.sp
+                text = "Patch with defaults",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = font
             )
         }
 
@@ -604,10 +626,10 @@ internal fun ReadyContent(
             text = "${enabledPatches.size} patches will be applied" +
                 if (disabledPatches.isNotEmpty()) " · ${disabledPatches.size} excluded" else "",
             fontSize = 11.sp,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
-

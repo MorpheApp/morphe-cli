@@ -5,47 +5,50 @@
 
 package app.morphe.gui.ui.screens.home.components
 
-import app.morphe.gui.ui.screens.home.PatchedAppState
-import app.morphe.gui.ui.screens.home.DeviceAppInfo
-import app.morphe.gui.ui.screens.home.RecallUpdateInfo
-
-import app.morphe.gui.ui.icons.MorpheIcons
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.engine.model.PatchedAppRecord
+import app.morphe.gui.data.model.SupportedApp
+import app.morphe.gui.ui.components.morpheScrollbarStyle
+import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.screens.home.DeviceAppInfo
+import app.morphe.gui.ui.screens.home.PatchedAppState
+import app.morphe.gui.ui.screens.home.RecallUpdateInfo
+import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheDimens
 import app.morphe.gui.ui.theme.LocalMorpheFont
-import app.morphe.gui.ui.theme.LocalMorpheAccents
-import app.morphe.gui.data.model.SupportedApp
-import app.morphe.gui.ui.components.morpheScrollbarStyle
-import app.morphe.engine.model.PatchedAppRecord
+import app.morphe.gui.ui.theme.MorpheAccentColors
+import app.morphe.gui.ui.theme.MorpheCornerStyle
 
 // ============================================================================
 // SUPPORTED APPS LIST PANE
@@ -82,7 +85,7 @@ internal fun SupportedAppsListPane(
     modifier: Modifier = Modifier,
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
 
     var searchQuery by remember { mutableStateOf("") }
@@ -138,7 +141,7 @@ internal fun SupportedAppsListPane(
                 SlimSearchField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    mono = mono,
+                    font = font,
                     corners = corners,
                     accents = accents,
                     maxWidth = Dp.Unspecified,
@@ -155,6 +158,7 @@ internal fun SupportedAppsListPane(
                 patchedStates = patchedStates,
                 deviceAppInfo = deviceAppInfo,
                 updateInfoByPackage = updateInfoByPackage,
+                appIconColorByPackage = supportedApps.associate { it.packageName to (it.appIconColor ?: "") }.filterValues { it.isNotEmpty() },
                 onShowDetail = onShowDetail,
                 onRepatch = onRepatch,
                 onUpdate = onUpdate,
@@ -188,19 +192,18 @@ internal fun SupportedAppsListPane(
                     modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
                 ) {
                     Text(
-                        text = "LOAD FAILED",
+                        text = "Load failed",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.error,
-                        letterSpacing = 1.sp,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = loadError,
                         fontSize = 11.sp,
-                        fontFamily = mono,
-                        color = homeMutedTextColor(0.6f),
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -210,11 +213,10 @@ internal fun SupportedAppsListPane(
                             shape = RoundedCornerShape(corners.small),
                         ) {
                             Text(
-                                "RETRY",
-                                fontFamily = mono,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp,
+                                "Retry",
+                                fontFamily = font,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal
                             )
                         }
                         // Always offer a way to the source manager here: when a bundle is
@@ -225,11 +227,10 @@ internal fun SupportedAppsListPane(
                             shape = RoundedCornerShape(corners.small),
                         ) {
                             Text(
-                                "MANAGE SOURCES",
-                                fontFamily = mono,
+                                "Manage sources",
+                                fontFamily = font,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp,
                             )
                         }
                     }
@@ -243,9 +244,10 @@ internal fun SupportedAppsListPane(
                     Text(
                         text = if (searchQuery.isBlank()) "No supported apps"
                                else "No apps match \"$searchQuery\"",
-                        fontSize = 11.sp,
-                        fontFamily = mono,
-                        color = homeMutedTextColor(0.5f),
+                        fontSize = 13.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -267,7 +269,7 @@ internal fun SupportedAppsListPane(
                                 .coerceAtLeast(120.dp)
                         ),
                 ) {
-                    androidx.compose.foundation.lazy.LazyColumn(
+                    LazyColumn(
                         state = listState,
                         // Scrollbar is 6dp wide and sits at the Box's right edge.
                         // 6 (scrollbar width) + 6 (visible gap) = 12dp keeps content
@@ -316,15 +318,15 @@ internal fun SupportedAppsListPane(
  * Built on BasicTextField so we can drop below the 56dp minimum height that
  * Material 3's OutlinedTextField enforces internally. Visually mirrors the
  * default OutlinedTextField (border, leading search icon, trailing clear,
- * mono placeholder), just thinner and wider.
+ * font placeholder), just thinner and wider.
  */
 @Composable
 internal fun SlimSearchField(
     value: String,
     onValueChange: (String) -> Unit,
-    mono: androidx.compose.ui.text.font.FontFamily,
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
-    accents: app.morphe.gui.ui.theme.MorpheAccentColors,
+    font: FontFamily,
+    corners: MorpheCornerStyle,
+    accents: MorpheAccentColors,
     maxWidth: Dp = 340.dp,
 ) {
     val dimens = LocalMorpheDimens.current
@@ -332,8 +334,8 @@ internal fun SlimSearchField(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val borderColor by animateColorAsState(
-        if (isFocused) MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+        if (isFocused) MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.outlineVariant,
         animationSpec = tween(150),
         label = "slimSearchBorder"
     )
@@ -344,8 +346,9 @@ internal fun SlimSearchField(
         singleLine = true,
         interactionSource = interactionSource,
         textStyle = MaterialTheme.typography.bodySmall.copy(
-            fontFamily = mono,
+            fontFamily = font,
             fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurface
         ),
         cursorBrush = SolidColor(accents.primary),
@@ -354,6 +357,7 @@ internal fun SlimSearchField(
             .fillMaxWidth()
             .height(dimens.controlHeight)
             .clip(RoundedCornerShape(corners.small))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
             .border(1.dp, borderColor, RoundedCornerShape(corners.small)),
         decorationBox = { innerTextField ->
             Row(
@@ -374,7 +378,8 @@ internal fun SlimSearchField(
                         Text(
                             "Filter apps…",
                             fontSize = 11.sp,
-                            fontFamily = mono,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
                             color = muted.copy(alpha = 0.4f)
                         )
                     }
@@ -405,7 +410,7 @@ internal fun SlimSearchField(
 /** Loading skeleton. Ghost row that mimics SupportedAppListRow's shape. */
 @Composable
 internal fun SkeletonAppRow(
-    corners: app.morphe.gui.ui.theme.MorpheCornerStyle,
+    corners: MorpheCornerStyle,
     staggerOffsetMs: Int,
 ) {
     val infinite = rememberInfiniteTransition(label = "skeletonPulse")

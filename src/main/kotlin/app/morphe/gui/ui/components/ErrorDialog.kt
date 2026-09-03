@@ -14,10 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.MorpheColors
 
 enum class ErrorType {
@@ -37,6 +39,7 @@ fun ErrorDialog(
     dismissText: String = "OK",
     retryText: String = "Retry"
 ) {
+    val font = LocalMorpheFont.current
     val icon = when (errorType) {
         ErrorType.NETWORK -> MorpheIcons.WifiOff
         ErrorType.FILE -> MorpheIcons.Error
@@ -59,12 +62,15 @@ fun ErrorDialog(
             Text(
                 text = title,
                 fontWeight = FontWeight.SemiBold,
+                fontFamily = font,
                 textAlign = TextAlign.Center
             )
         },
         text = {
             Text(
                 text = message,
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -78,7 +84,7 @@ fun ErrorDialog(
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(retryText)
+                    Text(retryText, fontFamily = font)
                 }
             } else {
                 Button(
@@ -88,14 +94,14 @@ fun ErrorDialog(
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(dismissText)
+                    Text(dismissText, fontFamily = font)
                 }
             }
         },
         dismissButton = if (onRetry != null) {
             {
                 TextButton(onClick = onDismiss) {
-                    Text(dismissText)
+                    Text(dismissText, fontFamily = font)
                 }
             }
         } else null
@@ -135,22 +141,22 @@ fun getFriendlyErrorMessage(error: String): String {
     val lowerError = error.lowercase()
     return when {
         lowerError.contains("timeout") ->
-            "The connection timed out. Please check your internet connection and try again."
+            "The connection timed out. Please check your internet connection and try again"
 
         lowerError.contains("unreachable") || lowerError.contains("connect") ->
-            "Unable to connect to the server. Please check your internet connection."
+            "Unable to connect to the server. Please check your internet connection"
 
         lowerError.contains("permission") || lowerError.contains("access denied") ->
-            "Permission denied. Please check that you have access to the file or folder."
+            "Permission denied. Please check that you have access to the file or folder"
 
         lowerError.contains("not found") ->
-            "The requested file or resource was not found."
+            "The requested file or resource was not found"
 
         lowerError.contains("disk full") || lowerError.contains("no space") ->
-            "Not enough disk space. Please free up some space and try again."
+            "Not enough disk space. Please free up some space and try again"
 
         lowerError.contains("exit code") ->
-            "The patching process encountered an error. Check the logs for details."
+            "The patching process encountered an error. Check the logs for details"
 
         else -> error
     }

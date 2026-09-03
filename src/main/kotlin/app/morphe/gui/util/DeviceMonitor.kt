@@ -5,6 +5,7 @@
 
 package app.morphe.gui.util
 
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +44,7 @@ object DeviceMonitor {
             while (isActive) {
                 adbManager.startServer()
                 refreshDevices()
-                delay(5000)
+                delay(5.seconds)
             }
         }
     }

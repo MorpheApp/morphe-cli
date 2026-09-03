@@ -14,7 +14,7 @@ import app.morphe.gui.data.model.SupportedApp
  * This allows the app to dynamically determine which apps are supported
  * based on the .mpp file contents rather than hardcoding.
  */
-object  SupportedAppExtractor {
+object SupportedAppExtractor {
 
     /**
      * Extract all supported apps from a list of patches.
@@ -25,19 +25,21 @@ object  SupportedAppExtractor {
         val packageVersionsMap = mutableMapOf<String, MutableSet<String>>()
         val packageExperimentalMap = mutableMapOf<String, MutableSet<String>>()
         val packageDisplayNames = mutableMapOf<String, String>()
+        val packageIconColors = mutableMapOf<String, String>()
 
-        for (patch in patches) {
-            for (compatiblePackage in patch.compatiblePackages) {
-                val packageName = compatiblePackage.name
-
+        for ((_, _, compatiblePackages) in patches) {
+            for ((packageName, displayName, versions, experimentalVersions, appIconColor) in compatiblePackages) {
                 if (packageName.isNotBlank()) {
                     packageVersionsMap.getOrPut(packageName) { mutableSetOf() }
-                        .addAll(compatiblePackage.versions)
+                        .addAll(versions)
                     packageExperimentalMap.getOrPut(packageName) { mutableSetOf() }
-                        .addAll(compatiblePackage.experimentalVersions)
-                    compatiblePackage.displayName
+                        .addAll(experimentalVersions)
+                    displayName
                         ?.takeIf { it.isNotBlank() }
                         ?.let { packageDisplayNames.putIfAbsent(packageName, it) }
+                    appIconColor
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { packageIconColors.putIfAbsent(packageName, it) }
                 }
             }
         }
@@ -60,7 +62,8 @@ object  SupportedAppExtractor {
                 experimentalVersions = experimentalList,
                 recommendedVersion = recommendedVersion,
                 apkDownloadUrl = SupportedApp.getDownloadUrl(packageName, recommendedVersion ?: "any"),
-                experimentalDownloadUrl = SupportedApp.getDownloadUrl(packageName, latestExperimental)
+                experimentalDownloadUrl = SupportedApp.getDownloadUrl(packageName, latestExperimental),
+                appIconColor = packageIconColors[packageName]
             )
         }.sortedBy { it.displayName }
     }

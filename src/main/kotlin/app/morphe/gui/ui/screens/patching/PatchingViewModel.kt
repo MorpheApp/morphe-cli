@@ -5,26 +5,36 @@
 
 package app.morphe.gui.ui.screens.patching
 
-import cafe.adriel.voyager.core.model.ScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
-import app.morphe.gui.data.model.PatchConfig
-import app.morphe.gui.data.repository.ConfigRepository
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import app.morphe.engine.MorpheComponents
 import app.morphe.engine.MorpheData
 import app.morphe.engine.PatchedAppStore
 import app.morphe.engine.UpdateChecker
 import app.morphe.engine.model.PatchedAppRecord
 import app.morphe.engine.util.ApkManifestReader
 import app.morphe.engine.util.FileChecksum
+import app.morphe.gui.data.model.PatchConfig
+import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.util.Logger
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import app.morphe.gui.util.PatchResult
 import app.morphe.gui.util.PatchService
+import app.morphe.gui.util.PatcherLogInterceptor
+import app.morphe.gui.util.PatcherState
+import cafe.adriel.voyager.core.model.ScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
 import java.io.File
+import java.lang.management.ManagementFactory
+import java.util.logging.Level
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import oshi.SystemInfo
 
 class PatchingViewModel(
     private val config: PatchConfig,
@@ -37,17 +47,81 @@ class PatchingViewModel(
     val uiState: StateFlow<PatchingUiState> = _uiState.asStateFlow()
 
     private var patchingJob: Job? = null
+    private var stateMachine: PatcherState? = null
+
+    fun markAutoNavigated() {
+        _uiState.update { it.copy(hasAutoNavigated = true) }
+    }
 
     fun startPatching() {
         if (_uiState.value.status != PatchingStatus.IDLE) return
 
         patchingJob = screenModelScope.launch {
+            stateMachine = null
+            val osName = System.getProperty("os.name") ?: "Unknown OS"
+            val osArch = System.getProperty("os.arch") ?: "Unknown Arch"
+            val maxMemoryMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).toInt()
+            val inputApkFile = File(config.inputApkPath)
+            val apkSizeMb = if (inputApkFile.exists()) "%.1f MB".format(inputApkFile.length() / 1_048_576.0) else "?"
+            
+            val appVersion = config.appVersion ?: ApkManifestReader.read(inputApkFile)?.versionName ?: "?"
+            val patchesSourceName = config.patchesSourceName ?: "MORPHE PATCHES"
+            val patchesVersion = config.patchesVersion ?: config.sourcesSnapshot.firstOrNull()?.version ?: "?"
+            val isSplit = config.inputApkPath.endsWith(".apkm", true) || config.inputApkPath.endsWith(".xapk", true) || config.inputApkPath.endsWith(".apks", true) || inputApkFile.isDirectory
+            
+            val parentFile = File(config.outputApkPath).parentFile ?: File(System.getProperty("user.home"))
+            val usable = parentFile.usableSpace / 1073741824.0
+            val total = parentFile.totalSpace / 1073741824.0
+            val storageFreeInfo = "%.2f GB / %.2f GB".format(usable, total)
+
+            val desktopVersion = UpdateChecker.currentVersion() ?: "?"
+            val patcherVersion = MorpheComponents.patcherVersion ?: "?"
+            val nativeLibs = if (config.keepArchitectures.isNotEmpty()) "kept" else "stripped"
+
+            val osBean = ManagementFactory.getOperatingSystemMXBean() as com.sun.management.OperatingSystemMXBean
+            val freeGb = osBean.freeMemorySize / 1073741824.0
+            val totalGb = osBean.totalMemorySize / 1073741824.0
+            val ramFreeInfo = "%.2f GB / %.2f GB".format(freeGb, totalGb)
+
             _uiState.value = _uiState.value.copy(
                 status = PatchingStatus.PREPARING,
-                logs = listOf(LogEntry("Preparing to patch...", LogLevel.INFO))
+                logs = emptyList(),
+                heapLimitMb = maxMemoryMb,
+                apkSizeMb = apkSizeMb,
+                androidVersion = osName,
+                deviceManufacturer = osArch,
+                appVersion = appVersion,
+                patchesSourceName = patchesSourceName,
+                patchesVersion = patchesVersion,
+                isSplit = isSplit,
+                storageFreeInfo = storageFreeInfo,
+                ramFreeInfo = ramFreeInfo,
+                desktopVersion = desktopVersion,
+                patcherVersion = patcherVersion,
+                nativeLibs = nativeLibs
             )
+            
+            val startTime = System.currentTimeMillis()
+            val cpuSampler = CpuUsageSampler()
+            val ioSampler = IoUsageSampler()
 
-            addLog("Initializing patcher...", LogLevel.INFO)
+            val memoryJob = launch(Dispatchers.Default) {
+                while (true) {
+                    val runtime = Runtime.getRuntime()
+                    val usedMemoryMb = ((runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)).toInt()
+
+                    val coreLoads = cpuSampler.sample()
+                    val ioSample = ioSampler.sample()
+
+                    _uiState.update { it.copy(
+                        heapSamples = (it.heapSamples + usedMemoryMb).takeLast(60),
+                        cpuCoreLoads = coreLoads.ifEmpty { it.cpuCoreLoads },
+                        ioSamples = if (ioSample != null) (it.ioSamples + ioSample).takeLast(60) else it.ioSamples,
+                        ioPeakKbPerSec = if (ioSample != null) maxOf(it.ioPeakKbPerSec, ioSample.totalKbPerSec) else it.ioPeakKbPerSec
+                    ) }
+                    delay(500.milliseconds)
+                }
+            }
 
             // Start patching
             _uiState.value = _uiState.value.copy(
@@ -56,10 +130,6 @@ class PatchingViewModel(
                 patchedCount = 0,
                 progress = 0f
             )
-            addLog("Starting patch process...", LogLevel.INFO)
-            addLog("Input: ${File(config.inputApkPath).name}", LogLevel.INFO)
-            addLog("Output: ${File(config.outputApkPath).name}", LogLevel.INFO)
-            addLog("Patches: ${config.enabledPatches.size} enabled", LogLevel.INFO)
 
             // Resolve keystore. Two modes:
             //  - User configured one in Settings → use it; fail loudly if the
@@ -82,25 +152,36 @@ class PatchingViewModel(
             }
             val resolvedKeystorePath = (userKeystore ?: MorpheData.defaultKeystoreFile).absolutePath
 
-            // Use PatchService for direct library patching
-            val result = patchService.patch(
-                patchesFilePaths = config.patchesFilePaths,
-                inputApkPath = config.inputApkPath,
-                outputApkPath = config.outputApkPath,
-                enabledPatches = config.enabledPatches,
-                disabledPatches = config.disabledPatches,
-                options = config.patchOptions,
-                exclusiveMode = config.useExclusiveMode,
-                keepArchitectures = config.keepArchitectures,
-                continueOnError = config.continueOnError,
-                keystorePath = resolvedKeystorePath,
-                keystorePassword = appConfig.keystorePassword,
-                keystoreAlias = appConfig.keystoreAlias,
-                keystoreEntryPassword = appConfig.keystoreEntryPassword,
-                onProgress = { message ->
+            // Attach a custom handler to capture standard patcher logs for parsing
+            val logHandler = PatcherLogInterceptor.attach { message ->
+                launch(Dispatchers.Main) {
                     parseAndAddLog(message)
                 }
-            )
+            }
+
+            val result = try {
+                patchService.patch(
+                    patchesFilePaths = config.patchesFilePaths,
+                    inputApkPath = config.inputApkPath,
+                    outputApkPath = config.outputApkPath,
+                    enabledPatches = config.enabledPatches,
+                    disabledPatches = config.disabledPatches,
+                    options = config.patchOptions,
+                    exclusiveMode = config.useExclusiveMode,
+                    keepArchitectures = config.keepArchitectures,
+                    continueOnError = config.continueOnError,
+                    keystorePath = resolvedKeystorePath,
+                    keystorePassword = appConfig.keystorePassword,
+                    keystoreAlias = appConfig.keystoreAlias,
+                    keystoreEntryPassword = appConfig.keystoreEntryPassword,
+                    onProgress = { message ->
+                        parseAndAddLog(message)
+                    }
+                )
+            } finally {
+                PatcherLogInterceptor.detach(logHandler)
+                memoryJob.cancel()
+            }
 
             result.fold(
                 onSuccess = { patchResult ->
@@ -108,44 +189,38 @@ class PatchingViewModel(
                         // Distinguish clean success from "continue-on-error" partial success:
                         // the APK was built, but some patches were skipped. Log the skipped
                         // ones as a warning so the user sees what didn't apply.
-                        if (patchResult.failedPatches.isNotEmpty()) {
-                            addLog(
-                                "Patching completed with ${patchResult.failedPatches.size} patches skipped",
-                                LogLevel.WARNING
-                            )
-                            addLog(
-                                "Skipped patches: ${patchResult.failedPatches.joinToString(", ")}",
-                                LogLevel.WARNING
-                            )
-                        } else {
-                            addLog("Patching completed successfully!", LogLevel.SUCCESS)
-                        }
-                        addLog("Applied ${patchResult.appliedPatches.size} patches", LogLevel.SUCCESS)
+                        
+                        val elapsedMs = System.currentTimeMillis() - startTime
+                        val outputApkFile = File(config.outputApkPath)
+                        val outSizeMb = if (outputApkFile.exists()) "%.1f MB".format(outputApkFile.length() / 1_048_576.0) else "?"
+
                         _uiState.value = _uiState.value.copy(
                             status = PatchingStatus.COMPLETED,
                             outputPath = config.outputApkPath,
-                            progress = 1f
+                            progress = 1f,
+                            outputSizeMb = outSizeMb,
+                            elapsedSec = formatElapsed(elapsedMs)
                         )
                         Logger.info("Patching completed: ${config.outputApkPath}")
                         recordPatchedApp(patchResult)
                     } else {
-                        val reason = patchResult.failureReason
+                        val reason = patchResult.failureDetail
+                            ?: patchResult.failureReason
                             ?: if (patchResult.failedPatches.isNotEmpty())
                                 "Failed patches: ${patchResult.failedPatches.joinToString(", ")}"
                             else "Patching failed for an unknown reason"
-                        addLog(reason, LogLevel.ERROR)
+                        addLog("Patching failed: ${patchResult.failureReason ?: "Unknown reason"}", LogLevel.ERROR)
                         _uiState.value = _uiState.value.copy(
                             status = PatchingStatus.FAILED,
                             error = reason,
                         )
-                        Logger.error("Patching failed: $reason")
                     }
                 },
                 onFailure = { e ->
                     addLog("Error: ${e.message}", LogLevel.ERROR)
                     _uiState.value = _uiState.value.copy(
                         status = PatchingStatus.FAILED,
-                        error = e.message ?: "Unknown error occurred"
+                        error = e.stackTraceToString()
                     )
                     Logger.error("Patching error", e)
                 }
@@ -167,7 +242,7 @@ class PatchingViewModel(
      * Record this patch in the shared patched-app history (see [PatchedAppStore]).
      * Best-effort: a history-write failure must never disrupt the success UX.
      */
-    private suspend fun recordPatchedApp(patchResult: app.morphe.gui.util.PatchResult) {
+    private suspend fun recordPatchedApp(patchResult: PatchResult) {
         try {
             val pkg = config.packageName.ifEmpty { patchResult.packageName }
             if (pkg.isEmpty()) return // nothing useful to key on
@@ -206,9 +281,9 @@ class PatchingViewModel(
 
     private fun addLog(message: String, level: LogLevel) {
         val entry = LogEntry(message, level)
-        _uiState.value = _uiState.value.copy(
-            logs = _uiState.value.logs + entry
-        )
+        _uiState.update { it.copy(
+            logs = it.logs + entry
+        ) }
     }
 
     private fun parseAndAddLog(line: String) {
@@ -217,73 +292,38 @@ class PatchingViewModel(
             line.contains("warning", ignoreCase = true) -> LogLevel.WARNING
             line.contains("success", ignoreCase = true) ||
             line.contains("completed", ignoreCase = true) ||
-            line.contains("done", ignoreCase = true) -> LogLevel.SUCCESS
+            line.contains("done", ignoreCase = true) ||
             line.contains("patching", ignoreCase = true) ||
-            line.contains("applying", ignoreCase = true) -> LogLevel.PROGRESS
+            line.contains("applying", ignoreCase = true) -> LogLevel.INFO
             else -> LogLevel.INFO
         }
-        addLog(line, level)
-
-        // Try to extract progress information
-        parseProgress(line)
-    }
-
-    private fun parseProgress(line: String) {
-        // Pattern: "Executing patch X of Y: PatchName" or similar
-        val executingPattern = Regex("""(?:Executing|Applying)\s+patch\s+(\d+)\s+of\s+(\d+)(?::\s*(.+))?""", RegexOption.IGNORE_CASE)
-        val executingMatch = executingPattern.find(line)
-        if (executingMatch != null) {
-            val current = executingMatch.groupValues[1].toIntOrNull() ?: 0
-            val total = executingMatch.groupValues[2].toIntOrNull() ?: 0
-            val patchName = executingMatch.groupValues.getOrNull(3)?.trim()
-
-            if (total > 0) {
-                val progress = current.toFloat() / total.toFloat()
-                _uiState.value = _uiState.value.copy(
-                    progress = progress,
-                    patchedCount = current,
-                    totalPatches = total,
-                    currentPatch = patchName,
-                    hasReceivedProgressUpdate = true
-                )
-            }
-            return
+        if (!line.startsWith("FAILED: ", ignoreCase = true)) {
+            addLog(line, level)
         }
 
-        // Pattern: "[X/Y]" or "(X/Y)"
-        val fractionPattern = Regex("""[\[\(](\d+)/(\d+)[\]\)]""")
-        val fractionMatch = fractionPattern.find(line)
-        if (fractionMatch != null) {
-            val current = fractionMatch.groupValues[1].toIntOrNull() ?: 0
-            val total = fractionMatch.groupValues[2].toIntOrNull() ?: 0
-
-            if (total > 0) {
-                val progress = current.toFloat() / total.toFloat()
-                _uiState.value = _uiState.value.copy(
-                    progress = progress,
-                    patchedCount = current,
-                    totalPatches = total,
-                    hasReceivedProgressUpdate = true
-                )
-            }
-            return
+        // Extract progress information using State Machine
+        if (stateMachine == null) {
+            stateMachine = PatcherState(_uiState.value.totalPatches, _uiState.value.isSplit)
         }
+        stateMachine?.processLogLine(line)
 
-        // Pattern: "X%" percentage
-        val percentPattern = Regex("""(\d+(?:\.\d+)?)\s*%""")
-        val percentMatch = percentPattern.find(line)
-        if (percentMatch != null) {
-            val percent = percentMatch.groupValues[1].toFloatOrNull() ?: 0f
-            if (percent > 0) {
-                _uiState.value = _uiState.value.copy(
-                    progress = percent / 100f,
-                    hasReceivedProgressUpdate = true
-                )
-            }
-        }
+        _uiState.update { it.copy(
+            progress = maxOf(it.progress, stateMachine?.currentProgress ?: 0f),
+            patchedCount = stateMachine?.completedPatches ?: it.patchedCount,
+            currentStepName = stateMachine?.currentStepName ?: it.currentStepName,
+            currentPatchName = stateMachine?.currentPatchName,
+            hasReceivedProgressUpdate = true
+        ) }
     }
 
     fun getConfig(): PatchConfig = config
+    
+    private fun formatElapsed(ms: Long): String {
+        val totalSec = ms / 1000
+        val minutes = totalSec / 60
+        val seconds = totalSec % 60
+        return if (minutes > 0) "${minutes}m ${seconds}s" else "${seconds}s"
+    }
 }
 
 enum class PatchingStatus {
@@ -297,10 +337,8 @@ enum class PatchingStatus {
 
 enum class LogLevel {
     INFO,
-    SUCCESS,
     WARNING,
-    ERROR,
-    PROGRESS
+    ERROR
 }
 
 data class LogEntry(
@@ -318,7 +356,31 @@ data class PatchingUiState(
     val currentPatch: String? = null,
     val patchedCount: Int = 0,
     val totalPatches: Int = 0,
-    val hasReceivedProgressUpdate: Boolean = false
+    val currentStepName: String = "",
+    val currentPatchName: String? = null,
+    val hasReceivedProgressUpdate: Boolean = false,
+    val hasAutoNavigated: Boolean = false,
+    
+    // Expert Mode Fields
+    val heapSamples: List<Int> = emptyList(),
+    val cpuCoreLoads: List<Int> = emptyList(),
+    val ioSamples: List<IoUsage> = emptyList(),
+    val ioPeakKbPerSec: Int = 0,
+    val heapLimitMb: Int = 0,
+    val apkSizeMb: String = "?",
+    val androidVersion: String = "?",
+    val deviceManufacturer: String = "?",
+    val appVersion: String = "?",
+    val patchesSourceName: String = "MORPHE PATCHES",
+    val patchesVersion: String = "?",
+    val isSplit: Boolean = false,
+    val ramFreeInfo: String = "?",
+    val storageFreeInfo: String = "?",
+    val desktopVersion: String = "?",
+    val patcherVersion: String = "?",
+    val nativeLibs: String = "?",
+    val outputSizeMb: String? = null,
+    val elapsedSec: String? = null
 ) {
     val isInProgress: Boolean
         get() = status == PatchingStatus.PREPARING || status == PatchingStatus.PATCHING
@@ -329,4 +391,60 @@ data class PatchingUiState(
     // Only show determinate progress if we've actually received progress updates from CLI
     val hasProgress: Boolean
         get() = hasReceivedProgressUpdate && progress > 0f
+}
+
+data class IoUsage(val readKbPerSec: Int, val writeKbPerSec: Int, val totalKbPerSec: Int = readKbPerSec + writeKbPerSec)
+
+/**
+ * Storage throughput of the patcher process.
+ * Uses OSHI for cross-platform compatibility (Windows, macOS, Linux).
+ */
+class IoUsageSampler {
+    private val os = SystemInfo().operatingSystem
+    private val currentProcess = os.currentProcess
+
+    private var previousRead = -1L
+    private var previousWrite = -1L
+    private var previousUptimeMs = 0L
+
+    fun sample(): IoUsage? {
+        if (currentProcess == null || !currentProcess.updateAttributes()) return null
+        val read = currentProcess.bytesRead
+        val write = currentProcess.bytesWritten
+
+        val uptimeMs = System.currentTimeMillis()
+        val elapsed = uptimeMs - previousUptimeMs
+        val hadReading = previousRead >= 0L
+        val readDelta = read - previousRead
+        val writeDelta = write - previousWrite
+
+        previousRead = read
+        previousWrite = write
+        previousUptimeMs = uptimeMs
+
+        if (!hadReading || elapsed <= 0L) return null
+
+        return IoUsage(
+            readKbPerSec = rate(readDelta, elapsed),
+            writeKbPerSec = rate(writeDelta, elapsed)
+        )
+    }
+
+    private fun rate(bytes: Long, elapsedMs: Long) =
+        ((bytes * 1000) / (elapsedMs * 1024)).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+}
+
+/**
+ * Per-core CPU load.
+ * Uses OSHI for cross-platform compatibility (Windows, macOS, Linux).
+ */
+class CpuUsageSampler {
+    private val processor = SystemInfo().hardware.processor
+    private var previousTicks = processor.processorCpuLoadTicks
+
+    fun sample(): List<Int> {
+        val loads = processor.getProcessorCpuLoadBetweenTicks(previousTicks)
+        previousTicks = processor.processorCpuLoadTicks
+        return loads.map { (it * 100).toInt().coerceIn(0, 100) }
+    }
 }

@@ -5,10 +5,7 @@
 
 package app.morphe.gui.ui.screens.home.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -22,6 +19,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,15 +37,19 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import app.morphe.gui.ui.screens.home.PatchedAppState
-import app.morphe.gui.ui.theme.MorpheColors
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.model.SupportedApp
+import app.morphe.gui.ui.icons.MorpheIcons
+import app.morphe.gui.ui.screens.home.DeviceAppInfo
+import app.morphe.gui.ui.screens.home.PatchedAppState
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.MorpheAccentColors
+import app.morphe.gui.ui.theme.MorpheColors
 import app.morphe.gui.util.DownloadUrlResolver.openUrlAndFollowRedirects
 
 /**
@@ -71,75 +73,56 @@ fun SupportedAppListRow(
     patchedState: PatchedAppState = PatchedAppState.NEVER_PATCHED,
     /** Optional device-layer info (installed? + version). Null = no device / not patched.
      *  Recall ACTIONS (Re-patch/Forget) live on the "Your apps" card, not here. */
-    deviceInfo: app.morphe.gui.ui.screens.home.DeviceAppInfo? = null,
+    deviceInfo: DeviceAppInfo? = null,
     modifier: Modifier = Modifier,
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val hoverInteraction = remember(app.packageName) { MutableInteractionSource() }
-    val isHovered by hoverInteraction.collectIsHoveredAsState()
-
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            isExpanded -> accents.primary.copy(alpha = 0.45f)
-            isHovered -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-        },
-        animationSpec = tween(150),
-        label = "rowBorder",
-    )
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            isExpanded -> accents.primary.copy(alpha = 0.05f)
-            isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-            else -> MaterialTheme.colorScheme.surface
-        },
-        animationSpec = tween(150),
-        label = "rowBg",
-    )
 
     val initial = app.displayName.firstOrNull()?.uppercase() ?: "?"
     val hasStable = app.recommendedVersion != null
     val hasExperimental = app.experimentalVersions.isNotEmpty()
     val latestExperimental = app.experimentalVersions.firstOrNull()
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(corners.medium))
-            .border(1.dp, borderColor, RoundedCornerShape(corners.medium))
-            .background(backgroundColor)
-            .hoverable(hoverInteraction)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    AppCard(
+        modifier = modifier.fillMaxWidth(),
+        cornerRadius = corners.medium,
+        appIconColorHex = app.appIconColor,
+        isExpanded = isExpanded,
+        onClick = onClick
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
         // ── Row 1: initial + name + package ──
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(corners.small))
-                    .border(1.dp, accents.primary.copy(alpha = 0.35f), RoundedCornerShape(corners.small))
-                    .background(accents.primary.copy(alpha = 0.06f)),
+                    .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(corners.small))
+                    .background(Color.White.copy(alpha = 0.06f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = initial,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = mono,
-                    color = accents.primary,
+                    fontFamily = font,
+                    color = Color.White,
                 )
             }
             Spacer(Modifier.width(10.dp))
             Text(
                 text = app.displayName,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -147,25 +130,26 @@ fun SupportedAppListRow(
             Text(
                 text = app.packageName,
                 fontSize = 10.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                fontFamily = font,
+                fontWeight = FontWeight.Normal,
+                color = Color.White.copy(alpha = 0.6f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             if (patchedState != PatchedAppState.NEVER_PATCHED) {
                 Spacer(Modifier.width(8.dp))
-                PatchedStateBadge(patchedState, mono)
+                PatchedStateBadge(patchedState, font)
             }
         }
 
-        // ── Row 2: STABLE LATEST + EXPERIMENTAL LATEST chips ──
+        // ── Row 2: Stable + Experimental chips ──
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             VersionChip(
-                channelLabel = "STABLE LATEST",
+                channelLabel = "Latest Stable",
                 version = app.recommendedVersion,
                 color = accents.secondary,
                 // Pass the URL through unconditionally — when recommendedVersion
@@ -173,16 +157,16 @@ fun SupportedAppListRow(
                 // the app's general APKMirror page and stays clickable.
                 downloadUrl = app.apkDownloadUrl,
                 nullLabel = "Any",
-                mono = mono,
+                font = font,
                 cornerSmall = corners.small,
             )
             VersionChip(
-                channelLabel = "EXPERIMENTAL LATEST",
+                channelLabel = "Latest Experimental",
                 version = latestExperimental,
                 color = accents.warning,
                 downloadUrl = app.experimentalDownloadUrl,
-                nullLabel = "—",
-                mono = mono,
+                nullLabel = "N/A",
+                font = font,
                 cornerSmall = corners.small,
             )
         }
@@ -200,33 +184,34 @@ fun SupportedAppListRow(
                     app = app,
                     patchSourceNames = patchSourceNames,
                     accents = accents,
-                    mono = mono,
+                    font = font,
                     cornerSmall = corners.small,
                 )
-                deviceInfo?.let { DeviceInfoLine(it, mono) }
+                deviceInfo?.let { DeviceInfoLine(it, font) }
             }
         }
     }
 }
+}
+
 
 /** Optional device-layer line: whether the app is installed on the connected device. */
 @Composable
-private fun DeviceInfoLine(info: app.morphe.gui.ui.screens.home.DeviceAppInfo, mono: FontFamily) {
+private fun DeviceInfoLine(info: DeviceAppInfo, font: FontFamily) {
     val version = info.installedVersion?.let { " · v${it.removePrefix("v")}" } ?: ""
     val (text, color) = when {
-        !info.installed -> "NOT ON THIS DEVICE" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+        !info.installed -> "Not on this device" to Color.White.copy(alpha = 0.5f)
         // Installed but signed by a different cert → replaced/re-signed outside Morphe.
-        info.signedByMorphe == false -> "ON DEVICE$version · NOT MORPHE-SIGNED" to Color(0xFFE0504D) // red
-        else -> "ON DEVICE$version" to MorpheColors.Teal // ours, or signature undetermined
+        info.signedByMorphe == false -> "On device$version · not Morphe-signed" to Color(0xFFE0504D) // red
+        else -> "On device$version" to Color.White // ours, or signature undetermined
     }
     Text(
         text = text,
-        fontSize = 9.sp,
-        fontWeight = FontWeight.Bold,
-        fontFamily = mono,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Normal,
+        fontFamily = font,
         color = color,
-        letterSpacing = 0.5.sp,
-        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 4.dp),
+        modifier = Modifier.padding(top = 6.dp),
     )
 }
 
@@ -235,29 +220,28 @@ private fun DeviceInfoLine(info: app.morphe.gui.ui.screens.home.DeviceAppInfo, m
  * [PatchedAppState.NEVER_PATCHED] (callers gate on that before calling).
  */
 @Composable
-internal fun PatchedStateBadge(state: PatchedAppState, mono: FontFamily) {
-    val (label, color) = when (state) {
-        PatchedAppState.PATCHED -> "PATCHED" to MorpheColors.Teal
-        PatchedAppState.PATCHED_WITH_UPDATES -> "UPDATE AVAILABLE" to MorpheColors.Blue
-        PatchedAppState.MODIFIED_EXTERNALLY -> "MODIFIED" to Color(0xFFE0504D) // red
-        PatchedAppState.APK_MISSING -> "APK MISSING" to Color(0xFFE0A030) // amber
+internal fun PatchedStateBadge(state: PatchedAppState, font: FontFamily) {
+    val label = when (state) {
+        PatchedAppState.PATCHED -> "Patched"
+        PatchedAppState.PATCHED_WITH_UPDATES -> "Update available"
+        PatchedAppState.MODIFIED_EXTERNALLY -> "Modified"
+        PatchedAppState.APK_MISSING -> "APK missing"
         PatchedAppState.NEVER_PATCHED -> return
     }
     val corners = LocalMorpheCorners.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(corners.small))
-            .background(color.copy(alpha = 0.12f))
-            .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(corners.small))
+            .background(Color.White.copy(alpha = 0.2f))
+            .border(1.dp, Color.Transparent, RoundedCornerShape(corners.small))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
             text = label,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = color,
-            letterSpacing = 0.5.sp,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = Color.White,
         )
     }
 }
@@ -278,8 +262,8 @@ private fun VersionChip(
     color: Color,
     downloadUrl: String?,
     nullLabel: String,
-    mono: androidx.compose.ui.text.font.FontFamily,
-    cornerSmall: androidx.compose.ui.unit.Dp,
+    font: FontFamily,
+    cornerSmall: Dp,
 ) {
     // A chip is a clickable download link whenever the URL is present, even if
     // the version is null ("Any" label still routes to the app's general page).
@@ -287,25 +271,12 @@ private fun VersionChip(
     val uriHandler = LocalUriHandler.current
     val hoverInteraction = remember(channelLabel) { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            isLink && isHovered -> color.copy(alpha = 0.55f)
-            isLink -> color.copy(alpha = 0.3f)
-            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        },
-        animationSpec = tween(150),
-        label = "chipBorder",
-    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
             .clip(RoundedCornerShape(cornerSmall))
-            .border(1.dp, borderColor, RoundedCornerShape(cornerSmall))
-            .background(
-                if (isLink) color.copy(alpha = 0.06f)
-                else Color.Transparent
-            )
+            .background(Color.White.copy(alpha = if (isHovered && isLink) 0.26f else 0.20f))
             .hoverable(hoverInteraction)
             .then(
                 if (isLink) Modifier
@@ -319,31 +290,30 @@ private fun VersionChip(
     ) {
         Text(
             text = channelLabel,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            letterSpacing = 0.6.sp,
-            color = if (isLink) color
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = Color.White
         )
         Text(
             text = "·",
-            fontSize = 10.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = Color.White
         )
         Text(
             text = version?.let { if (it.startsWith("v")) it else "v$it" } ?: nullLabel,
             fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = mono,
-            color = if (isLink) color
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = Color.White
         )
         if (isLink) {
             Icon(
                 imageVector = MorpheIcons.OpenInNew,
                 contentDescription = "Download $channelLabel",
-                tint = color,
+                tint = Color.White,
                 modifier = Modifier.size(10.dp),
             )
         }
@@ -352,14 +322,13 @@ private fun VersionChip(
 
 /** Body that drops down below the collapsed row when [SupportedAppListRow.isExpanded]
  *  is true. Sections: PATCHES FROM, ALSO STABLE, EXPERIMENTAL. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ExpandedBody(
     app: SupportedApp,
     patchSourceNames: List<String>,
-    accents: app.morphe.gui.ui.theme.MorpheAccentColors,
-    mono: androidx.compose.ui.text.font.FontFamily,
-    cornerSmall: androidx.compose.ui.unit.Dp,
+    accents: MorpheAccentColors,
+    font: FontFamily,
+    cornerSmall: Dp,
 ) {
     // "Other stable" = supported versions other than the recommended latest.
     val otherStable = app.supportedVersions.filter { it != app.recommendedVersion }
@@ -373,8 +342,8 @@ private fun ExpandedBody(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (patchSourceNames.isNotEmpty()) {
-            SectionLabel(text = "PATCHES FROM", color = accents.primary, mono = mono)
-            androidx.compose.foundation.layout.FlowRow(
+            SectionLabel(text = "Patches from", font = font)
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -386,19 +355,16 @@ private fun ExpandedBody(
                     Pill(
                         text = name,
                         color = accents.primary,
-                        mono = mono,
+                        font = font,
                         cornerSmall = cornerSmall,
-                        textColor = MaterialTheme.colorScheme.onSurface,
-                        borderAlpha = 0.45f,
-                        backgroundAlpha = 0.10f,
                     )
                 }
             }
         }
 
         if (otherStable.isNotEmpty()) {
-            SectionLabel(text = "ALSO STABLE", color = accents.secondary, mono = mono)
-            androidx.compose.foundation.layout.FlowRow(
+            SectionLabel(text = "Stable", font = font)
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -409,7 +375,7 @@ private fun ExpandedBody(
                     Pill(
                         text = v,
                         color = accents.secondary,
-                        mono = mono,
+                        font = font,
                         cornerSmall = cornerSmall,
                         onClick = url?.let { { uriHandler.openUri(it) } },
                     )
@@ -417,8 +383,8 @@ private fun ExpandedBody(
                 if (otherStable.size > maxPills) {
                     Text(
                         text = "+${otherStable.size - maxPills}",
-                        fontSize = 10.sp,
-                        fontFamily = mono,
+                        fontSize = 11.sp,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                     )
@@ -427,8 +393,8 @@ private fun ExpandedBody(
         }
 
         if (app.experimentalVersions.isNotEmpty()) {
-            SectionLabel(text = "EXPERIMENTAL", color = accents.warning, mono = mono)
-            androidx.compose.foundation.layout.FlowRow(
+            SectionLabel(text = "Experimental", font = font)
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -437,7 +403,7 @@ private fun ExpandedBody(
                     Pill(
                         text = v,
                         color = accents.warning,
-                        mono = mono,
+                        font = font,
                         cornerSmall = cornerSmall,
                         onClick = url?.let { { uriHandler.openUri(it) } },
                     )
@@ -445,8 +411,8 @@ private fun ExpandedBody(
                 if (app.experimentalVersions.size > maxPills) {
                     Text(
                         text = "+${app.experimentalVersions.size - maxPills}",
-                        fontSize = 10.sp,
-                        fontFamily = mono,
+                        fontSize = 11.sp,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                     )
@@ -459,16 +425,14 @@ private fun ExpandedBody(
 @Composable
 private fun SectionLabel(
     text: String,
-    color: Color,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
 ) {
     Text(
         text = text,
-        fontSize = 9.sp,
-        fontWeight = FontWeight.Bold,
-        fontFamily = mono,
-        letterSpacing = 1.2.sp,
-        color = color.copy(alpha = 0.85f),
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White,
+        fontFamily = font,
     )
 }
 
@@ -476,11 +440,10 @@ private fun SectionLabel(
 private fun Pill(
     text: String,
     color: Color,
-    mono: androidx.compose.ui.text.font.FontFamily,
-    cornerSmall: androidx.compose.ui.unit.Dp,
-    textColor: Color = color,
-    borderAlpha: Float = 0.3f,
-    backgroundAlpha: Float = 0.06f,
+    font: FontFamily,
+    cornerSmall: Dp,
+    textColor: Color = Color.White,
+    backgroundAlpha: Float = 0.2f,
     // When non-null, the pill becomes a tappable download link: gets a hand
     // cursor, an OpenInNew icon, a subtle hover lift, and fires onClick on tap.
     // detectTapGestures (not .clickable) so scroll wheel / two-finger gestures
@@ -491,7 +454,6 @@ private fun Pill(
     val isHovered by hoverSource.collectIsHoveredAsState()
     val isInteractive = onClick != null
     val hoveredLift = if (isInteractive && isHovered) 0.20f else 0f
-    val effectiveBorderAlpha = (borderAlpha + hoveredLift).coerceAtMost(0.85f)
     val effectiveBackgroundAlpha = (backgroundAlpha + hoveredLift / 2f).coerceAtMost(0.30f)
 
     Box(
@@ -505,8 +467,7 @@ private fun Pill(
                     }
                 else Modifier
             )
-            .border(1.dp, color.copy(alpha = effectiveBorderAlpha), RoundedCornerShape(cornerSmall))
-            .background(color.copy(alpha = effectiveBackgroundAlpha), RoundedCornerShape(cornerSmall))
+            .background(Color.White.copy(alpha = effectiveBackgroundAlpha), RoundedCornerShape(cornerSmall))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Row(
@@ -515,10 +476,10 @@ private fun Pill(
         ) {
             Text(
                 text = text,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = mono,
-                color = textColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = font,
+                color = Color.White,
                 maxLines = 1,
             )
             if (isInteractive) {

@@ -40,17 +40,16 @@ import app.morphe.gui.ui.theme.MorpheCornerStyle
 @Composable
 internal fun LabeledField(
     label: String,
-    mono: FontFamily,
+    font: FontFamily,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
-            fontFamily = mono,
-            fontWeight = FontWeight.Bold,
-            fontSize = 9.sp,
-            letterSpacing = 1.2.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            fontFamily = font,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         content()
     }
@@ -70,7 +69,7 @@ internal fun SlimTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    mono: FontFamily,
+    font: FontFamily,
     accents: MorpheAccentColors,
     corners: MorpheCornerStyle,
     modifier: Modifier = Modifier,
@@ -99,8 +98,9 @@ internal fun SlimTextField(
         visualTransformation = visualTransformation,
         interactionSource = interactionSource,
         textStyle = MaterialTheme.typography.bodySmall.copy(
-            fontFamily = mono,
-            fontSize = 12.sp,
+            fontFamily = font,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurface,
         ),
         cursorBrush = SolidColor(accents.primary),
@@ -120,8 +120,9 @@ internal fun SlimTextField(
                         Text(
                             text = placeholder,
                             fontSize = 11.sp,
-                            fontFamily = mono,
-                            color = muted.copy(alpha = 0.4f),
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = muted.copy(alpha = 0.5f),
                         )
                     }
                     innerTextField()
@@ -139,7 +140,7 @@ internal fun SlimTextField(
 @Composable
 internal fun DialogActionButton(
     label: String,
-    mono: FontFamily,
+    font: FontFamily,
     corners: MorpheCornerStyle,
     onClick: () -> Unit,
 ) {
@@ -152,10 +153,9 @@ internal fun DialogActionButton(
     ) {
         Text(
             label,
-            fontFamily = mono,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            letterSpacing = 0.5.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            fontSize = 11.sp
         )
     }
 }

@@ -8,7 +8,10 @@ package app.morphe.gui.util
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
+import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import io.github.vinceglb.filekit.dialogs.openFilePicker
+import io.github.vinceglb.filekit.dialogs.openFileSaver
 import java.io.File
 
 /**
@@ -29,9 +32,6 @@ object MorpheFilePicker {
 
     /**
      * Native folder picker. Returns the chosen directory, or null if the user cancelled.
-     *
-     * @param title  dialog title (honored where the platform supports it).
-     * @param startDir directory to open at; ignored when it isn't an existing directory.
      */
     suspend fun pickDirectory(title: String? = null, startDir: File? = null): File? {
         val initial = startDir?.takeIf { it.isDirectory }?.let { PlatformFile(it) }
@@ -41,5 +41,43 @@ object MorpheFilePicker {
             FileKitDialogSettings.createDefault()
         }
         return FileKit.openDirectoryPicker(directory = initial, dialogSettings = settings)?.file
+    }
+
+    /**
+     * Native file picker. Returns the chosen file, or null if the user cancelled.
+     */
+    suspend fun pickFile(
+        title: String? = null,
+        startDir: File? = null,
+        extensions: List<String> = emptyList(),
+    ): File? {
+        val initial = startDir?.takeIf { it.isDirectory }?.let { PlatformFile(it) }
+        val settings = if (title != null) {
+            FileKitDialogSettings(title = title)
+        } else {
+            FileKitDialogSettings.createDefault()
+        }
+        val type = if (extensions.isEmpty()) FileKitType.File() else FileKitType.File(extensions)
+        return FileKit.openFilePicker(type = type, directory = initial, dialogSettings = settings)?.file
+    }
+
+    /**
+     * Native save-file dialog. Returns the destination [File], or null if the user cancelled.
+     */
+    suspend fun saveFile(
+        title: String? = null,
+        baseName: String,
+        extension: String,
+    ): File? {
+        val settings = if (title != null) {
+            FileKitDialogSettings(title = title)
+        } else {
+            FileKitDialogSettings.createDefault()
+        }
+        return FileKit.openFileSaver(
+            suggestedName = baseName,
+            defaultExtension = extension,
+            dialogSettings = settings,
+        )?.file
     }
 }

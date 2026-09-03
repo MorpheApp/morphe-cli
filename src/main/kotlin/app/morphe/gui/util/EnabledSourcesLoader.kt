@@ -6,19 +6,20 @@
 package app.morphe.gui.util
 
 import app.morphe.engine.MultiSourceLoader
-import app.morphe.gui.data.model.FollowMode
 import app.morphe.engine.model.Release
+import app.morphe.gui.data.model.FollowMode
+import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.PatchSourceType
 import app.morphe.gui.data.model.SourceVersionPref
 import app.morphe.gui.data.repository.PatchRepository
+import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * GUI-side orchestrator that resolves each enabled patch source to a downloaded
@@ -64,9 +65,9 @@ object EnabledSourcesLoader {
         /** MultiSourceLoader output across the successfully-resolved sources. */
         val loaded: MultiSourceLoader.Result,
         /** Union of GUI patches across all sources, for SupportedAppExtractor / UI. */
-        val unionGuiPatches: List<app.morphe.gui.data.model.Patch>,
+        val unionGuiPatches: List<Patch>,
         /** GUI patches grouped by sourceId, for badging UI in PatchSelectionScreen. */
-        val guiPatchesBySource: Map<String, List<app.morphe.gui.data.model.Patch>>,
+        val guiPatchesBySource: Map<String, List<Patch>>,
     ) {
         val anyLoaded: Boolean get() = loaded.allPatches.isNotEmpty()
         val anyFailed: Boolean get() = resolved.any { it.error != null } || loaded.hasErrors
@@ -124,7 +125,7 @@ object EnabledSourcesLoader {
         // Convert library patches → GUI patches once. Both the union and per-source
         // groupings are derived from this single conversion.
         val unionGui = patchService.convertToGuiPatches(loaded.allPatches)
-        val guiBySource: Map<String, List<app.morphe.gui.data.model.Patch>> =
+        val guiBySource: Map<String, List<Patch>> =
             loaded.perSource.associate { src ->
                 src.sourceId to patchService.convertToGuiPatches(src.patches)
             }
@@ -263,7 +264,8 @@ object EnabledSourcesLoader {
         } else {
             val stable = repo.getLatestStableRelease().getOrNull()
             val dev = repo.getLatestDevRelease().getOrNull()
-            release = if (pref?.mode == FollowMode.FOLLOW_DEV) (dev ?: stable) else (stable ?: dev)
+            val wantsDev = source.usePreRelease
+            release = if (wantsDev) (dev ?: stable) else (stable ?: dev)
             latestStableTag = stable?.tagName
             latestDevTag = dev?.tagName
         }

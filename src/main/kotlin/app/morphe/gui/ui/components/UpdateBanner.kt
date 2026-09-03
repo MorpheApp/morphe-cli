@@ -5,8 +5,6 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -30,11 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.engine.UpdateInfo
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
@@ -56,18 +56,17 @@ fun UpdateBanner(
     modifier: Modifier = Modifier,
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val uriHandler = LocalUriHandler.current
-    val shape = RoundedCornerShape(corners.medium)
+    val shape = RoundedCornerShape(corners.small)
 
     val accent = accents.secondary
 
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .border(1.dp, accent.copy(alpha = 0.25f), shape),
-        color = accent.copy(alpha = 0.06f),
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
         shape = shape,
     ) {
         Row(
@@ -78,16 +77,15 @@ fun UpdateBanner(
             Icon(
                 imageVector = MorpheIcons.NewReleases,
                 contentDescription = null,
-                tint = accent,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(14.dp),
             )
             Text(
-                text = "UPDATE AVAILABLE · v${info.latestVersion}",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = mono,
-                letterSpacing = 1.sp,
-                color = accent,
+                text = "Update available · v${info.latestVersion}",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = font,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
             Text(
                 text = if (info.crossesDevToStable) {
@@ -95,16 +93,17 @@ fun UpdateBanner(
                 } else {
                     "from v${info.currentVersion}"
                 },
-                fontSize = 10.sp,
-                fontFamily = mono,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                letterSpacing = 0.3.sp,
+                fontSize = 11.sp,
+                fontFamily = font,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                 modifier = Modifier.weight(1f),
             )
 
             // DOWNLOAD button
             val downloadHover = remember { MutableInteractionSource() }
             val isDownloadHovered by downloadHover.collectIsHoveredAsState()
+            val onContainer = MaterialTheme.colorScheme.onSecondaryContainer
             OutlinedButton(
                 onClick = { uriHandler.openUri(info.downloadLink) },
                 modifier = Modifier.hoverable(downloadHover).height(24.dp),
@@ -112,9 +111,9 @@ fun UpdateBanner(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 border = BorderStroke(
                     1.dp,
-                    if (isDownloadHovered) accent.copy(alpha = 0.5f) else accent.copy(alpha = 0.3f),
+                    if (isDownloadHovered) onContainer.copy(alpha = 0.5f) else onContainer.copy(alpha = 0.3f),
                 ),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = accent),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = onContainer),
             ) {
                 Icon(
                     imageVector = MorpheIcons.Download,
@@ -123,24 +122,23 @@ fun UpdateBanner(
                 )
                 Spacer(Modifier.width(3.dp))
                 Text(
-                    text = "DOWNLOAD",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = mono,
-                    letterSpacing = 0.5.sp,
+                    text = "Download",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = font
                 )
             }
 
             // LATER — session-only dismiss (reappears next startup). Yellow on hover.
             DismissTextAction(
-                label = "LATER",
+                label = "Later",
                 hoverAccent = MaterialTheme.colorScheme.tertiary,
                 onClick = onDismissForSession,
             )
 
             // SKIP v{ver} — persistent dismiss for this version only. Red on hover.
             DismissTextAction(
-                label = "SKIP v${info.latestVersion}",
+                label = "Skip v${info.latestVersion}",
                 hoverAccent = MaterialTheme.colorScheme.error,
                 onClick = onDismissForVersion,
             )
@@ -157,22 +155,22 @@ fun UpdateBanner(
 @Composable
 private fun DismissTextAction(
     label: String,
-    hoverAccent: androidx.compose.ui.graphics.Color,
+    hoverAccent: Color,
     onClick: () -> Unit,
 ) {
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val corners = LocalMorpheCorners.current
     val hover = remember { MutableInteractionSource() }
     val isHovered by hover.collectIsHoveredAsState()
 
     val borderColor by animateColorAsState(
-        if (isHovered) hoverAccent.copy(alpha = 0.5f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        if (isHovered) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
         animationSpec = tween(150),
     )
     val textColor by animateColorAsState(
-        if (isHovered) hoverAccent
-        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        if (isHovered) MaterialTheme.colorScheme.onSecondaryContainer
+        else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
         animationSpec = tween(150),
     )
 
@@ -188,11 +186,10 @@ private fun DismissTextAction(
     ) {
         Text(
             text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = mono,
-            color = textColor,
-            letterSpacing = 0.5.sp,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = textColor
         )
     }
 }

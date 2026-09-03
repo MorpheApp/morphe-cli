@@ -13,12 +13,12 @@ import app.morphe.gui.data.model.SourceVersionPref
 import app.morphe.gui.data.model.PatchChannel
 import app.morphe.gui.data.model.PatchSource
 import app.morphe.gui.data.model.UpdateChannelPreference
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 
 /**
  * Repository for managing app configuration (config.json)
@@ -85,6 +85,30 @@ class ConfigRepository {
     suspend fun setThemePreference(theme: ThemePreference) {
         val current = loadConfig()
         saveConfig(current.copy(themePreference = theme.name))
+    }
+
+    /**
+     * Update background type.
+     */
+    suspend fun setBackgroundType(type: String) {
+        val current = loadConfig()
+        saveConfig(current.copy(backgroundType = type))
+    }
+
+    /**
+     * Update parallax enabled state.
+     */
+    suspend fun setEnableParallax(enabled: Boolean) {
+        val current = loadConfig()
+        saveConfig(current.copy(enableParallax = enabled))
+    }
+    
+    /**
+     * Update custom accent color.
+     */
+    suspend fun setCustomAccentColorArgb(color: Int?) {
+        val current = loadConfig()
+        saveConfig(current.copy(customAccentColorArgb = color))
     }
 
     /**
@@ -311,14 +335,23 @@ class ConfigRepository {
     }
 
     /**
-     * Update an existing patch source. Cannot update non-deletable sources.
+     * Update an existing patch source. For non-deletable sources, only the pre-release flag can be updated.
      */
     suspend fun updatePatchSource(updated: PatchSource) {
         val current = loadConfig()
         val existing = current.patchSource.find { it.id == updated.id }
-        if (existing == null || !existing.deletable) return
+        if (existing == null) return
 
-        val updatedSources = current.patchSource.map { if (it.id == updated.id) updated else it }
+        val newSource = if (!existing.deletable) {
+            existing.copy(
+                usePreRelease = updated.usePreRelease,
+                useExperimentalVersions = updated.useExperimentalVersions
+            )
+        } else {
+            updated
+        }
+
+        val updatedSources = current.patchSource.map { if (it.id == updated.id) newSource else it }
         saveConfig(current.copy(patchSource = updatedSources))
     }
 

@@ -5,8 +5,6 @@
 
 package app.morphe.gui.ui.screens.home.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,6 +14,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,20 +24,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.screens.home.ApkInfo
-import app.morphe.gui.util.VersionStatus
-import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
+import app.morphe.gui.ui.theme.LocalMorpheFont
 import app.morphe.gui.util.ChecksumStatus
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.resolveStatusColorType
 import app.morphe.gui.util.resolveVersionStatusDisplay
+import app.morphe.gui.util.StatusColorType
 import app.morphe.gui.util.toColor
+import app.morphe.gui.util.VersionStatus
 
 @Composable
 fun ApkInfoCard(
@@ -50,18 +52,27 @@ fun ApkInfoCard(
     patchSourceNames: List<String> = emptyList(),
 ) {
     val corners = LocalMorpheCorners.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
-    val accentColor = resolveStatusColorType(apkInfo.versionStatus, apkInfo.checksumStatus).toColor()
+    val statusColorType = resolveStatusColorType(apkInfo.versionStatus, apkInfo.checksumStatus)
+    val isWarningState = apkInfo.isUnsupportedApp || apkInfo.hasLimitedInfo || 
+                         (apkInfo.versionStatus != VersionStatus.LATEST_STABLE && 
+                          apkInfo.versionStatus != VersionStatus.UNKNOWN)
+                          
+    val accentColor = when {
+        isWarningState -> if (statusColorType == StatusColorType.PRIMARY) accents.warning else statusColorType.toColor()
+        statusColorType == StatusColorType.PRIMARY -> accents.primary
+        else -> statusColorType.toColor()
+    }
     val cardShape = RoundedCornerShape(corners.medium)
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(cardShape)
             .border(1.dp, borderColor, cardShape)
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp))
     ) {
         // Left accent stripe
         Box(
@@ -95,7 +106,7 @@ fun ApkInfoCard(
                         text = apkInfo.appName.first().uppercase(),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = mono,
+                        fontFamily = font,
                         color = accentColor
                     )
                 }
@@ -107,6 +118,7 @@ fun ApkInfoCard(
                         text = apkInfo.appName,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
+                        fontFamily = font,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -115,11 +127,11 @@ fun ApkInfoCard(
                     Text(
                         text = apkInfo.packageName,
                         fontSize = 11.sp,
-                        fontFamily = mono,
-                        color = homeCardMutedTextColor(0.7f),
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        letterSpacing = 0.3.sp
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -151,7 +163,7 @@ fun ApkInfoCard(
                         imageVector = MorpheIcons.Close,
                         contentDescription = "Remove APK",
                         tint = if (isCloseHovered) MaterialTheme.colorScheme.error
-                               else homeCardMutedTextColor(0.5f),
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -189,8 +201,10 @@ fun ApkInfoCard(
                     Text(
                         text =
                             "Couldn't fully read this APK's manifest (common for split bundles). " +
-                            "Details below are approximate, patching should still work.",
+                            "Details below are approximate, patching should still work",
                         fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
                         color = accents.warning,
                         lineHeight = 14.sp,
                     )
@@ -223,8 +237,10 @@ fun ApkInfoCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "No compatible patches found for this app. You can still proceed, but patching may have no effect.",
+                        text = "No compatible patches found for this app. You can still proceed, but patching may have no effect",
                         fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
                         color = warningOrange,
                         lineHeight = 14.sp
                     )
@@ -247,22 +263,22 @@ fun ApkInfoCard(
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 TechDataCell(
-                    label = "VERSION",
+                    label = "Version",
                     value = apkInfo.versionName,
-                    mono = mono,
+                    font = font,
                     modifier = Modifier.weight(1f)
                 )
                 TechDataCell(
-                    label = "SIZE",
+                    label = "Size",
                     value = apkInfo.formattedSize,
-                    mono = mono,
+                    font = font,
                     modifier = Modifier.weight(1f)
                 )
                 if (apkInfo.minSdk != null) {
                     TechDataCell(
-                        label = "MIN SDK",
+                        label = "Min SDK",
                         value = "API ${apkInfo.minSdk}",
-                        mono = mono,
+                        font = font,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -292,22 +308,18 @@ fun ApkInfoCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "ARCH",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        letterSpacing = 1.5.sp
+                        text = "Arch",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(4.dp))
                     apkInfo.architectures.forEach { arch ->
                         val isDeviceArch = highlightArch != null && arch == highlightArch
-                        val tagBorder = if (isDeviceArch) accents.primary.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-                        val tagBg = if (isDeviceArch) accents.primary.copy(alpha = 0.08f)
-                            else Color.Transparent
-                        val tagColor = if (isDeviceArch) accents.primary
-                            else MaterialTheme.colorScheme.onSurface
+                        val tagBorder = accents.primary.copy(alpha = 0.5f)
+                        val tagBg = accents.primary.copy(alpha = 0.08f)
+                        val tagColor = accents.primary
                         val dimmed = highlightArch != null && !isDeviceArch
 
                         Box(
@@ -319,8 +331,8 @@ fun ApkInfoCard(
                             Text(
                                 text = arch,
                                 fontSize = 11.sp,
-                                fontWeight = if (isDeviceArch) FontWeight.Bold else FontWeight.Medium,
-                                fontFamily = mono,
+                                fontWeight = FontWeight.Normal,
+                                fontFamily = font,
                                 color = if (dimmed) tagColor.copy(alpha = 0.35f) else tagColor
                             )
                         }
@@ -346,16 +358,14 @@ fun ApkInfoCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "FROM",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = mono,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        letterSpacing = 1.5.sp
+                        text = "From",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = font,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(4.dp))
-                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                    androidx.compose.foundation.layout.FlowRow(
+                    FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
@@ -375,10 +385,9 @@ fun ApkInfoCard(
                             ) {
                                 Text(
                                     text = name,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontFamily = mono,
-                                    letterSpacing = 0.3.sp,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    fontFamily = font,
                                     color = accents.primary,
                                     maxLines = 1,
                                 )
@@ -396,8 +405,8 @@ fun ApkInfoCard(
                 StatusBar(
                     label = statusDisplay.label,
                     detail = statusDisplay.detail,
-                    color = statusDisplay.colorType.toColor(),
-                    mono = mono,
+                    color = accentColor,
+                    font = font,
                     borderColor = borderColor
                 )
             }
@@ -409,24 +418,23 @@ fun ApkInfoCard(
 private fun TechDataCell(
     label: String,
     value: String,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         Text(
             text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = mono,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            letterSpacing = 1.5.sp
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            fontFamily = font,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(3.dp))
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            fontFamily = mono,
+            fontFamily = font,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -437,29 +445,16 @@ private fun TechDataCell(
 // ── Status ──
 
 @Composable
-private fun homeCardMutedTextColor(alpha: Float): Color {
-    return MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
-}
-
-@Composable
 private fun StatusBar(
     label: String,
     detail: String?,
     color: Color,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     borderColor: Color
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawLine(
-                    color = borderColor,
-                    start = Offset(20.dp.toPx(), 0f),
-                    end = Offset(size.width - 20.dp.toPx(), 0f),
-                    strokeWidth = 1f
-                )
-            }
             .background(color.copy(alpha = 0.04f))
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -467,29 +462,28 @@ private fun StatusBar(
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(color, RoundedCornerShape(1.dp))
+                .background(color, CircleShape)
         )
 
         Spacer(Modifier.width(10.dp))
 
         Text(
             text = label,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            color = color,
-            letterSpacing = 1.sp
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = font,
+            color = color
         )
 
         if (detail != null) {
             Spacer(Modifier.width(12.dp))
             Text(
                 text = detail,
-                fontSize = 11.sp,
-                fontFamily = mono,
+                fontSize = 10.sp,
+                fontFamily = font,
                 fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }

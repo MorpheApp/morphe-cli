@@ -5,19 +5,6 @@
 
 package app.morphe.gui.ui.screens.home
 
-import app.morphe.gui.ui.screens.home.components.HeaderBar
-import app.morphe.gui.ui.screens.home.components.MultiSourceHintBanner
-import app.morphe.gui.ui.screens.home.components.SourcesFailedBanner
-import app.morphe.gui.ui.screens.home.components.MiddleContent
-import app.morphe.gui.ui.screens.home.components.DragOverlay
-import app.morphe.gui.ui.screens.home.components.SupportedAppsListPane
-import app.morphe.gui.ui.screens.home.components.VersionWarningDialog
-import app.morphe.gui.ui.screens.home.components.ForgetConfirmDialog
-import app.morphe.gui.ui.screens.home.components.UninstallConfirmDialog
-import app.morphe.gui.ui.screens.home.components.RepatchMissingApkDialog
-import app.morphe.gui.ui.screens.home.components.UpdatePreparingDialog
-import app.morphe.gui.ui.screens.home.components.UpdateFailedDialog
-import app.morphe.gui.ui.screens.home.components.UpdateAvailableDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -25,32 +12,48 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.koin.koinScreenModel
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
+import app.morphe.engine.model.PatchedAppRecord
 import app.morphe.gui.data.repository.PatchSourceManager
+import app.morphe.gui.ui.components.MorpheErrorBar
 import app.morphe.gui.ui.components.SourceLedState
 import app.morphe.gui.ui.components.SourceManagementSheet
-import app.morphe.gui.ui.components.sourceLedState
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
-import app.morphe.engine.model.PatchedAppRecord
-import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
-import app.morphe.gui.ui.screens.home.components.PatchedAppDetailDialog
-import app.morphe.gui.ui.components.MorpheErrorBar
 import app.morphe.gui.ui.components.UpdateBanner
-import app.morphe.gui.ui.screens.patches.PatchesScreen
+import app.morphe.gui.ui.components.sourceLedState
+import app.morphe.gui.ui.screens.home.components.ForgetConfirmDialog
+import app.morphe.gui.ui.screens.home.components.FullScreenDropZone
+import app.morphe.gui.ui.screens.home.components.HeaderBar
+import app.morphe.gui.ui.screens.home.components.MiddleContent
+import app.morphe.gui.ui.screens.home.components.MultiSourceHintBanner
+import app.morphe.gui.ui.screens.home.components.PatchedAppDetailDialog
+import app.morphe.gui.ui.screens.home.components.RepatchMissingApkDialog
+import app.morphe.gui.ui.screens.home.components.SourcesFailedBanner
+import app.morphe.gui.ui.screens.home.components.SupportedAppsListPane
+import app.morphe.gui.ui.screens.home.components.UninstallConfirmDialog
+import app.morphe.gui.ui.screens.home.components.UpdateAvailableDialog
+import app.morphe.gui.ui.screens.home.components.UpdateFailedDialog
+import app.morphe.gui.ui.screens.home.components.UpdatePreparingDialog
+import app.morphe.gui.ui.screens.home.components.VersionWarningDialog
 import app.morphe.gui.ui.screens.patches.PatchSelectionScreen
+import app.morphe.gui.ui.screens.patches.PatchesScreen
+import app.morphe.gui.util.EnabledSourcesLoader
+import app.morphe.gui.util.MorpheFilePicker
 import app.morphe.gui.util.VersionStatus
 import app.morphe.gui.util.sourceChannelMap
 import app.morphe.gui.util.sourceErrorMap
 import app.morphe.gui.util.sourceVersionMap
-import java.awt.FileDialog
-import java.awt.Frame
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
+import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
+import java.awt.Desktop
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 class HomeScreen : Screen {
 
@@ -74,7 +77,7 @@ fun HomeScreenContent(
     // One-click repatch: a patched-app row's "Re-patch" action. Jump straight to
     // patch selection with the input APK + the record's saved selection, using
     // the CURRENT resolved sources (so it repatches against current bundle versions).
-    var repatchMissingRecord by remember { mutableStateOf<app.morphe.engine.model.PatchedAppRecord?>(null) }
+    var repatchMissingRecord by remember { mutableStateOf<PatchedAppRecord?>(null) }
     // Launch patch selection for a record with explicit patch files (re-patch uses
     // the current resolved set. Update passes freshly-resolved latest files).
     fun launchPatch(
@@ -94,11 +97,12 @@ fun HomeScreenContent(
                 patchSourceNames = sourceNames,
                 initialSelectionByBundle = record.patchSelectionByBundle,
                 initialPatchOptions = record.patchOptionValues,
+                apkVersion = record.apkVersion,
             )
         )
     }
 
-    fun repatchWithApk(record: app.morphe.engine.model.PatchedAppRecord, apkPath: String) {
+    fun repatchWithApk(record: PatchedAppRecord, apkPath: String) {
         launchPatch(
             record, apkPath,
             viewModel.getAllResolvedPatchFiles().map { it.absolutePath },
@@ -107,7 +111,7 @@ fun HomeScreenContent(
     }
     val onRepatch: (String) -> Unit = onRepatch@{ pkg ->
         val record = viewModel.getPatchedRecord(pkg) ?: return@onRepatch
-        if (java.io.File(record.inputApkPath).exists()) {
+        if (File(record.inputApkPath).exists()) {
             repatchWithApk(record, record.inputApkPath)
         } else {
             repatchMissingRecord = record
@@ -115,7 +119,7 @@ fun HomeScreenContent(
     }
 
     // Explicit "Forget" recovery action. Removes a record from the history.
-    var forgetConfirm by remember { mutableStateOf<app.morphe.engine.model.PatchedAppRecord?>(null) }
+    var forgetConfirm by remember { mutableStateOf<PatchedAppRecord?>(null) }
     val onForget: (String) -> Unit = { pkg -> forgetConfirm = viewModel.getPatchedRecord(pkg) }
     forgetConfirm?.let { record ->
         ForgetConfirmDialog(
@@ -130,7 +134,7 @@ fun HomeScreenContent(
 
     // "Uninstall" removes the patched app from the connected device. The dialog
     // offers the keep-history vs delete-history choice via a checkbox.
-    var uninstallConfirm by remember { mutableStateOf<app.morphe.engine.model.PatchedAppRecord?>(null) }
+    var uninstallConfirm by remember { mutableStateOf<PatchedAppRecord?>(null) }
     var uninstallAlsoForget by remember { mutableStateOf(false) }
     val onUninstall: (String) -> Unit = { pkg ->
         uninstallAlsoForget = false
@@ -176,8 +180,8 @@ fun HomeScreenContent(
             onForget = { onForget(record.packageName) },
             onOpenFolder = {
                 runCatching {
-                    val parent = java.io.File(record.outputApkPath).parentFile
-                    if (parent != null && parent.exists()) java.awt.Desktop.getDesktop().open(parent)
+                    val parent = File(record.outputApkPath).parentFile
+                    if (parent != null && parent.exists()) Desktop.getDesktop().open(parent)
                 }
             },
             onInstall = { viewModel.installPatchedApp(record.packageName) },
@@ -188,7 +192,8 @@ fun HomeScreenContent(
     }
 
     // ── Update flow (Phase 7, issue 2c): resolve latest → maybe pick a newer APK ──
-    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
     when (val prep = uiState.updatePrep) {
         is UpdatePrep.Preparing -> UpdatePreparingDialog(onCancel = { viewModel.clearUpdatePrep() })
         is UpdatePrep.Failed -> UpdateFailedDialog(
@@ -201,14 +206,16 @@ fun HomeScreenContent(
                 viewModel.clearUpdatePrep()
             } else {
                 // Patch with the latest files using either an existing or a picked APK.
-                fun launchWith(apkPath: String) {
+                suspend fun launchWith(apkPath: String) {
                     viewModel.clearUpdatePrep()
                     if (File(apkPath).exists()) {
                         launchPatch(record, apkPath, prep.patchFilePaths, prep.sourceNames)
                     } else {
-                        val fd = FileDialog(null as Frame?, "Select APK to patch", FileDialog.LOAD)
-                        fd.isVisible = true
-                        fd.file?.let { File(fd.directory, it) }?.takeIf { it.exists() }
+                        val picked = MorpheFilePicker.pickFile(
+                            title = "Select APK to patch",
+                            extensions = listOf("apk", "apkm", "xapk", "apks"),
+                        )
+                        picked?.takeIf { it.exists() }
                             ?.let { launchPatch(record, it.absolutePath, prep.patchFilePaths, prep.sourceNames) }
                     }
                 }
@@ -223,17 +230,21 @@ fun HomeScreenContent(
                         targetVersion = targetV,
                         currentSupported = prep.currentSupported,
                         onDismiss = { viewModel.clearUpdatePrep() },
-                        onUseMyApk = { launchWith(record.inputApkPath) },
+                        onUseMyApk = { coroutineScope.launch { launchWith(record.inputApkPath) } },
                         onGetNewer = {
                             val url = prep.downloadUrl
                             val files = prep.patchFilePaths
                             val names = prep.sourceNames
                             viewModel.clearUpdatePrep()
                             if (url != null) uriHandler.openUri(url)
-                            val fd = FileDialog(null as Frame?, "Select the v$targetV APK", FileDialog.LOAD)
-                            fd.isVisible = true
-                            fd.file?.let { File(fd.directory, it) }?.takeIf { it.exists() }
-                                ?.let { launchPatch(record, it.absolutePath, files, names) }
+                            coroutineScope.launch {
+                                val picked = MorpheFilePicker.pickFile(
+                                    title = "Select the v$targetV APK",
+                                    extensions = listOf("apk", "apkm", "xapk", "apks"),
+                                )
+                                picked?.takeIf { it.exists() }
+                                    ?.let { launchPatch(record, it.absolutePath, files, names) }
+                            }
                         },
                     )
                 }
@@ -244,7 +255,6 @@ fun HomeScreenContent(
 
     val patchSourceManager: PatchSourceManager = koinInject()
     val allSources by patchSourceManager.allSources.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
     // Two-flag pattern for smooth navigation in/out of the sheet:
     //  - showSourceManagementSheet: actually visible right now
     //  - pendingReopenSheet: user navigated away from the sheet via a row click,
@@ -257,7 +267,7 @@ fun HomeScreenContent(
     // re-entry. Without the delay the sheet flashes in mid-transition.
     LaunchedEffect(Unit) {
         if (pendingReopenSheet) {
-            kotlinx.coroutines.delay(220.milliseconds)
+            delay(220.milliseconds)
             showSourceManagementSheet = true
             pendingReopenSheet = false
         }
@@ -310,7 +320,7 @@ fun HomeScreenContent(
                     patchSourceManager.switchSource(sourceId)
                     navigator.push(PatchesScreen(
                         apkPath = uiState.apkInfo?.filePath ?: "",
-                        apkName = uiState.apkInfo?.appName ?: "Select APK first"
+                        apkName = uiState.apkInfo?.appName ?: ""
                     ))
                 }
             },
@@ -374,8 +384,13 @@ fun HomeScreenContent(
             val onRetry: () -> Unit = { viewModel.retryLoadPatches() }
             val onClearClick: () -> Unit = { viewModel.clearSelection() }
             val onChangeClick: () -> Unit = {
-                openFilePicker()?.let { file ->
-                    viewModel.onFileSelected(file)
+                coroutineScope.launch {
+                    MorpheFilePicker.pickFile(
+                        title = "Select APK file",
+                        extensions = listOf("apk", "apkm", "xapk", "apks"),
+                    )?.let { file ->
+                        viewModel.onFileSelected(file)
+                    }
                 }
             }
             val onContinueClick: () -> Unit = {
@@ -389,7 +404,7 @@ fun HomeScreenContent(
 //                ?.resolved
 //                ?.associate { it.source.id to it.resolvedVersion }
 //                ?: emptyMap()
-            val channelsBySource: Map<String, app.morphe.gui.util.EnabledSourcesLoader.Channel?> =
+            val channelsBySource: Map<String, EnabledSourcesLoader.Channel?> =
                 resolvedSnapshot
                     ?.resolved
                     ?.associate { it.source.id to it.channel }
@@ -555,10 +570,7 @@ fun HomeScreenContent(
                     )
                 }
 
-                // Drag overlay
-                if (uiState.isDragHovering) {
-                    DragOverlay()
-                }
+
             }
         }
     }
@@ -567,7 +579,7 @@ fun HomeScreenContent(
 private fun handleContinue(
     uiState: HomeUiState,
     viewModel: HomeViewModel,
-    navigator: cafe.adriel.voyager.navigator.Navigator,
+    navigator: Navigator,
     showWarning: () -> Unit
 ) {
     val patchesFile = viewModel.getCachedPatchesFile() ?: return
@@ -590,19 +602,8 @@ private fun handleContinue(
     }
 }
 
-private fun openFilePicker(): File? {
-    val fileDialog = FileDialog(null as Frame?, "Select APK File", FileDialog.LOAD).apply {
-        isMultipleMode = false
-        setFilenameFilter { _, name -> name.lowercase().let { it.endsWith(".apk") || it.endsWith(".apkm") || it.endsWith(".xapk") || it.endsWith(".apks") } }
-        isVisible = true
-    }
-
-    val directory = fileDialog.directory
-    val file = fileDialog.file
-
-    return if (directory != null && file != null) {
-        File(directory, file)
-    } else {
-        null
-    }
-}
+private suspend fun openFilePicker(): File? =
+    MorpheFilePicker.pickFile(
+        title = "Select APK file",
+        extensions = listOf("apk", "apkm", "xapk", "apks"),
+    )

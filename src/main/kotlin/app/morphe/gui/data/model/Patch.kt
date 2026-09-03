@@ -36,9 +36,6 @@ data class Patch(
      * Patches with no compatible packages listed are NOT shown (they're system patches).
      */
     fun isCompatibleWith(packageName: String, versionName: String? = null): Boolean {
-        // Patches without explicit package compatibility are excluded
-        if (compatiblePackages.isEmpty()) return false
-
         return compatiblePackages.any { pkg ->
             pkg.name == packageName && (
                 versionName == null ||
@@ -54,7 +51,8 @@ data class CompatiblePackage(
     val name: String,
     val displayName: String? = null,
     val versions: List<String> = emptyList(),
-    val experimentalVersions: List<String> = emptyList()
+    val experimentalVersions: List<String> = emptyList(),
+    val appIconColor: String? = null
 )
 
 @Serializable
@@ -104,4 +102,7 @@ data class PatchConfig(
     val patchSelectionByBundle: Map<String, Set<String>> = emptyMap(),
     /** Sources + versions enabled at patch time (drives "update available"). */
     val sourcesSnapshot: List<PatchedAppRecord.PatchedSourceSnapshot> = emptyList(),
+    val appVersion: String? = null,
+    val patchesSourceName: String? = null,
+    val patchesVersion: String? = null,
 )

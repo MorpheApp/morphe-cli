@@ -5,8 +5,6 @@
 
 package app.morphe.gui.ui.components
 
-import app.morphe.gui.ui.icons.MorpheIcons
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -15,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,10 +30,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.morphe.gui.data.model.PatchSource
+import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.LocalMorpheAccents
 import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheDimens
 import app.morphe.gui.ui.theme.LocalMorpheFont
+import app.morphe.gui.ui.theme.channelColor
 import app.morphe.gui.util.EnabledSourcesLoader
 
 /** Per-source LED state surfaced in [SourcesCountPill]. */
@@ -52,26 +53,31 @@ fun SourcesCountPill(
 ) {
     val corners = LocalMorpheCorners.current
     val dimens = LocalMorpheDimens.current
-    val mono = LocalMorpheFont.current
+    val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
     val interactive = onClick != null
+    
+    val isDark = isSystemInDarkTheme()
+    val containerAlpha = if (isDark) 0.35f else 0.6f
+    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = containerAlpha)
+    
+    val borderAlpha = if (isDark) 0.4f else 0.6f
     val borderColor by animateColorAsState(
-        if (isHovered && interactive) accents.primary.copy(alpha = 0.4f)
-        else MaterialTheme.colorScheme.outline.copy(alpha = 0.10f),
+        MaterialTheme.colorScheme.outline.copy(alpha = borderAlpha),
         animationSpec = tween(200)
     )
-    val tint = if (isHovered && interactive) accents.primary
-               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+    
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
     val count = sourceStates.size.coerceAtLeast(1)
-    val label = if (count == 1) "1 SOURCE" else "$count SOURCES"
+    val label = if (count == 1) "1 source" else "$count sources"
     Row(
         modifier = Modifier
             .height(dimens.controlHeight)
             .clip(RoundedCornerShape(corners.small))
+            .background(containerColor)
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
-            .background(MaterialTheme.colorScheme.surface)
             .then(
                 if (interactive) Modifier
                     .hoverable(hoverInteraction)
@@ -85,11 +91,10 @@ fun SourcesCountPill(
     ) {
         Text(
             text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = mono,
-            letterSpacing = 1.5.sp,
-            color = tint,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = font,
+            color = tint
         )
         if (sourceStates.isNotEmpty()) {
             Row(
@@ -114,11 +119,11 @@ fun SourcesCountPill(
 private fun SourceLed(state: SourceLedState) {
     val color = when (state) {
         SourceLedState.DISABLED -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-        SourceLedState.STABLE_LATEST -> app.morphe.gui.ui.theme.channelColor(EnabledSourcesLoader.Channel.STABLE_LATEST)
-        SourceLedState.STABLE_OLDER -> app.morphe.gui.ui.theme.channelColor(EnabledSourcesLoader.Channel.STABLE_OLDER)
-        SourceLedState.DEV_LATEST -> app.morphe.gui.ui.theme.channelColor(EnabledSourcesLoader.Channel.DEV_LATEST)
-        SourceLedState.DEV_OLDER -> app.morphe.gui.ui.theme.channelColor(EnabledSourcesLoader.Channel.DEV_OLDER)
-        SourceLedState.LOCAL -> app.morphe.gui.ui.theme.channelColor(EnabledSourcesLoader.Channel.LOCAL)
+        SourceLedState.STABLE_LATEST -> channelColor(EnabledSourcesLoader.Channel.STABLE_LATEST)
+        SourceLedState.STABLE_OLDER -> channelColor(EnabledSourcesLoader.Channel.STABLE_OLDER)
+        SourceLedState.DEV_LATEST -> channelColor(EnabledSourcesLoader.Channel.DEV_LATEST)
+        SourceLedState.DEV_OLDER -> channelColor(EnabledSourcesLoader.Channel.DEV_OLDER)
+        SourceLedState.LOCAL -> channelColor(EnabledSourcesLoader.Channel.LOCAL)
         SourceLedState.ERROR -> MaterialTheme.colorScheme.error
     }
     Box(

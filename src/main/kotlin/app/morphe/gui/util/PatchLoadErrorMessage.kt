@@ -30,18 +30,18 @@ import java.net.UnknownHostException
 fun humanizePatchLoadError(e: Throwable): String = when (e) {
     is HttpRequestTimeoutException,
     is SocketTimeoutException,
-    is ConnectTimeoutException -> "Network timeout — check your connection and try again"
+    is ConnectTimeoutException -> "Network timeout - check your connection and try again"
 
-    is UnknownHostException -> "Couldn't reach the patch server — check your connection"
+    is UnknownHostException -> "Couldn't reach the patch server - check your connection"
 
     is IOException -> {
         val msg = e.message.orEmpty()
         when {
             msg.contains("rate limit", ignoreCase = true) ->
-                "GitHub rate limit hit — wait a few minutes and try again"
+                "GitHub rate limit hit - wait a few minutes and try again"
             msg.contains("connection reset", ignoreCase = true) ||
                 msg.contains("connection closed", ignoreCase = true) ->
-                "Connection dropped while downloading — try again"
+                "Connection dropped while downloading - try again"
             else -> msg.ifBlank { "Network error while loading patches" }
         }
     }

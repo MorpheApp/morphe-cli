@@ -5,13 +5,16 @@
 
 package app.morphe.gui.icon
 
+import java.awt.AlphaComposite
 import java.awt.Color
 import java.awt.Font
 import java.awt.GradientPaint
 import java.awt.Graphics2D
 import java.awt.LinearGradientPaint
+import java.awt.Polygon
 import java.awt.RadialGradientPaint
 import java.awt.RenderingHints
+import java.awt.font.TextAttribute
 import java.awt.geom.Point2D
 import java.awt.image.BufferedImage
 import java.io.File
@@ -92,7 +95,7 @@ object IconRenderer {
         try {
             enableQuality(g)
             for (layer in project.layers) {
-                g.composite = java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, layer.opacity.coerceIn(0f, 1f))
+                g.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, layer.opacity.coerceIn(0f, 1f))
                 g.drawImage(renderLayerTile(layer, size), 0, 0, null)
             }
         } finally {
@@ -215,10 +218,10 @@ object IconRenderer {
         if (c.bold) style = style or Font.BOLD
         if (c.italic) style = style or Font.ITALIC
         var font = baseFont(c).deriveFont(style, 100f)
-        val attrs = mutableMapOf<java.awt.font.TextAttribute, Any>()
-        if (c.letterSpacing != 0f) attrs[java.awt.font.TextAttribute.TRACKING] = c.letterSpacing
-        if (c.underline) attrs[java.awt.font.TextAttribute.UNDERLINE] = java.awt.font.TextAttribute.UNDERLINE_ON
-        if (c.strikethrough) attrs[java.awt.font.TextAttribute.STRIKETHROUGH] = java.awt.font.TextAttribute.STRIKETHROUGH_ON
+        val attrs = mutableMapOf<TextAttribute, Any>()
+        if (c.letterSpacing != 0f) attrs[TextAttribute.TRACKING] = c.letterSpacing
+        if (c.underline) attrs[TextAttribute.UNDERLINE] = TextAttribute.UNDERLINE_ON
+        if (c.strikethrough) attrs[TextAttribute.STRIKETHROUGH] = TextAttribute.STRIKETHROUGH_ON
         if (attrs.isNotEmpty()) font = font.deriveFont(attrs)
         val scratch = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
         val sg = scratch.createGraphics(); sg.font = font
@@ -252,18 +255,18 @@ object IconRenderer {
     }
 
     /** Regular N-gon inscribed in the tile, first vertex pointing up. */
-    private fun regularPolygon(size: Int, n: Int): java.awt.Polygon {
+    private fun regularPolygon(size: Int, n: Int): Polygon {
         val c = size / 2.0; val r = size / 2.0
         val xs = IntArray(n); val ys = IntArray(n)
         for (i in 0 until n) {
             val a = -Math.PI / 2 + i * 2 * Math.PI / n
             xs[i] = (c + r * cos(a)).roundToInt(); ys[i] = (c + r * sin(a)).roundToInt()
         }
-        return java.awt.Polygon(xs, ys, n)
+        return Polygon(xs, ys, n)
     }
 
     /** [points]-pointed star inscribed in the tile. */
-    private fun starPolygon(size: Int, points: Int): java.awt.Polygon {
+    private fun starPolygon(size: Int, points: Int): Polygon {
         val c = size / 2.0; val outer = size / 2.0; val inner = outer * 0.42
         val n = points * 2
         val xs = IntArray(n); val ys = IntArray(n)
@@ -272,7 +275,7 @@ object IconRenderer {
             val a = -Math.PI / 2 + i * Math.PI / points
             xs[i] = (c + r * cos(a)).roundToInt(); ys[i] = (c + r * sin(a)).roundToInt()
         }
-        return java.awt.Polygon(xs, ys, n)
+        return Polygon(xs, ys, n)
     }
 
     // ── helpers ──

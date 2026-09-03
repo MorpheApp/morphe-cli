@@ -6,6 +6,7 @@
 package app.morphe.gui
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
@@ -14,32 +15,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
-import app.morphe.gui.ui.components.LocalFrameWindowScope
-import app.morphe.gui.ui.components.LottieAnimation
-import app.morphe.gui.ui.components.SakuraPetals
-import app.morphe.gui.util.applyTitleBarTint
-import cafe.adriel.voyager.navigator.Navigator
-import cafe.adriel.voyager.transitions.SlideTransition
 import app.morphe.gui.data.repository.ActiveMode
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.di.appModule
-import kotlinx.coroutines.launch
-import org.koin.compose.KoinApplication
-import org.koin.compose.koinInject
-import org.koin.dsl.koinConfiguration
+import app.morphe.gui.ui.components.LocalFrameWindowScope
+import app.morphe.gui.ui.components.SettingsDialogHost
 import app.morphe.gui.ui.screens.home.HomeScreen
-import app.morphe.gui.ui.screens.quick.QuickPatchContent
-import app.morphe.gui.ui.screens.quick.QuickPatchViewModel
-import app.morphe.gui.util.PatchService
+import app.morphe.gui.ui.screens.quick.QuickPatchScreen
 import app.morphe.gui.ui.theme.LocalThemeState
 import app.morphe.gui.ui.theme.MorpheTheme
 import app.morphe.gui.ui.theme.ThemePreference
 import app.morphe.gui.ui.theme.ThemeState
+import app.morphe.gui.ui.theme.backgrounds.AnimatedBackground
+import app.morphe.gui.ui.theme.backgrounds.BackgroundType
+import app.morphe.gui.ui.theme.backgrounds.LocalParallaxState
+import app.morphe.gui.ui.theme.backgrounds.rememberParallaxState
+import app.morphe.gui.ui.theme.desktopScreenEnter
+import app.morphe.gui.ui.theme.desktopScreenExit
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.Logger
+import app.morphe.gui.util.PatchService
+import app.morphe.gui.util.applyTitleBarTint
+import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.transitions.ScreenTransition
+import kotlinx.coroutines.launch
+import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
+import org.koin.dsl.koinConfiguration
 
 /**
  * Mode state for switching between simplified and full mode.
@@ -51,6 +55,28 @@ data class ModeState(
 
 val LocalModeState = staticCompositionLocalOf<ModeState> {
     error("No ModeState provided")
+}
+
+val LocalSettingsDialogVisible = compositionLocalOf<MutableState<Boolean>> {
+    error("No LocalSettingsDialogVisible provided")
+}
+
+val LocalIsPatching = compositionLocalOf<MutableState<Boolean>> {
+    error("No LocalIsPatching provided")
+}
+val LocalOnSettingsDismiss = compositionLocalOf<() -> Unit> { {} }
+val LocalOnUpdateChannelChanged = compositionLocalOf<() -> Unit> { {} }
+
+val LocalBackgroundType = compositionLocalOf<MutableState<BackgroundType>> { 
+    error("No background type provided") 
+}
+
+val LocalEnableParallax = compositionLocalOf<MutableState<Boolean>> {
+    error("No LocalEnableParallax provided")
+}
+
+val LocalCustomAccentColor = compositionLocalOf<MutableState<Int?>> {
+    error("No LocalCustomAccentColor provided") 
 }
 
 /**
@@ -69,7 +95,7 @@ val LocalAdbPreference = staticCompositionLocalOf<AdbPreferenceState> {
 }
 
 @Composable
-fun App(
+fun app(
     initialSimplifiedMode: Boolean = true
 ) {
     LaunchedEffect(Unit) {
@@ -79,22 +105,28 @@ fun App(
     KoinApplication(koinConfiguration {
         modules(appModule)
     }) {
-        AppContent(initialSimplifiedMode = initialSimplifiedMode)
+        appContent(initialSimplifiedMode = initialSimplifiedMode)
     }
 }
 
 @Composable
-private fun AppContent(
+private fun appContent(
     initialSimplifiedMode: Boolean
 ) {
     val configRepository: ConfigRepository = koinInject()
     val patchSourceManager: PatchSourceManager = koinInject()
     val scope = rememberCoroutineScope()
+    val enableParallaxState = remember { mutableStateOf(true) }
+    val (parallaxState, parallaxMod) = rememberParallaxState(
+        enableParallax = enableParallaxState.value,
+        coroutineScope = scope
+    )
 
     var themePreference by remember { mutableStateOf(ThemePreference.SYSTEM) }
     var isSimplifiedMode by remember { mutableStateOf(initialSimplifiedMode) }
     var autoStartAdb by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
+    val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
 
     // Initialize PatchSourceManager and load config on startup
     LaunchedEffect(Unit) {
@@ -102,7 +134,13 @@ private fun AppContent(
         val config = configRepository.loadConfig()
         themePreference = config.getThemePreference()
         isSimplifiedMode = config.useSimplifiedMode
-      
+        backgroundTypeState.value = try {
+            BackgroundType.valueOf(config.backgroundType)
+        } catch (e: Exception) {
+            BackgroundType.CIRCLES
+        }
+        enableParallaxState.value = config.enableParallax
+
         autoStartAdb = config.autoStartAdb
         // Publish the initial active mode BEFORE the VMs subscribe so their
         // activeMode listener fires with the correct value on first emit.
@@ -110,6 +148,12 @@ private fun AppContent(
             if (isSimplifiedMode) ActiveMode.QUICK else ActiveMode.EXPERT
         )
         isLoading = false
+    }
+
+    val customAccentColorState = remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(Unit) {
+        val config = configRepository.loadConfig()
+        customAccentColorState.value = config.customAccentColorArgb
     }
 
     // Callback for changing theme
@@ -187,11 +231,20 @@ private fun AppContent(
         }
     }
 
-    MorpheTheme(themePreference = themePreference) {
+    val settingsDialogVisible = remember { mutableStateOf(false) }
+    val isPatchingState = remember { mutableStateOf(false) }
+
+    MorpheTheme(themePreference = themePreference, customAccentColorArgb = customAccentColorState.value) {
         CompositionLocalProvider(
             LocalThemeState provides themeState,
             LocalModeState provides modeState,
-            LocalAdbPreference provides adbPreferenceState
+            LocalAdbPreference provides adbPreferenceState,
+            LocalSettingsDialogVisible provides settingsDialogVisible,
+            LocalIsPatching provides isPatchingState,
+            LocalBackgroundType provides backgroundTypeState,
+            LocalEnableParallax provides enableParallaxState,
+            LocalParallaxState provides parallaxState,
+            LocalCustomAccentColor provides customAccentColorState
         ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic
             // light contrast) to match the active theme's surface color.
@@ -224,66 +277,35 @@ private fun AppContent(
                         }
                     }
 
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f).then(parallaxMod)) {
+                        AnimatedBackground(type = backgroundTypeState.value)
+
+                        // Dialog host lives outside the Crossfade so the
+                        // SettingsDialog composable is never torn down when
+                        // the user toggles Expert Mode.
+                        SettingsDialogHost()
+
                         if (!isLoading) {
-                        val patchService: PatchService = koinInject()
-                        val updateCheckRepository: app.morphe.gui.data.repository.UpdateCheckRepository = koinInject()
-                        val quickViewModel = remember {
-                            QuickPatchViewModel(patchSourceManager, patchService, configRepository, updateCheckRepository)
-                        }
+                            val initialScreen = remember {
+                                if (isSimplifiedMode) QuickPatchScreen() else HomeScreen()
+                            }
 
-                        Crossfade(targetState = isSimplifiedMode) { simplified ->
-                            if (simplified) {
-                                QuickPatchContent(quickViewModel)
-                            } else {
-                                Navigator(HomeScreen()) { navigator ->
-                                    SlideTransition(navigator)
+                            Navigator(initialScreen) { navigator ->
+                                LaunchedEffect(isSimplifiedMode) {
+                                    val isCurrentlyQuick = navigator.lastItem is QuickPatchScreen
+                                    if (isSimplifiedMode && !isCurrentlyQuick) {
+                                        navigator.replaceAll(QuickPatchScreen())
+                                    } else if (!isSimplifiedMode && isCurrentlyQuick) {
+                                        navigator.replaceAll(HomeScreen())
+                                    }
                                 }
-                            }
-                        }
-                    }
 
-                    // Falling petals — on top of everything (Sakura)
-                    SakuraPetals(
-                        enabled = themePreference == ThemePreference.SAKURA
-                    )
-
-                    // Matcha cat — top-right corner
-                    if (themePreference == ThemePreference.MATCHA) {
-                        val catJson = remember {
-                            try {
-                                object {}.javaClass.getResourceAsStream("/cat2333s.json")
-                                    ?.bufferedReader()?.readText()
-                            } catch (e: Exception) {
-                                null
-                            }
-                        }
-                        catJson?.let { json ->
-                            // 1080px canvas, rendered at 350dp (1dp ≈ 3.086 canvas px).
-                            // Ears ~y385 → 125dp, bar bottom ~y576 → 187dp.
-                            // Body shrunk to 85% so it hides behind bar.
-                            // Clip from 120dp to 192dp (72dp visible) — ears to just past bar.
-                            val renderSize = 350.dp
-                            val clipTop = 120.dp   // just above ears
-                            val clipHeight = 72.dp  // ears → just past bar bottom
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 24.dp, end = 16.dp)
-                                    .requiredWidth(renderSize)
-                                    .requiredHeight(clipHeight)
-                                    .clipToBounds()
-                            ) {
-                                LottieAnimation(
-                                    jsonString = json,
-                                    modifier = Modifier
-                                        .requiredSize(renderSize)
-                                        .offset(y = -clipTop),
-                                    alpha = 0.28f
+                                ScreenTransition(
+                                    navigator = navigator,
+                                    transition = { desktopScreenEnter togetherWith desktopScreenExit }
                                 )
                             }
                         }
-                    }
                     }
                 }
             }

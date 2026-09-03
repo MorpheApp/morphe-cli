@@ -31,10 +31,11 @@ object PatchFileResolver {
         httpClient: HttpClient
     ): Set<File> {
         val urlEntry = patchFiles.firstOrNull {
-            it.path.startsWith("http:/") || it.path.startsWith("https:/")
+            it.invariantSeparatorsPath.startsWith("http:/") ||
+                it.invariantSeparatorsPath.startsWith("https:/")
         } ?: return patchFiles
 
-        val url = urlEntry.path
+        val url = urlEntry.invariantSeparatorsPath
 
         return runBlocking {
             try {

@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,7 +41,7 @@ import app.morphe.gui.ui.theme.LocalMorpheCorners
 internal fun ActionButton(
     label: String,
     icon: ImageVector,
-    mono: androidx.compose.ui.text.font.FontFamily,
+    font: FontFamily,
     borderColor: Color,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     enabled: Boolean = true,
@@ -74,10 +75,9 @@ internal fun ActionButton(
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             label,
-            fontFamily = mono,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            letterSpacing = 0.5.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Normal,
+            fontSize = 11.sp,
             modifier = Modifier.weight(1f)
         )
     }

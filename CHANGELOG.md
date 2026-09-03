@@ -1,3 +1,59 @@
+# [1.15.0-dev.8](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.7...v1.15.0-dev.8) (2026-09-02)
+
+
+### Bug Fixes
+
+* Update to latest Patcher ([d5610fc](https://github.com/MorpheApp/morphe-desktop/commit/d5610fca795cd6adbc39c773cb98bdd3553d06f6))
+
+# [1.15.0-dev.7](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.6...v1.15.0-dev.7) (2026-09-02)
+
+
+### Features
+
+* Port Matrix animated background from Manager ([#285](https://github.com/MorpheApp/morphe-desktop/issues/285)) ([1aa42c2](https://github.com/MorpheApp/morphe-desktop/commit/1aa42c26f48fe49b6529057d60d906898a302885))
+
+# [1.15.0-dev.6](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.5...v1.15.0-dev.6) (2026-09-01)
+
+
+### Bug Fixes
+
+* Update to latest Patcher ([b371aad](https://github.com/MorpheApp/morphe-desktop/commit/b371aad658d7d9f4bd4f23ad58405aa0f236e494))
+
+# [1.15.0-dev.5](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.4...v1.15.0-dev.5) (2026-09-01)
+
+
+### Bug Fixes
+
+* Prevent NPE crash in `IoUsageSampler` on Windows ([#284](https://github.com/MorpheApp/morphe-desktop/issues/284)) ([539d96f](https://github.com/MorpheApp/morphe-desktop/commit/539d96f07722ec9b7fde28659b3c2c436ba146b2))
+
+# [1.15.0-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.3...v1.15.0-dev.4) (2026-08-29)
+
+
+### Bug Fixes
+
+* Update to latest Patcher ([3b696e5](https://github.com/MorpheApp/morphe-desktop/commit/3b696e572d59d1b5416cda75404916fa7e02e9aa))
+
+# [1.15.0-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.2...v1.15.0-dev.3) (2026-08-29)
+
+
+### Bug Fixes
+
+* Update to latest Patcher ([f4870a5](https://github.com/MorpheApp/morphe-desktop/commit/f4870a5b7b0f39249ca673c0d509c0988ed87175))
+
+# [1.15.0-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.0-dev.1...v1.15.0-dev.2) (2026-08-26)
+
+
+### Bug Fixes
+
+* Recognize repository URLs passed to `--patches` on Windows ([#266](https://github.com/MorpheApp/morphe-desktop/issues/266)) ([5ed40a2](https://github.com/MorpheApp/morphe-desktop/commit/5ed40a2ee3895c4763d239aaea44b7cab97bf63e))
+
+# [1.15.0-dev.1](https://github.com/MorpheApp/morphe-desktop/compare/v1.14.0...v1.15.0-dev.1) (2026-08-26)
+
+
+### Features
+
+* Port Manager typography and overhaul UI to Material 3 ([#259](https://github.com/MorpheApp/morphe-desktop/issues/259)) ([b4f994b](https://github.com/MorpheApp/morphe-desktop/commit/b4f994bd5b1e7a060f800c05a09be4d097f064bb)), closes [#190](https://github.com/MorpheApp/morphe-desktop/issues/190)
+
 # [1.14.0](https://github.com/MorpheApp/morphe-desktop/compare/v1.13.2...v1.14.0) (2026-08-25)
 
 
