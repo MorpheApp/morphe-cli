@@ -408,7 +408,7 @@ class IoUsageSampler {
     private var previousUptimeMs = 0L
 
     fun sample(): IoUsage? {
-        if (currentProcess == null || !currentProcess.updateAttributes()) return null
+        if (!currentProcess.updateAttributes()) return null
         val read = currentProcess.bytesRead
         val write = currentProcess.bytesWritten
 
