@@ -1125,8 +1125,6 @@ class HomeViewModel(
 
             val loadedApps = _uiState.value.supportedApps
             val dynamicSupportedApp = loadedApps.find { it.packageName == packageName }
-            // The bundle is the authority once it has loaded. Only fall back while
-            // nothing has been read yet.
             val isSupported = dynamicSupportedApp != null ||
                 (loadedApps.isEmpty() && packageName in AppConstants.FALLBACK_PACKAGES)
 

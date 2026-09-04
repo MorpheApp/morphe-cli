@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.morphe.gui.ui.icons.MorpheIcons
 
-/** Shown when patch sources cannot be reached and the cached bundles are in use. */
 @Composable
 fun OfflineBanner(
     onRetry: () -> Unit,

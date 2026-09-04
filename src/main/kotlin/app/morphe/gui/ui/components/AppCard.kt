@@ -69,9 +69,29 @@ internal fun Color.onCardGradient(): Color =
 
 private const val CARD_CONTRAST_FLOOR = 0.40f
 
+fun MorpheFill?.resolveAccent(accent: Color): MorpheFill? {
+    if (this !is MorpheFill.Accent) return this
+    val dark = accent.luminance() < 0.5f
+    return MorpheFill.Gradient(
+        stops = listOf(
+            MorpheFill.Stop(0f, lerp(accent, Color.Black, if (dark) 0.16f else 0.46f).toArgbInt()),
+            MorpheFill.Stop(0.5f, accent.toArgbInt()),
+            MorpheFill.Stop(
+                1f,
+                if (dark) lerp(accent, Color.White, 0.22f).toArgbInt()
+                else lerp(accent, Color.Black, 0.18f).toArgbInt(),
+            ),
+        ),
+    )
+}
+
+private fun Color.toArgbInt(): Int {
+    fun channel(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return (channel(alpha) shl 24) or (channel(red) shl 16) or (channel(green) shl 8) or channel(blue)
+}
+
 internal data class CardPalette(val base: Color, val mid: Color, val end: Color)
 
-/** This color drawn at [alpha] over [background], flattened back to opaque. */
 private fun Color.over(background: Color, alpha: Float): Color = Color(
     red = background.red * (1f - alpha) + red * alpha,
     green = background.green * (1f - alpha) + green * alpha,
@@ -139,6 +159,7 @@ fun AppCard(
 
     val shape = RoundedCornerShape(cornerRadius)
 
+    val fill = fill.resolveAccent(LocalMorpheAccents.current.primary)
     val (baseColor, midColor, endColor) = cardPalette(fill, appIconColorHex, defaultCardPalette())
     val surface = MaterialTheme.colorScheme.background
 

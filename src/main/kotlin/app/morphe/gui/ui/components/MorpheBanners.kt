@@ -48,21 +48,14 @@ import app.morphe.gui.ui.theme.LocalMorpheCorners
 import app.morphe.gui.ui.theme.LocalMorpheFont
 
 object MorpheBannerDefaults {
-    /** Matches the home body's left inset, so a banner lines up with the content under it. */
     val Inset: Dp = 10.dp
     val Spacing: Dp = 8.dp
     val TextSize = 11.sp
 }
 
-/** What a banner is saying, which picks its container and content colours. */
 enum class MorpheBannerTone { Info, Error }
 
-/**
- * Lays out the full-width notice banners that stack under a screen's header.
- *
- * Compose it only when at least one banner will show, otherwise its padding
- * leaves a gap above the body.
- */
+/** Compose only when a banner will show, or its top padding leaves a gap. */
 @Composable
 fun MorpheBanners(
     modifier: Modifier = Modifier,
@@ -78,12 +71,7 @@ fun MorpheBanners(
     )
 }
 
-/**
- * One notice banner: a tinted full-width strip with an optional leading [icon],
- * the caller's message, and trailing actions.
- *
- * Content inherits the tone's on-colour, so children MUST NOT set their own.
- */
+/** Content inherits the tone's on-colour, so children MUST NOT set their own. */
 @Composable
 fun MorpheBanner(
     modifier: Modifier = Modifier,
@@ -125,7 +113,6 @@ fun MorpheBanner(
     }
 }
 
-/** Banner body text. Pass [emphasis] false for the secondary half of a message. */
 @Composable
 fun MorpheBannerText(
     text: String,
@@ -143,11 +130,6 @@ fun MorpheBannerText(
     )
 }
 
-/**
- * Outlined pill action inside a banner. At rest it is a muted outline. On hover
- * both border and label move toward [hoverAccent], so intent shows only when the
- * user reaches for it.
- */
 @Composable
 fun MorpheBannerAction(
     label: String,
@@ -206,7 +188,6 @@ fun MorpheBannerAction(
     }
 }
 
-/** Trailing dismiss cross for a banner the user can close. */
 @Composable
 fun MorpheBannerDismiss(
     onClick: () -> Unit,

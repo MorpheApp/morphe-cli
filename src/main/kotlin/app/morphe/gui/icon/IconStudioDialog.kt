@@ -614,6 +614,7 @@ private fun BackgroundControls(project: IconProject, accents: MorpheAccentColors
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         when (bg) {
+            is MorpheFill.Accent -> Unit
             is MorpheFill.Solid -> SwatchRow(bg.argb) {
                 onChange(project.copy(background = MorpheFill.Solid(it)))
             }
@@ -630,8 +631,6 @@ private fun BackgroundControls(project: IconProject, accents: MorpheAccentColors
         }
     }
 }
-
-/** A single colour swatch that opens the full picker popup, for gradient stops. */
 
 @Composable
 private fun SwatchRow(selected: Int, onPick: (Int) -> Unit) = MorpheSwatchRow(selected, onPick = onPick)

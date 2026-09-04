@@ -46,6 +46,7 @@ object IconRenderer {
         try {
             enableQuality(g)
             when (val bg = project.background) {
+                is MorpheFill.Accent -> Unit
                 is MorpheFill.Solid -> {
                     g.color = Color(bg.argb, true); g.fillRect(0, 0, size, size)
                 }

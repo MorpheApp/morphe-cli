@@ -30,6 +30,10 @@ sealed interface MorpheFill {
     @Serializable
     @SerialName("app.morphe.gui.icon.IconProject.Background.Image")
     data class Image(val sourcePath: String) : MorpheFill
+
+    @Serializable
+    @SerialName("app.morphe.gui.data.model.MorpheFill.Accent")
+    data object Accent : MorpheFill
 }
 
 @Serializable

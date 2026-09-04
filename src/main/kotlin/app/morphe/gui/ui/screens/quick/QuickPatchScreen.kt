@@ -200,7 +200,6 @@ fun QuickPatchContent(viewModel: QuickPatchViewModel) {
                 ) {
                     val showOffline = uiState.isOffline && uiState.phase == QuickPatchPhase.IDLE
                     if (showOffline || uiState.showUpdateBanner) {
-                        // The parent column already insets this screen.
                         MorpheBanners(inset = 0.dp) {
                             if (showOffline) {
                                 OfflineBanner(onRetry = { viewModel.retryLoadPatches() })

@@ -95,6 +95,16 @@ class ConfigRepository {
         saveConfig(current.copy(useSharpCorners = enabled))
     }
 
+    suspend fun setGlobalCardFill(fill: MorpheFill?) {
+        val current = loadConfig()
+        saveConfig(current.copy(globalCardFill = fill))
+    }
+
+    suspend fun clearCardFills() {
+        val current = loadConfig()
+        saveConfig(current.copy(cardFills = emptyMap()))
+    }
+
     suspend fun setCardFill(packageName: String, fill: MorpheFill?) {
         val current = loadConfig()
         val updated = current.cardFills.toMutableMap().apply {

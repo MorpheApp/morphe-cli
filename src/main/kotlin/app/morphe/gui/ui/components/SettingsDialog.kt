@@ -67,6 +67,7 @@ import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.ui.components.ChangelogDialog
 import app.morphe.gui.ui.components.color.CustomSwatches
 import androidx.compose.foundation.shape.CircleShape
+import app.morphe.gui.ui.components.LocalCardFills
 import app.morphe.gui.ui.components.MorpheColorPickerCard
 import app.morphe.gui.ui.icons.MorpheIcons
 import app.morphe.gui.ui.theme.THEME_PRESET_COLORS
@@ -368,6 +369,73 @@ fun SettingsDialog(
                                                 )
                                             }
                                         }
+                                    }
+                                }
+
+                                SettingsDivider(borderColor)
+
+                                SectionLabel("App cards", font, icon = MorpheIcons.Gradient)
+                                Spacer(Modifier.height(8.dp))
+
+                                val cardFills = LocalCardFills.current
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    AppCard(
+                                        modifier = Modifier.width(72.dp).height(34.dp),
+                                        cornerRadius = corners.small,
+                                        fill = cardFills.globalFill,
+                                        interactive = false,
+                                    ) {}
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Colour for every card",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            fontFamily = font,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        Text(
+                                            text = "Cards you have customised individually keep their own colour",
+                                            fontSize = 11.sp,
+                                            fontFamily = font,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    MorpheChoiceChip(
+                                        text = "Customise",
+                                        active = false,
+                                        font = font,
+                                        dense = true,
+                                        onClick = { cardFills.requestEditGlobal() },
+                                    )
+                                }
+
+                                if (cardFills.fills.isNotEmpty()) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = "${cardFills.fills.size} card" +
+                                                (if (cardFills.fills.size == 1) "" else "s") +
+                                                " override this",
+                                            fontSize = 11.sp,
+                                            fontFamily = font,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        MorpheChoiceChip(
+                                            text = "Reset",
+                                            active = false,
+                                            font = font,
+                                            dense = true,
+                                            onClick = { cardFills.onClearAll() },
+                                        )
                                     }
                                 }
 
@@ -731,8 +799,6 @@ private fun AccentSwatch(
         targetValue = if (isHovered) 1.08f else 1f,
         label = "accentSwatchScale",
     )
-    // Not primary: picking an accent makes primary that same colour, so the ring
-    // vanished into the swatch it was marking.
     val ring = when {
         selected -> MaterialTheme.colorScheme.onSurface
         isHovered -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
@@ -771,9 +837,6 @@ private fun AccentSwatch(
             content()
         }
 
-        // Sibling of the clipped swatch, so the rounded corner cannot cut it.
-        // Stays inside the 42dp bounds: a child overhanging its parent is drawn
-        // but never hit-tested.
         if (onDelete != null && isHovered) {
             Box(
                 modifier = Modifier
@@ -984,7 +1047,6 @@ private fun UpdateChannelRow(
     enabled: Boolean,
     icon: ImageVector? = null,
 ) {
-    val corners = LocalMorpheCorners.current
     val alpha = if (enabled) 1f else 0.5f
 
     val description = when {

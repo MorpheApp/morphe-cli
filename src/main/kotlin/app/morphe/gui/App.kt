@@ -132,6 +132,7 @@ private fun appContent(
     var isLoading by remember { mutableStateOf(true) }
     val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
     var cardFills by remember { mutableStateOf(emptyMap<String, MorpheFill>()) }
+    var globalCardFill by remember { mutableStateOf<MorpheFill?>(null) }
     val sharpCornersState = remember { mutableStateOf(false) }
 
     // Initialize PatchSourceManager and load config on startup
@@ -147,6 +148,7 @@ private fun appContent(
         }
         enableParallaxState.value = config.enableParallax
         cardFills = config.cardFills
+        globalCardFill = config.globalCardFill
         sharpCornersState.value = config.useSharpCorners
 
         autoStartAdb = config.autoStartAdb
@@ -261,11 +263,20 @@ private fun appContent(
         ) {
           CardFillHost(
             fills = cardFills,
+            globalFill = globalCardFill,
             onChange = { pkg, fill ->
                 cardFills = cardFills.toMutableMap().apply {
                     if (fill == null) remove(pkg) else put(pkg, fill)
                 }
                 scope.launch { configRepository.setCardFill(pkg, fill) }
+            },
+            onGlobalChange = { fill ->
+                globalCardFill = fill
+                scope.launch { configRepository.setGlobalCardFill(fill) }
+            },
+            onClearAll = {
+                cardFills = emptyMap()
+                scope.launch { configRepository.clearCardFills() }
             },
           ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic

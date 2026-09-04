@@ -29,11 +29,9 @@ object AppConstants {
     // ==================== API ====================
     const val MORPHE_API_URL = "https://api.morphe.software"
 
-    // ==================== LINKS ====================
     const val WEBSITE_URL = "https://morphe.software"
     const val DOCUMENTATION_URL = "https://github.com/MorpheApp/morphe-desktop/blob/main/docs/documentation.md"
 
-    // ==================== FALLBACK APPS ====================
     val FALLBACK_PACKAGES = listOf(
         "com.google.android.youtube",
         "com.google.android.apps.youtube.music",

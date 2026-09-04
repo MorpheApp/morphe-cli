@@ -83,6 +83,7 @@ data class AppConfig(
     val sourceVersionPrefs: Map<String, SourceVersionPref> = emptyMap(),
     val sourceChannelFlagsSeeded: Boolean = false,
     val cardFills: Map<String, MorpheFill> = emptyMap(),
+    val globalCardFill: MorpheFill? = null,
     val useSharpCorners: Boolean = false,
     val preferredPatchChannel: String = PatchChannel.STABLE.name,
     val defaultOutputDirectory: String? = null,

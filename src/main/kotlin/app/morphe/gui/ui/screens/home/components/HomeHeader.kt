@@ -117,7 +117,6 @@ internal fun HeaderBar(
             }
         }
 
-
         // Device indicator plus settings, inline in the header
         Box(
             modifier = Modifier
@@ -265,4 +264,3 @@ internal fun BrandingSection(isCompact: Boolean = false) {
         modifier = Modifier.height(if (isCompact) 36.dp else 60.dp)
     )
 }
-
