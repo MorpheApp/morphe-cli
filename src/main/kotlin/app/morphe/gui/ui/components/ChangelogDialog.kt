@@ -114,11 +114,13 @@ fun ChangelogDialog(
                         FormattedReleaseNotes(markdown = olderReleases)
                     }
                 }
-                VerticalScrollbar(
-                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                    adapter = rememberScrollbarAdapter(changelogScroll),
-                    style = morpheScrollbarStyle(),
-                )
+                Box(Modifier.matchParentSize()) {
+                    VerticalScrollbar(
+                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                        adapter = rememberScrollbarAdapter(changelogScroll),
+                        style = morpheScrollbarStyle(),
+                    )
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -95,6 +95,11 @@ class ConfigRepository {
         saveConfig(current.copy(useSharpCorners = enabled))
     }
 
+    suspend fun setHomeAppSortMode(mode: String) {
+        val current = loadConfig()
+        saveConfig(current.copy(homeAppSortMode = mode))
+    }
+
     suspend fun setGlobalCardFill(fill: MorpheFill?) {
         val current = loadConfig()
         saveConfig(current.copy(globalCardFill = fill))

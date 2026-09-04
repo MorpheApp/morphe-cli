@@ -228,8 +228,7 @@ private fun DeviceInfoLine(info: DeviceAppInfo, font: FontFamily) {
 internal fun PatchedStateBadge(state: PatchedAppState, font: FontFamily) {
     val label = when (state) {
         PatchedAppState.PATCHED -> "Patched"
-        PatchedAppState.PATCHED_WITH_UPDATES -> "Update available"
-        PatchedAppState.NEW_APP_VERSION -> "New app version"
+        PatchedAppState.PATCHED_WITH_UPDATES -> "Patch update available"
         PatchedAppState.MODIFIED_EXTERNALLY -> "Modified"
         PatchedAppState.APK_MISSING -> "APK missing"
         PatchedAppState.NEVER_PATCHED -> return

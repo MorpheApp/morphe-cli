@@ -13,6 +13,7 @@ import app.morphe.gui.data.model.Patch
 import app.morphe.gui.data.model.PatchConfig
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchPreferencesRepository
+import app.morphe.gui.data.repository.SeenPatchesRepository
 import app.morphe.gui.data.repository.PatchRepository
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.FileUtils.ANDROID_ARCHITECTURES
@@ -80,6 +81,9 @@ class PatchSelectionViewModel(
      *  re-read a version from. Blank falls back to the engine's manifest/filename resolution.
      *  Non-null (rather than String?) so no null flows through the Koin parametersOf chain. */
     private val apkVersion: String = "",
+    private val seenPatchesRepository: SeenPatchesRepository = SeenPatchesRepository(),
+    /** Configured source name to its stable id, so a record can store the id rather than a label. */
+    private val sourceIdsByName: Map<String, String> = emptyMap(),
 ) : ScreenModel {
 
     // Actual path to use for the primary file. May differ from patchesFilePath
@@ -175,6 +179,7 @@ class PatchSelectionViewModel(
                     val savedByBundle = mutableMapOf<String, Set<String>>()
                     val initialOptions = mutableMapOf<String, String>()
                     var anyBundleHasSaved = false
+                    val newByBundle = mutableMapOf<String, Set<String>>()
 
                     if (initialSelectionByBundle.isNotEmpty()) {
                         // One-click repatch: seed selection + options from the
@@ -200,7 +205,15 @@ class PatchSelectionViewModel(
                                     .keys
                                     .mapNotNull { byName[it]?.uniqueId }
                                     .toSet()
-                                savedByBundle[bundleId] = selected
+
+                                val seen = seenPatchesRepository.get(packageName, bundleName)
+                                    ?: saved.patches.keys
+                                val fresh = patches.filter { it.name !in seen }
+                                if (fresh.isNotEmpty()) {
+                                    newByBundle[bundleId] = fresh.mapTo(mutableSetOf()) { it.uniqueId }
+                                }
+                                savedByBundle[bundleId] = selected +
+                                    fresh.filter { it.isEnabled }.map { it.uniqueId }
                                 // Materialize saved option values ("patchName.optionKey" → string).
                                 // Options are per-patch-name, so they are global here.
                                 // Identical patches in two bundles share option values,
@@ -238,6 +251,7 @@ class PatchSelectionViewModel(
                         selectedByBundle = initialSelectedByBundle,
                         savedSelectedByBundle = savedByBundle.ifEmpty { null },
                         hasSavedSelection = anyBundleHasSaved,
+                        newPatchesByBundle = newByBundle,
                         patchOptionValues = initialOptions,
                     )
                 },
@@ -497,6 +511,7 @@ class PatchSelectionViewModel(
                 val patchNamesInBundle = patches.mapTo(mutableSetOf()) { it.name }
                 val scopedOptions = groupedOptions.filterKeys { it in patchNamesInBundle }
 
+                seenPatchesRepository.save(packageName, bundleName, patchNamesInBundle)
                 preferencesRepository.save(
                     sourceName = bundleName,
                     packageName = packageName,
@@ -553,7 +568,7 @@ class PatchSelectionViewModel(
         val fullSourcesSnapshot = actualPatchesFilePaths.mapIndexed { i, path ->
             val name = patchSourceNames.getOrNull(i) ?: File(path).nameWithoutExtension
             PatchedSourceSnapshot(
-                sourceId = name,
+                sourceId = sourceIdsByName[name] ?: name,
                 sourceName = name,
                 version = extractPatchesVersion(File(path).name) ?: "unknown",
             )
@@ -762,6 +777,8 @@ data class PatchSelectionUiState(
     val selectedByBundle: Map<String, Set<String>> = emptyMap(),
     /** Snapshot of each bundle's saved selection. Null = no saved state for any bundle. */
     val savedSelectedByBundle: Map<String, Set<String>>? = null,
+    /** uniqueIds absent from the last saved preferences, per bundle. Empty on a first run. */
+    val newPatchesByBundle: Map<String, Set<String>> = emptyMap(),
     /** True when at least ONE bundle has a saved selection. Drives the per-box "Your Defaults"
      *  chip visibility, though per-box highlighting still uses [selectionModeFor]. */
     val hasSavedSelection: Boolean = false,

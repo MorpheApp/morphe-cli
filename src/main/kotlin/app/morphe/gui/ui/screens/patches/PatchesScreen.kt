@@ -39,6 +39,8 @@ import app.morphe.engine.model.Release
 import app.morphe.gui.ui.components.DeviceIndicator
 import app.morphe.gui.ui.components.ErrorDialog
 import app.morphe.gui.ui.components.FormattedReleaseNotes
+import app.morphe.gui.ui.components.MorpheBadge
+import app.morphe.gui.ui.components.MorpheBadgeTone
 import app.morphe.gui.ui.components.MorpheBanners
 import app.morphe.gui.ui.components.OfflineBanner
 import app.morphe.gui.ui.components.SettingsButton
@@ -507,12 +509,7 @@ private fun ReleaseCard(
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
     val selectedColor = accents.primary
-    val downloadedColor = accents.secondary
-    val accentColor = when {
-        isSelected -> selectedColor
-        isDownloaded -> downloadedColor
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val accentColor = if (isSelected) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant
 
     var isExpanded by remember { mutableStateOf(false) }
     val hasNotes = !release.body.isNullOrBlank()
@@ -523,7 +520,7 @@ private fun ReleaseCard(
     val borderColor by animateColorAsState(
         when {
             isSelected -> selectedColor
-            isDownloaded -> downloadedColor.copy(alpha = 0.4f)
+            isDownloaded -> selectedColor.copy(alpha = if (isHovered) 0.7f else 0.45f)
             isHovered -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
             else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         },
@@ -535,16 +532,10 @@ private fun ReleaseCard(
         animationSpec = tween(150)
     )
 
-    val baseBg = when {
-        isSelected || isDownloaded -> MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-        else -> MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp).copy(alpha = 0.5f)
-    }
+    val baseBg = if (isSelected) MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    else MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp).copy(alpha = 0.5f)
 
-    val tintColor = when {
-        isSelected -> selectedColor.copy(alpha = 0.07f)
-        isDownloaded -> downloadedColor.copy(alpha = 0.045f)
-        else -> Color.Transparent
-    }
+    val tintColor = if (isSelected) selectedColor.copy(alpha = 0.07f) else Color.Transparent
 
     Box(
         modifier = Modifier
@@ -557,172 +548,117 @@ private fun ReleaseCard(
             .handCursor()
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
     ) {
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            // Left accent stripe
-            if (isSelected || isDownloaded) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .fillMaxHeight()
-                        .background(accentColor)
-                )
-            }
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = release.tagName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = font,
+                            color = if (isSelected) selectedColor
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                        if (isLatest) {
+                            MorpheBadge(text = "Latest", tone = MorpheBadgeTone.Primary)
+                        }
+                        if (release.isDevRelease()) {
+                            MorpheBadge(text = "Dev", tone = MorpheBadgeTone.Warning)
+                        }
+                        if (isDownloaded) {
+                            MorpheBadge(text = "Cached")
+                        }
+                    }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Patch file info
+                    release.assets.find { it.isPatchFile() }?.let { patchAsset ->
+                        Text(
+                            text = "${patchAsset.name} (${patchAsset.getFormattedSize()})",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    val formattedDate = release.publishedAt?.let { formatDate(it) } ?: ""
+                    if (formattedDate.isNotEmpty()) {
+                        Text(
+                            text = "${if (isOffline) "Cached:" else "Published:"} $formattedDate",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontFamily = font,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (hasNotes) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        val noteHover = remember { MutableInteractionSource() }
+                        val isNoteHovered by noteHover.collectIsHoveredAsState()
+                        val noteBorder by animateColorAsState(
+                            if (isNoteHovered) accentColor.copy(alpha = 0.3f)
+                            else accentColor.copy(alpha = 0.15f),
+                            animationSpec = tween(150)
+                        )
+
                         Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(corners.small))
+                                .border(1.dp, noteBorder, RoundedCornerShape(corners.small))
+                                .hoverable(noteHover)
+                                .handCursor()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { isExpanded = !isExpanded }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = release.tagName,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = font,
-                                color = when {
-                                    isSelected -> selectedColor
-                                    isDownloaded -> downloadedColor
-                                    else -> MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                            if (isLatest) {
-                                val latestColor = accents.secondary
-                                Box(
-                                    modifier = Modifier
-                                        .background(latestColor.copy(alpha = 0.12f), RoundedCornerShape(corners.small))
-                                        .border(1.dp, latestColor.copy(alpha = 0.32f), RoundedCornerShape(corners.small))
-                                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                                ) {
-                                    Text(
-                                        text = "Latest",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        fontFamily = font,
-                                        color = latestColor,
-                                    )
-                                }
-                            }
-                            if (release.isDevRelease()) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(accents.tertiary.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                                        .border(1.dp, accents.tertiary.copy(alpha = 0.22f), RoundedCornerShape(corners.small))
-                                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                                ) {
-                                    Text(
-                                        text = "Dev",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        fontFamily = font,
-                                        color = accents.tertiary,
-                                    )
-                                }
-                            }
-                            if (isDownloaded) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(downloadedColor.copy(alpha = 0.1f), RoundedCornerShape(corners.small))
-                                        .border(1.dp, downloadedColor.copy(alpha = 0.24f), RoundedCornerShape(corners.small))
-                                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                                ) {
-                                    Text(
-                                        text = "Cached",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        fontFamily = font,
-                                        color = downloadedColor,
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        // Patch file info
-                        release.assets.find { it.isPatchFile() }?.let { patchAsset ->
-                            Text(
-                                text = "${patchAsset.name} (${patchAsset.getFormattedSize()})",
+                                text = if (isExpanded) "Hide notes" else "Patch notes",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Normal,
                                 fontFamily = font,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = accentColor,
                             )
-                        }
-
-                        val formattedDate = release.publishedAt?.let { formatDate(it) } ?: ""
-                        if (formattedDate.isNotEmpty()) {
-                            Text(
-                                text = "${if (isOffline) "Cached:" else "Published:"} $formattedDate",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Normal,
-                                fontFamily = font,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            Icon(
+                                imageVector = if (isExpanded) MorpheIcons.ArrowDropUp else MorpheIcons.ArrowDropDown,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(14.dp)
                             )
-                        }
-
-                        if (hasNotes) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            val noteHover = remember { MutableInteractionSource() }
-                            val isNoteHovered by noteHover.collectIsHoveredAsState()
-                            val noteBorder by animateColorAsState(
-                                if (isNoteHovered) accentColor.copy(alpha = 0.3f)
-                                else accentColor.copy(alpha = 0.15f),
-                                animationSpec = tween(150)
-                            )
-
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(corners.small))
-                                    .border(1.dp, noteBorder, RoundedCornerShape(corners.small))
-                                    .hoverable(noteHover)
-                                    .handCursor()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) { isExpanded = !isExpanded }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = if (isExpanded) "Hide notes" else "Patch notes",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    fontFamily = font,
-                                    color = accentColor,
-                                )
-                                Icon(
-                                    imageVector = if (isExpanded) MorpheIcons.ArrowDropUp else MorpheIcons.ArrowDropDown,
-                                    contentDescription = null,
-                                    tint = accentColor,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
                         }
                     }
                 }
+            }
 
-                // Expandable release notes
-                if (isExpanded && hasNotes) {
-                    val notesDividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.06f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(1.dp)
-                            .background(notesDividerColor)
-                    )
-                    FormattedReleaseNotes(
-                        markdown = release.body,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
+            // Expandable release notes
+            if (isExpanded && hasNotes) {
+                val notesDividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.06f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(1.dp)
+                        .background(notesDividerColor)
+                )
+                FormattedReleaseNotes(
+                    markdown = release.body,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }

@@ -142,11 +142,13 @@ fun MorpheDropdown(
                                     }
                                 }
                             }
-                            VerticalScrollbar(
-                                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                                adapter = rememberScrollbarAdapter(listScroll),
-                                style = morpheScrollbarStyle(),
-                            )
+                            Box(Modifier.matchParentSize()) {
+                                VerticalScrollbar(
+                                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                                    adapter = rememberScrollbarAdapter(listScroll),
+                                    style = morpheScrollbarStyle(),
+                                )
+                            }
                         }
                     }
                 }

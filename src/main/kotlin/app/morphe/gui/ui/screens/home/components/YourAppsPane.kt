@@ -109,6 +109,7 @@ import app.morphe.gui.ui.theme.MorpheColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import app.morphe.gui.ui.components.MorpheBadge
 
 /** Which list the home pane is showing: all supported apps, or only patched ("yours"). */
 enum class AppListFilter { ALL, YOURS }
@@ -124,6 +125,7 @@ fun AppListFilterChips(
     onSelect: (AppListFilter) -> Unit,
     allCount: Int,
     yourCount: Int,
+    modifier: Modifier = Modifier,
 ) {
     val font = LocalMorpheFont.current
     val accents = LocalMorpheAccents.current
@@ -131,7 +133,7 @@ fun AppListFilterChips(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.fillMaxWidth().padding(end = 12.dp, bottom = 6.dp),
+        modifier = modifier.padding(bottom = 6.dp),
     ) {
         FilterChip(
             label = "All apps",
@@ -179,8 +181,8 @@ fun PatchedUpdatesBanner(count: Int, onView: () -> Unit) {
     ) {
         Icon(MorpheIcons.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(15.dp))
         Text(
-            text = if (count == 1) "1 patched app has an update available"
-                   else "$count patched apps have updates available",
+            text = if (count == 1) "A patch update is available for 1 app"
+                   else "Patch updates are available for $count apps",
             fontSize = 11.sp,
             fontWeight = FontWeight.Normal,
             fontFamily = font,
@@ -316,7 +318,11 @@ fun YourAppRow(
             }
             if (deviceInfo?.installPending == true) {
                 Spacer(Modifier.width(8.dp))
-                MiniBadge("Install ready", MorpheColors.Teal, font, onGradient = true)
+                MorpheBadge(
+                    text = "Install ready",
+                    containerColor = MorpheColors.Teal,
+                    onGradient = true,
+                )
             }
             if (state != PatchedAppState.NEVER_PATCHED) {
                 Spacer(Modifier.width(8.dp))
@@ -1405,26 +1411,6 @@ private fun VersionBumpText(
 }
 
 /** Small pill badge (matches PatchedStateBadge styling) for ad-hoc states. */
-@Composable
-private fun MiniBadge(
-    label: String,
-    color: Color,
-    font: FontFamily,
-    onGradient: Boolean = false,
-) {
-    val corner = LocalMorpheCorners.current.small
-    val badgeColor = if (onGradient) color.onCardGradient() else color
-    val badgeInk = if (onGradient) badgeColor.contrastingForeground() else badgeColor
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(corner))
-            .background(if (onGradient) badgeColor else badgeColor.copy(alpha = 0.2f))
-            .then(if (onGradient) Modifier else Modifier.border(1.dp, badgeColor.copy(alpha = 0.4f), RoundedCornerShape(corner)))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    ) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Normal, fontFamily = font, color = badgeInk)
-    }
-}
 
 @Composable
 private fun InfoNote(text: String, font: FontFamily) {

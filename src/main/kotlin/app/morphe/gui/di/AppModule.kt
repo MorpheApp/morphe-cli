@@ -9,6 +9,7 @@ import app.morphe.engine.PatchedAppStore
 import app.morphe.gui.data.repository.ChangelogRepository
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchPreferencesRepository
+import app.morphe.gui.data.repository.SeenPatchesRepository
 import app.morphe.gui.data.repository.PatchSourceManager
 import app.morphe.gui.data.repository.UpdateCheckRepository
 import app.morphe.gui.ui.screens.home.HomeViewModel
@@ -89,6 +90,7 @@ val appModule = module {
     // Repositories and Services
     single { ConfigRepository() }
     single { PatchPreferencesRepository() }
+    single { SeenPatchesRepository() }
     single { PatchSourceManager(get(), get()) }
     single { PatchService() }
     single { UpdateCheckRepository(get()) }
@@ -133,6 +135,7 @@ val appModule = module {
             params.get(),
             params.get(),
             params.get(),
+            sourceIdsByName = psm.getEnabledSourcesSync().associate { it.name to it.id },
         )
     }
     factory { params ->

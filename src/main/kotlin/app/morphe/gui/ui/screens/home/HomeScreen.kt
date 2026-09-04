@@ -517,6 +517,8 @@ fun HomeScreenContent(
                                     patchedRecords = uiState.patchedRecords,
                                     deviceAppInfo = uiState.deviceAppInfo,
                                     updateInfoByPackage = uiState.updateInfoByPackage,
+                                    sortMode = uiState.sortMode,
+                                    onSortModeChange = { viewModel.setSortMode(it) },
                                     onInstall = { viewModel.installPatchedApp(it) },
                                     installingPackage = uiState.installingPackage,
                                     onShowDetail = onShowDetail,

@@ -25,6 +25,7 @@ import app.morphe.gui.data.repository.UpdateCheckRepository
 import app.morphe.gui.ui.screens.patching.LogEntry
 import app.morphe.gui.ui.screens.patching.LogLevel
 import app.morphe.gui.util.ChecksumStatus
+import app.morphe.gui.data.repository.SeenPatchesRepository
 import app.morphe.gui.util.EnabledSourcesLoader
 import app.morphe.gui.util.FileUtils
 import app.morphe.gui.util.Logger
@@ -62,6 +63,7 @@ class QuickPatchViewModel(
     private val configRepository: ConfigRepository,
     private val updateCheckRepository: UpdateCheckRepository,
     private val patchedAppStore: PatchedAppStore = PatchedAppStore.shared,
+    private val seenPatchesRepository: SeenPatchesRepository = SeenPatchesRepository(),
 ) : ScreenModel {
 
     private var patchRepository: PatchRepository = patchSourceManager.getActiveRepositorySync()
@@ -614,6 +616,7 @@ class QuickPatchViewModel(
                         )
                         Logger.info("Quick mode: Patching completed - $outputPath (${result.appliedPatches.size} patches)")
                         recordPatchedApp(result, apkFile.absolutePath, outputPath, apkInfo.displayName)
+                        recordSeenPatches(apkInfo.packageName)
                     } else {
                         val errorMsg = result.failureDetail ?: result.failureReason ?: "Patching failed for an unknown reason"
                         _uiState.value = _uiState.value.copy(
@@ -640,6 +643,21 @@ class QuickPatchViewModel(
      * Best-effort: a write failure must never disrupt the success UX. Quick mode
      * uses the default patch set, so no per-bundle selection is captured.
      */
+    /**
+     * Snapshot what each source offered for this app, so expert mode can tell a
+     * genuinely new patch from one the user has already seen.
+     */
+    private suspend fun recordSeenPatches(packageName: String) {
+        val sources = cachedSourcesResult?.resolved ?: return
+        sources.forEach { resolved ->
+            val path = resolved.patchFile?.absolutePath ?: return@forEach
+            val names = patchService.listPatches(path, packageName).getOrNull()
+                ?.mapTo(mutableSetOf()) { it.name }
+                ?: return@forEach
+            seenPatchesRepository.save(packageName, resolved.source.name, names)
+        }
+    }
+
     private suspend fun recordPatchedApp(
         result: PatchResult,
         inputApkPath: String,
@@ -655,12 +673,27 @@ class QuickPatchViewModel(
             val manifest = withContext(Dispatchers.IO) {
                 runCatching { ApkManifestReader.read(File(outputApkPath)) }.getOrNull()
             }
-            val sources = currentResolvedPatchFiles().map { f ->
-                PatchedAppRecord.PatchedSourceSnapshot(
-                    sourceId = f.nameWithoutExtension,
-                    sourceName = f.nameWithoutExtension,
-                    version = ApkOutputNaming.extractPatchesVersion(f.name) ?: "unknown",
-                )
+            // Must be the configured source name: every update lookup keys off it,
+            // and a bundle filename never matches one.
+            val resolvedSources = cachedSourcesResult?.resolved?.filter { it.patchFile != null }
+            val sources = if (!resolvedSources.isNullOrEmpty()) {
+                resolvedSources.map { r ->
+                    PatchedAppRecord.PatchedSourceSnapshot(
+                        sourceId = r.source.id,
+                        sourceName = r.source.name,
+                        version = r.resolvedVersion
+                            ?: r.patchFile?.name?.let { ApkOutputNaming.extractPatchesVersion(it) }
+                            ?: "unknown",
+                    )
+                }
+            } else {
+                currentResolvedPatchFiles().map { f ->
+                    PatchedAppRecord.PatchedSourceSnapshot(
+                        sourceId = f.nameWithoutExtension,
+                        sourceName = f.nameWithoutExtension,
+                        version = ApkOutputNaming.extractPatchesVersion(f.name) ?: "unknown",
+                    )
+                }
             }
             patchedAppStore.upsert(
                 PatchedAppRecord(

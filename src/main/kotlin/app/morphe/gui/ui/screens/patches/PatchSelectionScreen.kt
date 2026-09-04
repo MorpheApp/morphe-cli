@@ -82,6 +82,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
+import app.morphe.gui.ui.components.MorpheBadge
+import app.morphe.gui.ui.components.MorpheBadgeTone
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 
 private val FILTER_BAR_HEIGHT = 32.dp
 
@@ -557,10 +561,12 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                             val bundle = uiState.filteredBundles.firstOrNull() ?: return@Column
                             val bundleId = bundle.bundleId
                             val selectedInBundle = uiState.selectedByBundle[bundleId].orEmpty()
-                            bundle.patches.forEach { patch ->
+                            val newInBundle = uiState.newPatchesByBundle[bundleId].orEmpty()
+                            bundle.patches.newestFirst(newInBundle).forEach { patch ->
                                 PatchListItem(
                                     patch = patch,
                                     isSelected = selectedInBundle.contains(patch.uniqueId),
+                                    isNew = patch.uniqueId in newInBundle,
                                     onToggle = { viewModel.togglePatch(bundleId, patch.uniqueId) },
                                     sourceName = null,
                                     packageName = targetPackage,
@@ -588,6 +594,7 @@ fun PatchSelectionScreenContent(viewModel: PatchSelectionViewModel) {
                                     bundle = bundle,
                                     packageName = targetPackage,
                                     selectedInBundle = uiState.selectedByBundle[bundle.bundleId].orEmpty(),
+                                    newInBundle = uiState.newPatchesByBundle[bundle.bundleId].orEmpty(),
                                     selectionMode = uiState.selectionModeFor(bundle.bundleId),
                                     hasSavedForBundle = uiState.savedSelectedByBundle?.containsKey(bundle.bundleId) == true,
                                     expanded = bundle.bundleId !in collapsedBundles,
@@ -815,6 +822,7 @@ private fun PatchListItem(
     patch: Patch,
     isSelected: Boolean,
     onToggle: () -> Unit,
+    isNew: Boolean = false,
     sourceName: String? = null,
     packageName: String = "",
     getOptionValue: (optionKey: String, default: String?) -> String = { _, d -> d ?: "" },
@@ -828,6 +836,8 @@ private fun PatchListItem(
 
     val colors = MaterialTheme.colorScheme
     val containerColor = when {
+        isNew && isSelected -> colors.tertiaryContainer.copy(alpha = 0.55f)
+        isNew -> colors.tertiaryContainer.copy(alpha = 0.25f)
         isSelected -> accents.primary.copy(alpha = 0.22f)
         isHovered -> accents.primary.copy(alpha = 0.06f)
         else -> Color.Transparent
@@ -852,10 +862,18 @@ private fun PatchListItem(
             .border(1.dp, borderColor, RoundedCornerShape(corners.small))
             .hoverable(interactionSource)
     ) {
+        // The row speaks for its contents, so the New badge has to be read out
+        // here or it is never announced.
+        val rowDescription = listOfNotNull(
+            patch.name,
+            if (isSelected) "enabled" else "disabled",
+            "new".takeIf { isNew },
+        ).joinToString(", ")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle)
+                .semantics(mergeDescendants = true) { contentDescription = rowDescription }
                 .padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -902,6 +920,10 @@ private fun PatchListItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    if (isNew) {
+                        MorpheBadge(text = "New", tone = MorpheBadgeTone.Primary)
+                    }
 
                     if (sourceName != null) {
                         val badgeColor = if (isSelected) {
@@ -1898,6 +1920,7 @@ private fun BundleBox(
     bundle: BundlePatches,
     packageName: String = "",
     selectedInBundle: Set<String>,
+    newInBundle: Set<String>,
     selectionMode: SelectionMode,
     hasSavedForBundle: Boolean,
     expanded: Boolean,
@@ -2005,10 +2028,11 @@ private fun BundleBox(
                             .padding(horizontal = 4.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        bundle.patches.forEach { patch ->
+                        bundle.patches.newestFirst(newInBundle).forEach { patch ->
                             PatchListItem(
                                 patch = patch,
                                 isSelected = selectedInBundle.contains(patch.uniqueId),
+                                isNew = patch.uniqueId in newInBundle,
                                 onToggle = { onTogglePatch(patch.uniqueId) },
                                 // Bundle context is implicit from the box header
                                 sourceName = null,
@@ -2140,3 +2164,7 @@ private fun RunInfoDetail(text: String, font: FontFamily) {
         lineHeight = 13.sp,
     )
 }
+
+/** New patches float to the top, the rest keep the bundle's own order. */
+private fun List<Patch>.newestFirst(newIds: Set<String>): List<Patch> =
+    if (newIds.isEmpty()) this else sortedByDescending { it.uniqueId in newIds }

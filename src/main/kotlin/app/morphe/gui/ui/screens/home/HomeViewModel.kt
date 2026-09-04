@@ -107,6 +107,7 @@ class HomeViewModel(
                 appListFilter = runCatching {
                     AppListFilter.valueOf(config.homeAppListFilter)
                 }.getOrDefault(AppListFilter.ALL),
+                sortMode = HomeAppSortMode.fromPreference(config.homeAppSortMode),
             )
         }
 
@@ -283,6 +284,12 @@ class HomeViewModel(
             )
             refreshDeviceInfo()
         }
+    }
+
+    fun setSortMode(mode: HomeAppSortMode) {
+        if (_uiState.value.sortMode == mode) return
+        _uiState.value = _uiState.value.copy(sortMode = mode)
+        screenModelScope.launch { configRepository.setHomeAppSortMode(mode.name) }
     }
 
     /** Switch the home apps tab (ALL/YOURS) and remember it for next launch. */
@@ -674,8 +681,6 @@ class HomeViewModel(
                 if (record == null) emptySet() else relevantUpdatedSources(record, app, latestBySource)
             if (changedSources.isNotEmpty()) relevant[app.packageName] = changedSources
             val sourceUpdate = changedSources.isNotEmpty()
-            val appUpdate = record != null &&
-                app.recommendedVersion?.let { isNewerVersion(it, record.apkVersion) } == true
             app.packageName to when {
                 record == null -> PatchedAppState.NEVER_PATCHED
                 output?.exists() != true -> PatchedAppState.APK_MISSING
@@ -684,7 +689,6 @@ class HomeViewModel(
                 record.outputApkSize > 0 && output.length() != record.outputApkSize ->
                     PatchedAppState.MODIFIED_EXTERNALLY
                 sourceUpdate -> PatchedAppState.PATCHED_WITH_UPDATES
-                appUpdate -> PatchedAppState.NEW_APP_VERSION
                 else -> PatchedAppState.PATCHED
             }
         }
@@ -1358,7 +1362,6 @@ enum class PatchedAppState {
     NEVER_PATCHED,
     PATCHED,
     PATCHED_WITH_UPDATES,
-    NEW_APP_VERSION,
     /** Output APK present but no longer matches what Morphe produced (changed outside Morphe). */
     MODIFIED_EXTERNALLY,
     APK_MISSING,
@@ -1431,6 +1434,7 @@ data class HomeUiState(
     /** Per-package update info (patch-file + app freshness) for the list/cards. */
     val updateInfoByPackage: Map<String, RecallUpdateInfo> = emptyMap(),
     val appListFilter: AppListFilter = AppListFilter.ALL,
+    val sortMode: HomeAppSortMode = HomeAppSortMode.RECOMMENDED,
     /** Package currently being installed to the device from its stored output APK. */
     val installingPackage: String? = null,
     /** Package currently being uninstalled from the device. */

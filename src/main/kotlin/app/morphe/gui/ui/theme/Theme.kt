@@ -69,7 +69,7 @@ private val DarkAccents = MorpheAccentColors(
 
 private val LightAccents = MorpheAccentColors(
     primary = Color(0xFF005FAC),   // Morphe Material blue (buttons, links, selections)
-    secondary = Color(0xFF386A20), // Success green (manager uses green for installed states)
+    secondary = Color(0xFF386A20), // Success green
     tertiary = Color(0xFF6D5677),  // Morphe tertiary, muted purple
     warning = Color(0xFFB26A00),   // Amber
 )
