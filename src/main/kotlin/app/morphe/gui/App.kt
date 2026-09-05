@@ -75,6 +75,9 @@ val LocalEnableParallax = compositionLocalOf<MutableState<Boolean>> {
     error("No LocalEnableParallax provided")
 }
 
+val LocalBackgroundSpeed = compositionLocalOf { mutableFloatStateOf(1f) }
+val LocalPatchingCompleted = compositionLocalOf { mutableStateOf(false) }
+
 val LocalCustomAccentColor = compositionLocalOf<MutableState<Int?>> {
     error("No LocalCustomAccentColor provided") 
 }
@@ -127,6 +130,8 @@ private fun appContent(
     var autoStartAdb by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
+    val backgroundSpeedState = remember { mutableFloatStateOf(1f) }
+    val patchingCompletedState = remember { mutableStateOf(false) }
 
     // Initialize PatchSourceManager and load config on startup
     LaunchedEffect(Unit) {
@@ -244,7 +249,9 @@ private fun appContent(
             LocalBackgroundType provides backgroundTypeState,
             LocalEnableParallax provides enableParallaxState,
             LocalParallaxState provides parallaxState,
-            LocalCustomAccentColor provides customAccentColorState
+            LocalCustomAccentColor provides customAccentColorState,
+            LocalBackgroundSpeed provides backgroundSpeedState,
+            LocalPatchingCompleted provides patchingCompletedState
         ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic
             // light contrast) to match the active theme's surface color.
@@ -278,7 +285,12 @@ private fun appContent(
                     }
 
                     Box(modifier = Modifier.fillMaxWidth().weight(1f).then(parallaxMod)) {
-                        AnimatedBackground(type = backgroundTypeState.value)
+                        AnimatedBackground(
+                            type = backgroundTypeState.value,
+                            enableParallax = enableParallaxState.value,
+                            speedMultiplier = { backgroundSpeedState.floatValue },
+                            patchingCompleted = { patchingCompletedState.value }
+                        )
 
                         // Dialog host lives outside the Crossfade so the
                         // SettingsDialog composable is never torn down when
