@@ -13,9 +13,10 @@ import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.morphe.gui.ui.components.CardFillHost
+import app.morphe.gui.data.model.MorpheFill
 import app.morphe.gui.data.repository.ActiveMode
 import app.morphe.gui.data.repository.ConfigRepository
 import app.morphe.gui.data.repository.PatchSourceManager
@@ -36,7 +37,6 @@ import app.morphe.gui.ui.theme.desktopScreenEnter
 import app.morphe.gui.ui.theme.desktopScreenExit
 import app.morphe.gui.util.DeviceMonitor
 import app.morphe.gui.util.Logger
-import app.morphe.gui.util.PatchService
 import app.morphe.gui.util.applyTitleBarTint
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.ScreenTransition
@@ -77,6 +77,10 @@ val LocalEnableParallax = compositionLocalOf<MutableState<Boolean>> {
 
 val LocalCustomAccentColor = compositionLocalOf<MutableState<Int?>> {
     error("No LocalCustomAccentColor provided") 
+}
+
+val LocalSharpCorners = compositionLocalOf<MutableState<Boolean>> {
+    error("No LocalSharpCorners provided")
 }
 
 /**
@@ -127,6 +131,9 @@ private fun appContent(
     var autoStartAdb by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     val backgroundTypeState = remember { mutableStateOf(BackgroundType.CIRCLES) }
+    var cardFills by remember { mutableStateOf(emptyMap<String, MorpheFill>()) }
+    var globalCardFill by remember { mutableStateOf<MorpheFill?>(null) }
+    val sharpCornersState = remember { mutableStateOf(false) }
 
     // Initialize PatchSourceManager and load config on startup
     LaunchedEffect(Unit) {
@@ -140,6 +147,9 @@ private fun appContent(
             BackgroundType.CIRCLES
         }
         enableParallaxState.value = config.enableParallax
+        cardFills = config.cardFills
+        globalCardFill = config.globalCardFill
+        sharpCornersState.value = config.useSharpCorners
 
         autoStartAdb = config.autoStartAdb
         // Publish the initial active mode BEFORE the VMs subscribe so their
@@ -169,8 +179,8 @@ private fun appContent(
     val onModeChange: (Boolean) -> Unit = { simplified ->
         isSimplifiedMode = simplified
         // Update the manager immediately so the now-visible mode's VM
-        // starts reacting to source changes and the now-hidden one stops —
-        // prevents duplicate parallel loads and the cancellation cascade
+        // starts reacting to source changes and the now-hidden one stops.
+        // That prevents duplicate parallel loads and the cancellation cascade
         // that comes with them.
         patchSourceManager.setActiveMode(
             if (simplified) ActiveMode.QUICK else ActiveMode.EXPERT
@@ -183,7 +193,7 @@ private fun appContent(
 
     // Callback for the auto-start ADB toggle. Persists the preference AND
     // applies the change immediately: ON spins up DeviceMonitor (which
-    // explicitly start-server's adb and records ownership); OFF cancels
+    // explicitly start-server's adb and records ownership). OFF cancels
     // polling and kill-server's the daemon if Morphe owns it.
     val onAutoStartAdbChange: (Boolean) -> Unit = { enabled ->
         autoStartAdb = enabled
@@ -234,7 +244,11 @@ private fun appContent(
     val settingsDialogVisible = remember { mutableStateOf(false) }
     val isPatchingState = remember { mutableStateOf(false) }
 
-    MorpheTheme(themePreference = themePreference, customAccentColorArgb = customAccentColorState.value) {
+    MorpheTheme(
+        themePreference = themePreference,
+        customAccentColorArgb = customAccentColorState.value,
+        useSharpCorners = sharpCornersState.value
+    ) {
         CompositionLocalProvider(
             LocalThemeState provides themeState,
             LocalModeState provides modeState,
@@ -244,8 +258,27 @@ private fun appContent(
             LocalBackgroundType provides backgroundTypeState,
             LocalEnableParallax provides enableParallaxState,
             LocalParallaxState provides parallaxState,
-            LocalCustomAccentColor provides customAccentColorState
+            LocalCustomAccentColor provides customAccentColorState,
+            LocalSharpCorners provides sharpCornersState
         ) {
+          CardFillHost(
+            fills = cardFills,
+            globalFill = globalCardFill,
+            onChange = { pkg, fill ->
+                cardFills = cardFills.toMutableMap().apply {
+                    if (fill == null) remove(pkg) else put(pkg, fill)
+                }
+                scope.launch { configRepository.setCardFill(pkg, fill) }
+            },
+            onGlobalChange = { fill ->
+                globalCardFill = fill
+                scope.launch { configRepository.setGlobalCardFill(fill) }
+            },
+            onClearAll = {
+                cardFills = emptyMap()
+                scope.launch { configRepository.clearCardFills() }
+            },
+          ) {
             // Tint the OS title bar (Windows DWM caption color, macOS traffic
             // light contrast) to match the active theme's surface color.
             val titleBarColor = MaterialTheme.colorScheme.surface
@@ -309,6 +342,7 @@ private fun appContent(
                     }
                 }
             }
+          }
         }
     }
 }
