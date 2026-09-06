@@ -1,3 +1,10 @@
+## [1.15.1-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.1-dev.2...v1.15.1-dev.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* Trigger background completion effect when patching finishes ([#295](https://github.com/MorpheApp/morphe-desktop/issues/295)) ([f45091d](https://github.com/MorpheApp/morphe-desktop/commit/f45091d3bde63eab38a0d02e7fe5e73ec22aee8a))
+
 ## [1.15.1-dev.2](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.1-dev.1...v1.15.1-dev.2) (2026-09-05)
 
 
