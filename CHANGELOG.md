@@ -1,3 +1,10 @@
+## [1.15.1-dev.4](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.1-dev.3...v1.15.1-dev.4) (2026-09-06)
+
+
+### Bug Fixes
+
+* Resolve `IoUsageSampler` NPE regression ([#297](https://github.com/MorpheApp/morphe-desktop/issues/297)) ([082849c](https://github.com/MorpheApp/morphe-desktop/commit/082849c99e8523b02f92286125f77344566e89ea))
+
 ## [1.15.1-dev.3](https://github.com/MorpheApp/morphe-desktop/compare/v1.15.1-dev.2...v1.15.1-dev.3) (2026-09-06)
 
 
